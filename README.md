@@ -1,4 +1,4 @@
-# Inkwell — Personal Writing Studio backed by GitHub
+z   # Inkwell — Personal Writing Studio backed by GitHub
 
 > Write like a developer. Publish like a creator.
 

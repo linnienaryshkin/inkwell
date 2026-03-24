@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
@@ -116,6 +116,7 @@ export default function StudioPage() {
   const [selectedSlug, setSelectedSlug] = useState(MOCK_ARTICLES[0].slug);
   const [articles, setArticles] = useState(MOCK_ARTICLES);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish">("publish");
+  const [zenMode, setZenMode] = useState(false);
 
   const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;
 
@@ -125,12 +126,38 @@ export default function StudioPage() {
     );
   };
 
+  const toggleZen = useCallback(() => setZenMode((z) => !z), []);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        toggleZen();
+      }
+      if (e.key === "z" && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        toggleZen();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [toggleZen]);
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 py-3 border-b"
-        style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--bg-secondary)",
+          transition: "max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease",
+          maxHeight: zenMode ? "0" : "64px",
+          overflow: "hidden",
+          opacity: zenMode ? 0 : 1,
+          paddingTop: zenMode ? "0" : undefined,
+          paddingBottom: zenMode ? "0" : undefined,
+        }}
       >
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold tracking-tight" style={{ color: "var(--accent)" }}>
@@ -159,24 +186,69 @@ export default function StudioPage() {
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Article list */}
-        <ArticleList
-          articles={articles}
-          selectedSlug={selectedSlug}
-          onSelect={setSelectedSlug}
-        />
+        <div
+          style={{
+            transition: "max-width 0.3s ease, opacity 0.3s ease",
+            maxWidth: zenMode ? "0" : "280px",
+            opacity: zenMode ? 0 : 1,
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          <ArticleList
+            articles={articles}
+            selectedSlug={selectedSlug}
+            onSelect={setSelectedSlug}
+          />
+        </div>
 
         {/* Editor */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
           <EditorPane key={selectedSlug} article={selectedArticle} onChange={handleContentChange} />
           <VersionStrip slug={selectedSlug} />
+
+          {/* Zen mode toggle button */}
+          <button
+            onClick={toggleZen}
+            title={zenMode ? "Exit zen mode (F11)" : "Enter zen mode (F11)"}
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              color: zenMode ? "var(--accent)" : "var(--text-secondary)",
+              borderRadius: "6px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+              opacity: 0.7,
+              transition: "opacity 0.2s ease, color 0.2s ease",
+              zIndex: 10,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
+          >
+            {zenMode ? "✕ zen" : "⊡ zen"}
+          </button>
         </div>
 
         {/* Side panel */}
-        <SidePanel
-          article={selectedArticle}
-          activeTab={sidePanelTab}
-          onTabChange={setSidePanelTab}
-        />
+        <div
+          style={{
+            transition: "max-width 0.3s ease, opacity 0.3s ease",
+            maxWidth: zenMode ? "0" : "320px",
+            opacity: zenMode ? 0 : 1,
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          <SidePanel
+            article={selectedArticle}
+            activeTab={sidePanelTab}
+            onTabChange={setSidePanelTab}
+          />
+        </div>
       </div>
     </div>
   );

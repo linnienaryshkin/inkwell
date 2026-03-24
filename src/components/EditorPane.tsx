@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import "github-markdown-css/github-markdown-dark.css";
 import type { Article } from "@/app/studio/page";
 
 const Editor = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
@@ -21,6 +25,8 @@ type Props = {
 };
 
 export function EditorPane({ article, onChange }: Props) {
+  const [previewMode, setPreviewMode] = useState(false);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Editor toolbar */}
@@ -44,11 +50,26 @@ export function EditorPane({ article, onChange }: Props) {
               {tag}
             </span>
           ))}
+          {/* Preview toggle button */}
+          <button
+            onClick={() => setPreviewMode((p) => !p)}
+            title={previewMode ? "Switch to editor" : "Switch to preview"}
+            className="text-xs px-2 py-0.5 rounded border"
+            style={{
+              background: previewMode ? "var(--accent)" : "var(--bg-tertiary)",
+              color: previewMode ? "var(--bg-primary)" : "var(--text-secondary)",
+              borderColor: previewMode ? "var(--accent)" : "var(--border)",
+              cursor: "pointer",
+              transition: "background 0.15s ease, color 0.15s ease",
+            }}
+          >
+            {previewMode ? "✎ Edit" : "👁 Preview"}
+          </button>
         </div>
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden" style={{ display: previewMode ? "none" : "block" }}>
         <Editor
           height="100%"
           language="markdown"
@@ -70,6 +91,16 @@ export function EditorPane({ article, onChange }: Props) {
           }}
         />
       </div>
+
+      {/* Markdown Preview */}
+      {previewMode && (
+        <div
+          className="flex-1 overflow-auto p-6 markdown-body"
+          style={{ background: "var(--bg-primary)" }}
+        >
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
+        </div>
+      )}
     </div>
   );
 }

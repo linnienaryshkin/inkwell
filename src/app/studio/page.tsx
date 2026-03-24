@@ -167,7 +167,7 @@ export default function StudioPage() {
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          <EditorPane article={selectedArticle} onChange={handleContentChange} />
+          <EditorPane key={selectedSlug} article={selectedArticle} onChange={handleContentChange} />
           <VersionStrip slug={selectedSlug} />
         </div>
 

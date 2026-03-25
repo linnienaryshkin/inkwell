@@ -2,5 +2,8 @@
   "permissions": {
     "allow": ["Bash(npm run:*)", "Bash(npm test:*)"]
   },
-  "autoMemoryEnabled": false
+  "autoMemoryEnabled": false,
+  "model": "haiku",
+  "effortLevel": "low",
+  "alwaysThinkingEnabled": false
 }

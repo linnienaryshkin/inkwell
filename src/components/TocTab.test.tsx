@@ -63,27 +63,28 @@ describe("TocTab", () => {
   });
 
   describe("User interaction", () => {
-    it("should call onClick when a heading is clicked", () => {
+    it("should call onHeadingClick callback when a heading is clicked", () => {
       const content = `# Main
 ## Sub1
 ## Sub2`;
+      const onHeadingClick = jest.fn();
 
-      render(<TocTab content={content} />);
+      render(<TocTab content={content} onHeadingClick={onHeadingClick} />);
 
       const sub1Button = screen.getByText("Sub1");
       fireEvent.click(sub1Button);
 
-      // Component should handle the click (would normally scroll to heading)
-      expect(sub1Button).toBeInTheDocument();
+      expect(onHeadingClick).toHaveBeenCalledWith(1);
     });
 
-    it("should handle multiple heading clicks", () => {
+    it("should handle multiple heading clicks with correct line numbers", () => {
       const content = `# Main
 ## Sub1
 ## Sub2
 ## Sub3`;
+      const onHeadingClick = jest.fn();
 
-      render(<TocTab content={content} />);
+      render(<TocTab content={content} onHeadingClick={onHeadingClick} />);
 
       const sub1 = screen.getByText("Sub1");
       const sub2 = screen.getByText("Sub2");
@@ -93,9 +94,20 @@ describe("TocTab", () => {
       fireEvent.click(sub2);
       fireEvent.click(sub3);
 
-      expect(sub1).toBeInTheDocument();
-      expect(sub2).toBeInTheDocument();
-      expect(sub3).toBeInTheDocument();
+      expect(onHeadingClick).toHaveBeenCalledTimes(3);
+      expect(onHeadingClick).toHaveBeenNthCalledWith(1, 1);
+      expect(onHeadingClick).toHaveBeenNthCalledWith(2, 2);
+      expect(onHeadingClick).toHaveBeenNthCalledWith(3, 3);
+    });
+
+    it("should work without onHeadingClick callback", () => {
+      const content = `# Main
+## Sub1`;
+
+      render(<TocTab content={content} />);
+
+      const sub1Button = screen.getByText("Sub1");
+      expect(() => fireEvent.click(sub1Button)).not.toThrow();
     });
   });
 
@@ -109,22 +121,6 @@ describe("TocTab", () => {
       const buttons = screen.getAllByRole("button");
       expect(buttons.length).toBeGreaterThan(0);
       expect(buttons.some((btn) => btn.textContent === "Main")).toBe(true);
-    });
-
-    it("should have aria-current on current heading", () => {
-      const content = `# Main
-## Sub`;
-
-      const { rerender } = render(<TocTab content={content} />);
-
-      // Initially aria-current should not be set (no current heading)
-      let buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
-
-      // After update, aria-current might be set if we're tracking current
-      rerender(<TocTab content={content} />);
-      buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
     });
 
     it("should render buttons with proper text contrast", () => {

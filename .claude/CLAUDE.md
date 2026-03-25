@@ -9,16 +9,19 @@ Inkwell is a browser-based markdown writing studio for developer-writers where a
 ## Commands
 
 ### Development & Build
+
 - `npm run dev` — start Next.js dev server at `http://localhost:3000`
 - `npm run build` — production build (ESLint and TypeScript errors are ignored via next.config.ts)
 - `npm run start` — serve production build
 
 ### Testing
+
 - `npm test` — run Jest test suite (`.test.tsx` or `.spec.tsx` files)
 - `npm test -- ArticleList` — run tests matching a pattern (useful for single component testing)
 - `npm run test:coverage` — run tests with coverage report (enforces 90% global threshold)
 
 ### Linting & Formatting
+
 - `npm run lint` — run ESLint (fails on any warnings)
 - `npm run lint:fix` — auto-fix ESLint issues
 - `npm run format` — format code with Prettier
@@ -55,8 +58,9 @@ Dark theme using CSS custom properties defined in `globals.css` (GitHub-dark-ins
 ## Code Quality
 
 **Build behavior**: ESLint and TypeScript errors are intentionally ignored during production builds (configured in `next.config.ts`). This allows the prototype to ship even with type/lint issues. However:
-- Always run `npm run lint` and `npm run format:check` locally before committing
-- Run `npm test` to ensure coverage thresholds are met
+
+- Always run `npm run lint`, `npm run format:check`, and `npm run types:check` locally before committing
+- Run `npm test:coverage` to ensure coverage thresholds are met
 - Fix errors where possible; if skipping is necessary, add an explanatory comment
 
 ## File Structure

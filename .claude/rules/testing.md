@@ -27,11 +27,15 @@ Use `describe()` blocks for feature grouping and `it()` for specific scenarios:
 ```typescript
 describe("ComponentName", () => {
   describe("Display", () => {
-    it("should render expected content", () => { /* ... */ });
+    it("should render expected content", () => {
+      /* ... */
+    });
   });
 
   describe("User interaction", () => {
-    it("should update when clicked", () => { /* ... */ });
+    it("should update when clicked", () => {
+      /* ... */
+    });
   });
 });
 ```
@@ -39,12 +43,14 @@ describe("ComponentName", () => {
 ## Query Priority (in order of preference)
 
 When finding DOM elements, use:
+
 1. `getByRole()` — most accessible, mimics user navigation
 2. `getByLabelText()` — for form fields
 3. `getByText()` — for text content
 4. `data-testid` — only when others won't work
 
 Example:
+
 ```typescript
 const button = screen.getByRole("button", { name: /submit/i });
 fireEvent.click(button);

@@ -37,11 +37,13 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
           # Customize behavior and configuration
+          # TODO: Consider dontAsk instead of bypassPermissions
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           claude_args: |
             --model claude-haiku-4-5-20251001
-            --allowedTools Bash(npm:*),Bash(sqlite3:*),mcp__playwright__browser_snapshot,...
+            --permission-mode bypassPermissions
+            --allowedTools Bash(npm:*),mcp__playwright__browser_snapshot,...
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |

@@ -223,7 +223,12 @@ export default function StudioPage() {
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
-          <EditorPane key={selectedSlug} article={selectedArticle} onChange={handleContentChange} theme={theme} />
+          <EditorPane
+            key={selectedSlug}
+            article={selectedArticle}
+            onChange={handleContentChange}
+            theme={theme}
+          />
           <VersionStrip slug={selectedSlug} />
 
           {/* Zen mode toggle button */}

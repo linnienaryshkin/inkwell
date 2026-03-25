@@ -27,7 +27,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      const lintButton = buttons[0];
+      const lintButton = buttons[0] as HTMLElement;
       expect(lintButton.style.color).toContain("var(--accent)");
     });
 
@@ -37,7 +37,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      const publishButton = buttons[1];
+      const publishButton = buttons[1] as HTMLElement;
       expect(publishButton.style.color).toContain("var(--accent)");
     });
 

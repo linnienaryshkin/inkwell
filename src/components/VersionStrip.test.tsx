@@ -125,7 +125,9 @@ describe("VersionStrip", () => {
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
-      const firstVersionDot = firstVersionButton.querySelector("span.rounded-full");
+      const firstVersionDot = firstVersionButton.querySelector(
+        "span.rounded-full"
+      ) as HTMLElement | null;
 
       // Selected version should have accent background on indicator
       expect(firstVersionDot?.style.background).toContain("var(--accent)");
@@ -136,7 +138,9 @@ describe("VersionStrip", () => {
 
       const buttons = container.querySelectorAll("button");
       const secondVersionButton = buttons[1];
-      const secondVersionDot = secondVersionButton.querySelector("span.rounded-full");
+      const secondVersionDot = secondVersionButton.querySelector(
+        "span.rounded-full"
+      ) as HTMLElement | null;
 
       // Unselected version should have secondary text color on indicator
       expect(secondVersionDot?.style.background).toContain("var(--text-secondary)");

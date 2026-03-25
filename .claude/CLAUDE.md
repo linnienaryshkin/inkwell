@@ -22,10 +22,11 @@ Inkwell is a browser-based markdown writing studio for developer-writers where a
 
 ### Linting & Formatting
 
-- `npm run lint` — run ESLint (fails on any warnings)
-- `npm run lint:fix` — auto-fix ESLint issues
+- `npm run lint` — auto-fix ESLint issues
+- `npm run lint:check` — run ESLint with strict mode (fails on any warnings)
 - `npm run format` — format code with Prettier
-- `npm run format:check` — check Prettier formatting
+- `npm run format:check` — check Prettier formatting without modifying files
+- `npm run types:check` — check TypeScript types without emitting files
 
 ## Architecture
 
@@ -41,7 +42,7 @@ The studio page uses a three-panel layout:
 
 - **Left**: `ArticleList` — selectable article sidebar
 - **Center**: `EditorPane` (Monaco via `@monaco-editor/react`, dynamically imported with SSR disabled) + `VersionStrip` below
-- **Right**: `SidePanel` — tabs between Lint and Publish views
+- **Right**: `SidePanel` — tabbed interface with Lint results and Publish controls (both views implemented within SidePanel.tsx)
 
 ### Shared types
 
@@ -57,11 +58,12 @@ Dark theme using CSS custom properties defined in `globals.css` (GitHub-dark-ins
 
 ## Code Quality
 
-**Build behavior**: ESLint and TypeScript errors are intentionally ignored during production builds (configured in `next.config.ts`). This allows the prototype to ship even with type/lint issues. However:
+**Build behavior**: ESLint and TypeScript errors are intentionally ignored during production builds (configured in `next.config.ts`). Additionally, TypeScript strict mode is disabled in `tsconfig.json` to allow rapid prototyping. This allows the prototype to ship even with type/lint issues. However:
 
-- Always run `npm run lint`, `npm run format:check`, and `npm run types:check` locally before committing
+- Always run `npm run lint:check`, `npm run format:check`, and `npm run types:check` locally before committing
 - Run `npm test:coverage` to ensure coverage thresholds are met
 - Fix errors where possible; if skipping is necessary, add an explanatory comment
+- Use `npm run lint` (without `:check`) to auto-fix linting issues during development
 
 ## File Structure
 

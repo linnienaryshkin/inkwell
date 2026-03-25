@@ -266,4 +266,101 @@ describe("EditorPane", () => {
       expect(editor).toBeInTheDocument();
     });
   });
+
+  describe("Status bar", () => {
+    it("should display word count for article content", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      expect(screen.getByTestId("status-bar")).toBeInTheDocument();
+    });
+
+    it("should display reading time for article content", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toMatch(/min read/);
+    });
+
+    it("should show correct word count", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      // mockArticle content has 8 words: "# Introduction\n\nMarkdown is a lightweight markup language."
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("8");
+      expect(statusBar.textContent).toContain("words");
+    });
+
+    it("should show 1 min read for short content", () => {
+      const shortArticle: Article = {
+        ...mockArticle,
+        content: "Short text",
+      };
+
+      render(<EditorPane article={shortArticle} onChange={() => {}} />);
+
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("2 words");
+      expect(statusBar.textContent).toContain("1 min read");
+    });
+
+    it("should show 0 words for empty content", () => {
+      const emptyArticle: Article = {
+        ...mockArticle,
+        content: "",
+      };
+
+      render(<EditorPane article={emptyArticle} onChange={() => {}} />);
+
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("0 words");
+      expect(statusBar.textContent).toContain("1 min read");
+    });
+
+    it("should update word count when content changes", () => {
+      const { rerender } = render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      // mockArticle has 8 words
+      let statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("8");
+
+      const longArticle: Article = {
+        ...mockArticle,
+        content:
+          "This is a much longer article with many more words that should increase the word count significantly beyond the original short content.",
+      };
+
+      rerender(<EditorPane article={longArticle} onChange={() => {}} />);
+
+      // longArticle has 22 words
+      statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("22");
+    });
+
+    it("should display status bar in both edit and preview modes", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      // Check in edit mode
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar).toBeVisible();
+
+      // Switch to preview mode
+      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      fireEvent.click(toggleButton);
+
+      // Check in preview mode
+      expect(statusBar).toBeVisible();
+    });
+
+    it("should handle articles with multiple newlines and whitespace", () => {
+      const articleWithWhitespace: Article = {
+        ...mockArticle,
+        content: "Word1\n\n\n\nWord2   Word3\t\tWord4",
+      };
+
+      render(<EditorPane article={articleWithWhitespace} onChange={() => {}} />);
+
+      const statusBar = screen.getByTestId("status-bar");
+      expect(statusBar.textContent).toContain("4 words");
+    });
+  });
 });

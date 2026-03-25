@@ -28,6 +28,9 @@ type Props = {
 export function EditorPane({ article, onChange, theme = "dark" }: Props) {
   const [previewMode, setPreviewMode] = useState(false);
 
+  const words = article.content.trim() === "" ? 0 : article.content.trim().split(/\s+/).length;
+  const readingTime = Math.max(1, Math.ceil(words / 200));
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Editor toolbar */}
@@ -102,6 +105,19 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
         </div>
       )}
+
+      {/* Status bar */}
+      <div
+        data-testid="status-bar"
+        className="text-xs px-4 py-1 border-t"
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--bg-secondary)",
+          color: "var(--text-secondary)",
+        }}
+      >
+        {words} {words === 1 ? "word" : "words"} · {readingTime} min read
+      </div>
     </div>
   );
 }

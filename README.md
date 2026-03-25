@@ -113,12 +113,10 @@ These are not yet implemented:
 
 ## Spec-driven development (SDD) Flow
 
-1. **Create SDD** — Use `/architect <github-issue-url>` to generate a Software Design Document from the issue
-2. **Request Implementation** — Comment on the issue with `@claude implement`
-3. **Review & Refine** — Once the PR is created, review code quality, add comments as needed for refinements
+1. **Refine** — Use the claude `/architect <github-issue-url>` skill locally to generate technical specifications from the issue
+2. **Implement** — Comment on the issue with `@claude develop task`
+3. **Review** — Once the PR is created, verify the feature, and add comments if needed
 4. **Merge** — Merge the PR when satisfied with the implementation
-
-This workflow ensures design clarity before implementation and maintains code quality throughout development.
 
 ## License
 

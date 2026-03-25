@@ -2,18 +2,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { EditorPane } from "./EditorPane";
 import type { Article } from "@/app/studio/page";
 
-// Mock react-markdown to avoid ESM module issues in tests
+// Mock react-markdown and remark-gfm: next/jest prepends a blanket /node_modules/
+// ignore pattern that prevents ESM packages from being transformed.
 jest.mock("react-markdown", () => {
   return function DummyMarkdown({ children }: { children: React.ReactNode }) {
     return <div data-testid="markdown-preview">{children}</div>;
   };
 });
 
-// Mock remark-gfm
 jest.mock("remark-gfm", () => ({}));
-
-// Mock github-markdown-css
-jest.mock("github-markdown-css/github-markdown-dark.css", () => ({}));
 
 // Mock the Monaco Editor since it's dynamically imported with SSR disabled
 jest.mock("next/dynamic", () => ({

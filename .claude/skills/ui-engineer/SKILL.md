@@ -10,13 +10,16 @@ Best practices and workflow for implementing UI/UX changes in Inkwell.
 ## Core Principles
 
 ### 1. Component Hierarchy & State
+
 - Place global layout state (zenMode, theme) at the top-level parent (`studio/page.tsx`)
 - Pass state and callbacks as props to child components that need them
 - Each component manages only its own local UI state (preview toggle, tabs, etc.)
 - Use callback pattern: `onToggleZen()` instead of duplicating state
 
 ### 2. Button Sizing Consistency
+
 Use fixed dimensions with flex centering to prevent layout shift:
+
 ```tsx
 style={{
   width: "32px",
@@ -26,16 +29,20 @@ style={{
   justifyContent: "center"
 }}
 ```
+
 This ensures buttons don't resize when toggling or when text changes.
 
 ### 3. Test Updates
+
 When UI text changes (e.g., "Preview" → "👁"):
+
 - Update test queries to use `getByTitle()`, `getByRole()`, or `getByTestId()`
 - Never rely on icon/emoji text for button queries
 - Add tests immediately for new features (don't defer)
 - Verify test coverage meets 90% threshold
 
 ### 4. Browser Verification Steps
+
 1. Start dev server: `npm run dev`
 2. Open browser to `http://localhost:3000/studio`
 3. Test each user interaction (click buttons, toggle states)
@@ -60,11 +67,13 @@ When UI text changes (e.g., "Preview" → "👁"):
 ## Recent Learnings (Issue #63)
 
 ### Problem
+
 - Editor menu button changed size when toggling modes (layout shift)
 - Missing separate expand button
 - Zen mode button disconnected from layout functionality
 
 ### Solution Applied
+
 1. **Fixed button sizing**: 32x24px with flex centering → no shift
 2. **Moved button to toolbar**: From overlay to menu bar for better UX
 3. **Integrated state management**: Passed zenMode/onToggleZen props from parent
@@ -72,12 +81,14 @@ When UI text changes (e.g., "Preview" → "👁"):
 5. **Verified in browser**: Confirmed visual behavior and state transitions
 
 ### Key Outcomes
+
 - ✅ Buttons maintain consistent size when toggling
 - ✅ Expand button hides header, article list, side panel
 - ✅ All tests passing (93 tests, 95%+ coverage)
 - ✅ Clean, integrated UI with no layout jank
 
 ## File Organization
+
 - `studio/page.tsx` — Global layout state (zenMode, theme)
 - `EditorPane.tsx` — Editor controls (preview, expand buttons)
 - `ArticleList.tsx` — Left sidebar content

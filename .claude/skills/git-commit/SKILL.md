@@ -32,7 +32,6 @@ Automated commit workflow that enforces quality gate checks before committing.
 2. **Type Check** — `npm run types:check` (TypeScript)
 3. **Lint Check** — `npm run lint:check` (ESLint)
 4. **Test Coverage** — `npm run test:coverage` (Jest with 90% threshold)
-4. **Build succesfully** — `npm run build` (Next.js)
 5. **Create Commit** — Message format: `#ISSUE: description`
 6. **Branch** — Auto-creates `#ISSUE:title` branches when needed
 

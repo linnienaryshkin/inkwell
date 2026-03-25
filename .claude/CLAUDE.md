@@ -25,6 +25,7 @@ The app is a **static UI prototype with mock data**. There is no GitHub API inte
 ### Layout structure
 
 The studio page uses a three-panel layout:
+
 - **Left**: `ArticleList` — selectable article sidebar
 - **Center**: `EditorPane` (Monaco via `@monaco-editor/react`, dynamically imported with SSR disabled) + `VersionStrip` below
 - **Right**: `SidePanel` — tabs between Lint and Publish views
@@ -44,6 +45,7 @@ Dark theme using CSS custom properties defined in `globals.css` (GitHub-dark-ins
 ## Planned architecture (not yet implemented)
 
 Per README.md, the intended design includes:
+
 - **Auth**: NextAuth.js v5 + GitHub OAuth
 - **GitHub I/O**: Octokit.js for all repo operations (articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`)
 - **API routes**: `/api/articles`, `/api/articles/[slug]`, versions, lint, publish

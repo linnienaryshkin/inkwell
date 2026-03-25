@@ -31,9 +31,7 @@ export function ArticleList({ articles, selectedSlug, onSelect }: Props) {
             style={{
               background: article.slug === selectedSlug ? "var(--bg-tertiary)" : "transparent",
               borderLeft:
-                article.slug === selectedSlug
-                  ? "2px solid var(--accent)"
-                  : "2px solid transparent",
+                article.slug === selectedSlug ? "2px solid var(--accent)" : "2px solid transparent",
             }}
           >
             <span className="text-sm truncate" style={{ color: "var(--text-primary)" }}>

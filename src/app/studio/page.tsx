@@ -129,6 +129,8 @@ export default function StudioPage() {
   const toggleZen = useCallback(() => setZenMode((z) => !z), []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "F11") {
         e.preventDefault();
@@ -195,11 +197,7 @@ export default function StudioPage() {
             flexShrink: 0,
           }}
         >
-          <ArticleList
-            articles={articles}
-            selectedSlug={selectedSlug}
-            onSelect={setSelectedSlug}
-          />
+          <ArticleList articles={articles} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
         </div>
 
         {/* Editor */}

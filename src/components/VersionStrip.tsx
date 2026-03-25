@@ -12,7 +12,7 @@ const MOCK_VERSIONS = [
   { sha: "aaa9999", message: "Initial draft", date: "3 days ago", active: false },
 ];
 
-export function VersionStrip({ slug }: Props) {
+export function VersionStrip({ _slug }: Props) {
   const [selectedSha, setSelectedSha] = useState(MOCK_VERSIONS[0].sha);
 
   return (
@@ -34,10 +34,7 @@ export function VersionStrip({ slug }: Props) {
             className="flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors whitespace-nowrap"
             style={{
               background: v.sha === selectedSha ? "var(--bg-tertiary)" : "transparent",
-              border:
-                v.sha === selectedSha
-                  ? "1px solid var(--border)"
-                  : "1px solid transparent",
+              border: v.sha === selectedSha ? "1px solid var(--border)" : "1px solid transparent",
             }}
           >
             <span

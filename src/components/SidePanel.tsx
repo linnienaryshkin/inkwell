@@ -17,7 +17,7 @@ const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", status: "copy" as const },
 ];
 
-export function SidePanel({ article, activeTab, onTabChange }: Props) {
+export function SidePanel({ _article, activeTab, onTabChange }: Props) {
   const [lintResults, setLintResults] = useState<null | {
     readability: string;
     style: number;
@@ -76,7 +76,10 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
                   <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                     Readability
                   </span>
-                  <span className="text-sm font-mono font-semibold" style={{ color: "var(--green)" }}>
+                  <span
+                    className="text-sm font-mono font-semibold"
+                    style={{ color: "var(--green)" }}
+                  >
                     {lintResults.readability}
                   </span>
                 </div>
@@ -126,7 +129,8 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
 
           {!lintResults && (
             <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Click "Run Lint" to analyze your article for readability, style, and grammar.
+              Click &quot;Run Lint&quot; to analyze your article for readability, style, and
+              grammar.
             </p>
           )}
         </div>

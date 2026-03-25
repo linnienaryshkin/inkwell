@@ -8,11 +8,20 @@ Inkwell is a browser-based markdown writing studio for developer-writers where a
 
 ## Commands
 
-- `npm run dev` — start Next.js dev server
+### Development & Build
+- `npm run dev` — start Next.js dev server at `http://localhost:3000`
 - `npm run build` — production build (ESLint and TypeScript errors are ignored via next.config.ts)
 - `npm run start` — serve production build
 
-No test framework or linter is configured yet.
+### Testing
+- `npm test` — run Jest test suite (`.test.tsx` or `.spec.tsx` files)
+- `npm run test:coverage` — run tests with coverage report (enforces 90% global threshold)
+
+### Linting & Formatting
+- `npm run lint` — run ESLint (fails on any warnings)
+- `npm run lint:fix` — auto-fix ESLint issues
+- `npm run format` — format code with Prettier
+- `npm run format:check` — check Prettier formatting
 
 ## Architecture
 
@@ -40,7 +49,36 @@ Dark theme using CSS custom properties defined in `globals.css` (GitHub-dark-ins
 
 ### Path aliases
 
-`@/*` maps to `./src/*` (configured in tsconfig.json).
+`@/*` maps to `./src/*` (configured in tsconfig.json). Jest also supports this alias via moduleNameMapper.
+
+## Code Quality
+
+**Build behavior**: ESLint and TypeScript errors are intentionally ignored during production builds (configured in `next.config.ts`). This allows the prototype to ship even with type/lint issues. However:
+- Always run `npm run lint` and `npm run format:check` locally before committing
+- Run `npm test` to ensure coverage thresholds are met
+- Fix errors where possible; if skipping is necessary, add an explanatory comment
+
+## File Structure
+
+```
+src/
+├── app/
+│   ├── globals.css               # CSS custom properties (GitHub Dark theme)
+│   ├── layout.tsx                # Root layout
+│   ├── page.tsx                  # Redirect to /studio
+│   └── studio/
+│       └── page.tsx              # Main "use client" entry point; renders 3-panel UI
+├── components/
+│   ├── ArticleList.tsx           # Left panel (article sidebar)
+│   ├── ArticleList.test.tsx
+│   ├── EditorPane.tsx            # Center panel (Monaco editor)
+│   ├── EditorPane.test.tsx
+│   ├── SidePanel.tsx             # Right panel (Lint/Publish tabs)
+│   ├── SidePanel.test.tsx
+│   ├── VersionStrip.tsx          # Version timeline (below editor)
+│   └── VersionStrip.test.tsx
+└── jest.setup.ts                 # Jest configuration
+```
 
 ## Planned architecture (not yet implemented)
 

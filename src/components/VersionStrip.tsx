@@ -12,7 +12,7 @@ const MOCK_VERSIONS = [
   { sha: "aaa9999", message: "Initial draft", date: "3 days ago", active: false },
 ];
 
-export function VersionStrip({ _slug }: Props) {
+export function VersionStrip(_: Props) {
   const [selectedSha, setSelectedSha] = useState(MOCK_VERSIONS[0].sha);
 
   return (

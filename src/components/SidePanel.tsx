@@ -17,7 +17,7 @@ const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", status: "copy" as const },
 ];
 
-export function SidePanel({ _article, activeTab, onTabChange }: Props) {
+export function SidePanel({ activeTab, onTabChange }: Props) {
   const [lintResults, setLintResults] = useState<null | {
     readability: string;
     style: number;

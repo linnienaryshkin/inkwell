@@ -1,4 +1,4 @@
-name: CI
+name: Quality Gate
 
 on:
   pull_request:
@@ -43,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test
+        run: npm test:coverage
 
   build:
     name: Build

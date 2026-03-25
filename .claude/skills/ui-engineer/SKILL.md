@@ -1,8 +1,11 @@
+---
+name: ui-engineer
+description: Changes affect visual layout, component structure, user interactions, or styling
+---
+
 # UI Engineer Skill
 
 Best practices and workflow for implementing UI/UX changes in Inkwell.
-
-**Triggered when**: Changes affect visual layout, component structure, user interactions, or styling.
 
 ## Core Principles
 

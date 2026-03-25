@@ -1,3 +1,8 @@
+---
+name: git-commit
+description: Once code is ready to be committed and pushed
+---
+
 # Git Commit Skill
 
 Automated commit workflow that enforces quality gate checks before committing.

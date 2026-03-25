@@ -228,30 +228,10 @@ export default function StudioPage() {
             article={selectedArticle}
             onChange={handleContentChange}
             theme={theme}
+            zenMode={zenMode}
+            onToggleZen={toggleZen}
           />
           <VersionStrip slug={selectedSlug} />
-
-          {/* Expand/Zen mode button */}
-          <button
-            onClick={toggleZen}
-            title={zenMode ? "Exit expand mode" : "Enter expand mode"}
-            style={{
-              position: "absolute",
-              top: "12px",
-              right: "12px",
-              background: zenMode ? "var(--accent)" : "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
-              borderRadius: "6px",
-              padding: "4px 8px",
-              fontSize: "12px",
-              cursor: "pointer",
-              transition: "background 0.2s ease, color 0.2s ease",
-              zIndex: 10,
-            }}
-          >
-            ⛶
-          </button>
         </div>
 
         {/* Side panel */}

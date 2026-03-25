@@ -16,7 +16,7 @@ const config: Config = {
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-markdown|remark-gfm|github-markdown-css|@types/github-markdown-css|micromark|decode-named-character-reference|character-entities|unist-|mdast-util-|ccount|escape-string-regexp|markdown-table|space-separated-tokens|comma-separated-tokens|web-namespaces|vfile|bail|trough|is-buffer|is-plain-obj|is-reference)/)",
+    "/node_modules/(?!(react-markdown|remark-gfm|github-markdown-css|@types/github-markdown-css|micromark|decode-named-character-reference|character-entities|unist-|mdast-util-|ccount|escape-string-regexp|markdown-table|space-separated-tokens|comma-separated-tokens|web-namespaces|vfile|bail|trough|is-buffer|is-plain-obj|is-reference|react-icons)/)",
   ],
 
   // ── Coverage ────────────────────────────────────────────────────────────────

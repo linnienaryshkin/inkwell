@@ -69,7 +69,7 @@ describe("EditorPane", () => {
     it("should show the preview toggle button", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       expect(toggleButton).toBeInTheDocument();
     });
 
@@ -118,16 +118,16 @@ describe("EditorPane", () => {
     it("should toggle to preview mode when button is clicked", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
 
-      expect(screen.getByRole("button", { name: /Preview|Edit/i })).toBeInTheDocument();
+      expect(screen.getByTitle("Switch to editor")).toBeInTheDocument();
     });
 
     it("should hide editor in preview mode", () => {
       const { container } = render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
 
       const editorContainer = container.querySelector('[style*="display: none"]');
@@ -137,18 +137,18 @@ describe("EditorPane", () => {
     it("should toggle back to edit mode", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
 
       fireEvent.click(toggleButton); // Switch to preview
-      fireEvent.click(screen.getByRole("button", { name: /Preview|Edit/i })); // Switch back
+      fireEvent.click(screen.getByTitle("Switch to editor")); // Switch back
 
-      expect(screen.getByRole("button", { name: /Preview|Edit/i })).toBeInTheDocument();
+      expect(screen.getByTitle("Switch to preview")).toBeInTheDocument();
     });
 
     it("should display markdown content in preview mode", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
 
       // The preview container should be visible with the markdown content
@@ -164,9 +164,9 @@ describe("EditorPane", () => {
       const editor = screen.getByTestId("monaco-editor") as HTMLTextAreaElement;
       const originalContent = editor.value;
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
-      fireEvent.click(screen.getByRole("button", { name: /Preview|Edit/i }));
+      fireEvent.click(screen.getByTitle("Switch to editor"));
 
       expect(editor.value).toBe(originalContent);
     });
@@ -208,7 +208,7 @@ describe("EditorPane", () => {
 
       render(<EditorPane article={articleWithGfm} onChange={() => {}} />);
 
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
 
       // The preview container should be visible with the GFM content
@@ -344,7 +344,7 @@ describe("EditorPane", () => {
       expect(statusBar).toBeVisible();
 
       // Switch to preview mode
-      const toggleButton = screen.getByRole("button", { name: /Preview|Edit/i });
+      const toggleButton = screen.getByTitle("Switch to preview");
       fireEvent.click(toggleButton);
 
       // Check in preview mode

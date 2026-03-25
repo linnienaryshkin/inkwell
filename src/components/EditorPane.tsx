@@ -27,7 +27,6 @@ type Props = {
 
 export function EditorPane({ article, onChange, theme = "dark" }: Props) {
   const [previewMode, setPreviewMode] = useState(false);
-  const [zenMode, setZenMode] = useState(false);
 
   const words = article.content.trim() === "" ? 0 : article.content.trim().split(/\s+/).length;
   const readingTime = Math.max(1, Math.ceil(words / 200));
@@ -75,15 +74,14 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
           </button>
           {/* Zen mode button */}
           <button
-            onClick={() => setZenMode((z) => !z)}
-            title={zenMode ? "Exit zen mode" : "Enter zen mode"}
+            title="Enter zen mode"
             className="rounded border flex items-center justify-center"
             style={{
               width: "32px",
               height: "24px",
-              background: zenMode ? "var(--accent)" : "var(--bg-tertiary)",
-              color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
-              borderColor: zenMode ? "var(--accent)" : "var(--border)",
+              background: "var(--bg-tertiary)",
+              color: "var(--text-secondary)",
+              borderColor: "var(--border)",
               cursor: "pointer",
               transition: "background 0.15s ease, color 0.15s ease",
               fontSize: "14px",

@@ -15,6 +15,7 @@ Inkwell is a browser-based markdown writing studio for developer-writers where a
 
 ### Testing
 - `npm test` — run Jest test suite (`.test.tsx` or `.spec.tsx` files)
+- `npm test -- ArticleList` — run tests matching a pattern (useful for single component testing)
 - `npm run test:coverage` — run tests with coverage report (enforces 90% global threshold)
 
 ### Linting & Formatting
@@ -61,23 +62,25 @@ Dark theme using CSS custom properties defined in `globals.css` (GitHub-dark-ins
 ## File Structure
 
 ```
-src/
-├── app/
-│   ├── globals.css               # CSS custom properties (GitHub Dark theme)
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Redirect to /studio
-│   └── studio/
-│       └── page.tsx              # Main "use client" entry point; renders 3-panel UI
-├── components/
-│   ├── ArticleList.tsx           # Left panel (article sidebar)
-│   ├── ArticleList.test.tsx
-│   ├── EditorPane.tsx            # Center panel (Monaco editor)
-│   ├── EditorPane.test.tsx
-│   ├── SidePanel.tsx             # Right panel (Lint/Publish tabs)
-│   ├── SidePanel.test.tsx
-│   ├── VersionStrip.tsx          # Version timeline (below editor)
-│   └── VersionStrip.test.tsx
-└── jest.setup.ts                 # Jest configuration
+.
+├── jest.config.ts                # Jest configuration (coverage: 90% threshold)
+├── jest.setup.ts                 # Jest setup (imports testing-library/jest-dom)
+└── src/
+    ├── app/
+    │   ├── globals.css           # CSS custom properties (GitHub Dark theme)
+    │   ├── layout.tsx            # Root layout
+    │   ├── page.tsx              # Redirect to /studio
+    │   └── studio/
+    │       └── page.tsx          # Main "use client" entry point; renders 3-panel UI
+    └── components/
+        ├── ArticleList.tsx       # Left panel (article sidebar)
+        ├── ArticleList.test.tsx
+        ├── EditorPane.tsx        # Center panel (Monaco editor)
+        ├── EditorPane.test.tsx
+        ├── SidePanel.tsx         # Right panel (Lint/Publish tabs)
+        ├── SidePanel.test.tsx
+        ├── VersionStrip.tsx      # Version timeline (below editor)
+        └── VersionStrip.test.tsx
 ```
 
 ## Planned architecture (not yet implemented)

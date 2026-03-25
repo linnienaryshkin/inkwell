@@ -219,6 +219,72 @@ describe("EditorPane", () => {
     });
   });
 
+  describe("Zen mode", () => {
+    it("should show the zen mode button", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const zenButton = screen.getByTitle("Enter zen mode");
+      expect(zenButton).toBeInTheDocument();
+    });
+
+    it("should toggle zen mode when button is clicked", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const zenButton = screen.getByTitle("Enter zen mode");
+      fireEvent.click(zenButton);
+
+      expect(screen.getByTitle("Exit zen mode")).toBeInTheDocument();
+    });
+
+    it("should hide toolbar in zen mode", () => {
+      const { container } = render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const zenButton = screen.getByTitle("Enter zen mode");
+      fireEvent.click(zenButton);
+
+      const toolbarContainer = container.querySelector('[style*="display: none"]');
+      expect(toolbarContainer).toBeInTheDocument();
+    });
+
+    it("should hide status bar in zen mode", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const statusBar = screen.getByTestId("status-bar");
+      const zenButton = screen.getByTitle("Enter zen mode");
+
+      // Status bar visible initially
+      expect(statusBar).toBeVisible();
+
+      fireEvent.click(zenButton);
+
+      // Status bar hidden in zen mode
+      expect(statusBar).not.toBeVisible();
+    });
+
+    it("should exit zen mode when button is clicked again", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const zenButton = screen.getByTitle("Enter zen mode");
+      fireEvent.click(zenButton);
+
+      const exitButton = screen.getByTitle("Exit zen mode");
+      fireEvent.click(exitButton);
+
+      expect(screen.getByTitle("Enter zen mode")).toBeInTheDocument();
+    });
+
+    it("should show toolbar again when exiting zen mode", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const zenButton = screen.getByTitle("Enter zen mode");
+      fireEvent.click(zenButton);
+      fireEvent.click(screen.getByTitle("Exit zen mode"));
+
+      expect(screen.getByTitle("Enter zen mode")).toBeInTheDocument();
+      expect(screen.getByText("content.md")).toBeVisible();
+    });
+  });
+
   describe("Tags display", () => {
     it("should display tags with appropriate styling", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);

@@ -111,6 +111,15 @@ These are not yet implemented:
 - TypeScript and ESLint errors are intentionally ignored in production builds (configured in `next.config.ts`)
 - The entire app lives in a single "use client" component for simplicity during prototyping
 
+## Spec-driven development (SDD) Flow
+
+1. **Create SDD** — Use `/architect <github-issue-url>` to generate a Software Design Document from the issue 
+2. **Request Implementation** — Comment on the issue with `@claude implement`
+3. **Review & Refine** — Once the PR is created, review code quality, add comments as needed for refinements
+4. **Merge** — Merge the PR when satisfied with the implementation
+
+This workflow ensures design clarity before implementation and maintains code quality throughout development.
+
 ## License
 
 MIT

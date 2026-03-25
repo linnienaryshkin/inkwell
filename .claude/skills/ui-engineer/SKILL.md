@@ -44,7 +44,7 @@ When UI text changes (e.g., "Preview" → "👁"):
 ### 4. Browser Verification Steps
 
 1. Start dev server: `npm run dev`
-2. Open browser to `http://localhost:3000/studio`
+2. Open browser to `http://localhost:3000/studio` (use playwright-mcp)
 3. Test each user interaction (click buttons, toggle states)
 4. Verify visual alignment and spacing
 5. Check active/inactive state styling

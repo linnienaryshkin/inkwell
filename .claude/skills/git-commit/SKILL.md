@@ -10,13 +10,13 @@ Automated commit workflow that enforces quality gate checks before committing.
 ## Usage
 
 ```
-/git-commit [ISSUE_ID] "description"
+/git-commit [ISSUE_ID] ["description"]
 ```
 
 ### Parameters
 
 - `ISSUE_ID` (optional): GitHub issue number. Defaults to `0` if not provided
-- `description` (required): Commit message description (no leading/trailing spaces)
+- `description` (optional): Commit message description. If omitted, auto-generate from staged files using `git diff --staged`
 
 ### Examples
 
@@ -24,6 +24,8 @@ Automated commit workflow that enforces quality gate checks before committing.
 /git-commit 42 "Add dark mode support"
 /git-commit "Fix typo in README"
 /git-commit 0 "Initial setup"
+/git-commit 42
+/git-commit
 ```
 
 ## Workflow
@@ -76,10 +78,15 @@ If branch coverage is below 90%:
 
 Only push code that meets all quality gates.
 
+## Auto-generating the description
+
+If no `description` is provided, run `git diff --staged --stat` and `git diff --staged` to inspect what is staged, then derive a concise, imperative-mood description from the actual changes (e.g. file names, added/removed symbols, intent). Do **not** ask the user — infer it silently and proceed.
+
 ## Behavior
 
 - Validates staged changes pass all quality gates
 - Formats commit message with issue ID
+- If description is missing, auto-generates it from staged diff
 - Creates commit with formatted message
 - Supports branch auto-creation for feature/fix prefixes
 - Exits with error if any quality gate fails

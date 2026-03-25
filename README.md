@@ -1,4 +1,4 @@
-# Inkwell — Personal Writing Studio backed by GitHub
+# [Inkwell — Personal Writing Studio backed by GitHub](https://github.com/linnienaryshkin/inkwell)
 
 A browser-based markdown writing studio for developer-writers. Write, edit, and publish technical content in a streamlined Monaco editor environment while your GitHub repository serves as your content management system.
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { FaGithub } from "react-icons/fa";
 import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
@@ -175,6 +176,21 @@ export default function StudioPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <a
+            href="https://github.com/linnienaryshkin/inkwell"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit Inkwell GitHub repository"
+            aria-label="Visit Inkwell GitHub repository"
+            className="inline-flex items-center justify-center p-1 transition-colors"
+            style={{
+              color: "var(--text-secondary)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
+          >
+            <FaGithub size={20} />
+          </a>
           <button
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
             title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}

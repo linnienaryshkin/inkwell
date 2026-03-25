@@ -115,7 +115,7 @@ We just need a UI on top.
 export default function StudioPage() {
   const [selectedSlug, setSelectedSlug] = useState(MOCK_ARTICLES[0].slug);
   const [articles, setArticles] = useState(MOCK_ARTICLES);
-  const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish">("publish");
+  const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 

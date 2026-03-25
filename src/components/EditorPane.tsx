@@ -27,7 +27,13 @@ type Props = {
   onToggleZen?: () => void;
 };
 
-export function EditorPane({ article, onChange, theme = "dark", zenMode = false, onToggleZen }: Props) {
+export function EditorPane({
+  article,
+  onChange,
+  theme = "dark",
+  zenMode = false,
+  onToggleZen,
+}: Props) {
   const [previewMode, setPreviewMode] = useState(false);
 
   const words = article.content.trim() === "" ? 0 : article.content.trim().split(/\s+/).length;

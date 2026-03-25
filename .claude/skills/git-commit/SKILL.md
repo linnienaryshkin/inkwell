@@ -61,9 +61,20 @@ All checks must pass:
 - ✓ Code formatted with Prettier
 - ✓ No TypeScript errors
 - ✓ No ESLint warnings
-- ✓ Tests pass with ≥90% coverage
+- ✓ Tests pass with ≥90% branch coverage
 
 If any check fails, the skill will report the failure and stop before committing.
+
+### Coverage Below Threshold?
+
+If branch coverage is below 90%:
+
+1. **Review coverage report** — Look at which code paths lack tests
+2. **Ensure code is testable** — Remove non-functional or untestable code (hooks, dead code, etc.)
+3. **Add tests** — Write tests for remaining code paths
+4. **Verify coverage** — Run `npm run test:coverage` locally before committing
+
+Only push code that meets all quality gates.
 
 ## Behavior
 

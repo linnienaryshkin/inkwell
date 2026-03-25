@@ -12,13 +12,13 @@ describe("SidePanel", () => {
   };
 
   describe("Tab Navigation", () => {
-    it("should render both tab buttons", () => {
+    it("should render all tab buttons", () => {
       const { container } = render(
         <SidePanel article={mockArticle} activeTab="lint" onTabChange={() => {}} />
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(2);
+      expect(buttons).toHaveLength(3);
     });
 
     it("should highlight the active lint tab", () => {
@@ -39,6 +39,16 @@ describe("SidePanel", () => {
       const buttons = container.querySelectorAll("div:first-child > button");
       const publishButton = buttons[1] as HTMLElement;
       expect(publishButton.style.color).toContain("var(--accent)");
+    });
+
+    it("should highlight the active toc tab", () => {
+      const { container } = render(
+        <SidePanel article={mockArticle} activeTab="toc" onTabChange={() => {}} />
+      );
+
+      const buttons = container.querySelectorAll("div:first-child > button");
+      const tocButton = buttons[2] as HTMLElement;
+      expect(tocButton.style.color).toContain("var(--accent)");
     });
 
     it("should call onTabChange when switching to publish", () => {
@@ -326,13 +336,13 @@ describe("SidePanel", () => {
       expect(screen.getByText("dev.to")).toBeInTheDocument();
     });
 
-    it("should display both tabs regardless of active state", () => {
+    it("should display all tabs regardless of active state", () => {
       const { container } = render(
         <SidePanel article={mockArticle} activeTab="lint" onTabChange={() => {}} />
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(2);
+      expect(buttons).toHaveLength(3);
     });
   });
 

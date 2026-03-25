@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import type { Article } from "@/app/studio/page";
+import { TocTab } from "./TocTab";
 
 type Props = {
   article: Article;
-  activeTab: "lint" | "publish";
-  onTabChange: (tab: "lint" | "publish") => void;
+  activeTab: "lint" | "publish" | "toc";
+  onTabChange: (tab: "lint" | "publish" | "toc") => void;
 };
 
 const PLATFORMS = [
@@ -17,7 +18,7 @@ const PLATFORMS = [
   { id: "linkedin", name: "LinkedIn", status: "copy" as const },
 ];
 
-export function SidePanel({ activeTab, onTabChange }: Props) {
+export function SidePanel({ article, activeTab, onTabChange }: Props) {
   const [lintResults, setLintResults] = useState<null | {
     readability: string;
     style: number;
@@ -44,7 +45,7 @@ export function SidePanel({ activeTab, onTabChange }: Props) {
     >
       {/* Tabs */}
       <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
-        {(["lint", "publish"] as const).map((tab) => (
+        {(["lint", "publish", "toc"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
@@ -177,6 +178,8 @@ export function SidePanel({ activeTab, onTabChange }: Props) {
           </p>
         </div>
       )}
+
+      {activeTab === "toc" && <TocTab content={article.content} />}
     </aside>
   );
 }

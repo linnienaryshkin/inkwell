@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(npm run:*)", "Bash(npm test:*)"]
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "mcp__playwright__execute-code",
+      "mcp__playwright__get-screenshot",
+      "mcp__playwright__init-browser"
+    ]
   },
   "autoMemoryEnabled": false,
   "model": "haiku",

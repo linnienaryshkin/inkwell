@@ -22,9 +22,10 @@ const Editor = dynamic(() => import("@monaco-editor/react").then((m) => m.defaul
 type Props = {
   article: Article;
   onChange: (content: string) => void;
+  theme?: "dark" | "light";
 };
 
-export function EditorPane({ article, onChange }: Props) {
+export function EditorPane({ article, onChange, theme = "dark" }: Props) {
   const [previewMode, setPreviewMode] = useState(false);
 
   return (
@@ -73,7 +74,7 @@ export function EditorPane({ article, onChange }: Props) {
         <Editor
           height="100%"
           language="markdown"
-          theme="vs-dark"
+          theme={theme === "dark" ? "vs-dark" : "light"}
           value={article.content}
           onChange={(value) => onChange(value ?? "")}
           options={{

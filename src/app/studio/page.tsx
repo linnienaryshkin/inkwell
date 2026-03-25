@@ -117,6 +117,7 @@ export default function StudioPage() {
   const [articles, setArticles] = useState(MOCK_ARTICLES);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish">("publish");
   const [zenMode, setZenMode] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;
 
@@ -145,6 +146,10 @@ export default function StudioPage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [toggleZen]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -170,6 +175,22 @@ export default function StudioPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="text-xs px-2 py-1 rounded border"
+            style={{
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              transition: "opacity 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            {theme === "dark" ? "☀ Light" : "☾ Dark"}
+          </button>
           <span
             className="text-xs px-2 py-1 rounded"
             style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
@@ -202,7 +223,7 @@ export default function StudioPage() {
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
-          <EditorPane key={selectedSlug} article={selectedArticle} onChange={handleContentChange} />
+          <EditorPane key={selectedSlug} article={selectedArticle} onChange={handleContentChange} theme={theme} />
           <VersionStrip slug={selectedSlug} />
 
           {/* Zen mode toggle button */}

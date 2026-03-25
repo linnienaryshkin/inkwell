@@ -14,6 +14,20 @@
   --red: #f85149;
 }
 
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f3f3;
+  --bg-tertiary: #e8e8e8;
+  --border: #d4d4d4;
+  --text-primary: #1e1e1e;
+  --text-secondary: #717171;
+  --accent: #0078d4;
+  --accent-hover: #106ebe;
+  --green: #107c10;
+  --yellow: #b5860d;
+  --red: #d32f2f;
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);

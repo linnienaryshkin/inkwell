@@ -252,4 +252,18 @@ describe("EditorPane", () => {
       expect(screen.getByText("Markdown Guide")).toBeInTheDocument();
     });
   });
+
+  describe("Theme prop", () => {
+    it("should render with dark theme by default", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+      const editor = screen.getByTestId("monaco-editor");
+      expect(editor).toBeInTheDocument();
+    });
+
+    it("should accept a light theme prop", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} theme="light" />);
+      const editor = screen.getByTestId("monaco-editor");
+      expect(editor).toBeInTheDocument();
+    });
+  });
 });

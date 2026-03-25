@@ -23,9 +23,17 @@ type Props = {
   article: Article;
   onChange: (content: string) => void;
   theme?: "dark" | "light";
+  zenMode?: boolean;
+  onToggleZen?: () => void;
 };
 
-export function EditorPane({ article, onChange, theme = "dark" }: Props) {
+export function EditorPane({
+  article,
+  onChange,
+  theme = "dark",
+  zenMode = false,
+  onToggleZen,
+}: Props) {
   const [previewMode, setPreviewMode] = useState(false);
 
   const words = article.content.trim() === "" ? 0 : article.content.trim().split(/\s+/).length;
@@ -58,17 +66,41 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
           <button
             onClick={() => setPreviewMode((p) => !p)}
             title={previewMode ? "Switch to editor" : "Switch to preview"}
-            className="text-xs px-2 py-0.5 rounded border"
+            className="rounded border flex items-center justify-center"
             style={{
+              width: "32px",
+              height: "24px",
               background: previewMode ? "var(--accent)" : "var(--bg-tertiary)",
               color: previewMode ? "var(--bg-primary)" : "var(--text-secondary)",
               borderColor: previewMode ? "var(--accent)" : "var(--border)",
               cursor: "pointer",
               transition: "background 0.15s ease, color 0.15s ease",
+              fontSize: "14px",
             }}
           >
-            {previewMode ? "✎ Edit" : "👁 Preview"}
+            {previewMode ? "✎" : "👁"}
           </button>
+
+          {/* Expand button */}
+          {onToggleZen && (
+            <button
+              onClick={onToggleZen}
+              title={zenMode ? "Exit expand mode" : "Enter expand mode"}
+              className="rounded border flex items-center justify-center"
+              style={{
+                width: "32px",
+                height: "24px",
+                background: zenMode ? "var(--accent)" : "var(--bg-tertiary)",
+                color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
+                borderColor: zenMode ? "var(--accent)" : "var(--border)",
+                cursor: "pointer",
+                transition: "background 0.15s ease, color 0.15s ease",
+                fontSize: "14px",
+              }}
+            >
+              ⛶
+            </button>
+          )}
         </div>
       </div>
 

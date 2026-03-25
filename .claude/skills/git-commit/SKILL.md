@@ -1,3 +1,8 @@
+---
+name: git-commit
+description: Once code is ready to be committed and pushed
+---
+
 # Git Commit Skill
 
 Automated commit workflow that enforces quality gate checks before committing.
@@ -26,9 +31,9 @@ Automated commit workflow that enforces quality gate checks before committing.
 1. **Format Check** — `npm run format:check` (Prettier)
 2. **Type Check** — `npm run types:check` (TypeScript)
 3. **Lint Check** — `npm run lint:check` (ESLint)
-4. **Test Coverage** — `npm test:coverage` (Jest with 90% threshold)
+4. **Test Coverage** — `npm run test:coverage` (Jest with 90% threshold)
 5. **Create Commit** — Message format: `#ISSUE: description`
-6. **Branch** — Auto-creates feature/fix branches when needed
+6. **Branch** — Auto-creates `#ISSUE:title` branches when needed
 
 ## Commit Message Format
 

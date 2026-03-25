@@ -27,20 +27,13 @@ A browser-based markdown writing studio for developer-writers. Write, edit, and 
 npm install
 ```
 
-### Development
+### Quick Start
 
 ```bash
 npm run dev
 ```
 
 Opens the dev server at `http://localhost:3000`. The app redirects `/` to `/studio` where the main editor interface lives.
-
-### Production Build
-
-```bash
-npm run build
-npm run start
-```
 
 ## Architecture
 
@@ -102,9 +95,19 @@ These are not yet implemented:
 - **Server-side Linting**: write-good, alex, Flesch-Kincaid analysis
 - **Publish Integrations**: dev.to, Hashnode, and other platform APIs
 
-## Development Notes
+## Development & Testing
 
-- No test framework or linter is currently configured
+### Scripts
+
+- `npm run dev` — Start Next.js dev server
+- `npm run build` — Production build
+- `npm run start` — Serve production build
+- `npm test` — Run Jest tests
+
+### Notes
+
+- Jest is configured for unit testing
+- Quality gates enforce code quality standards
 - TypeScript and ESLint errors are intentionally ignored in production builds (configured in `next.config.ts`)
 - The entire app lives in a single "use client" component for simplicity during prototyping
 

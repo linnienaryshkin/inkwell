@@ -27,7 +27,6 @@ type Props = {
 
 export function EditorPane({ article, onChange, theme = "dark" }: Props) {
   const [previewMode, setPreviewMode] = useState(false);
-  const [zenMode, setZenMode] = useState(false);
 
   const words = article.content.trim() === "" ? 0 : article.content.trim().split(/\s+/).length;
   const readingTime = Math.max(1, Math.ceil(words / 200));
@@ -37,11 +36,7 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
       {/* Editor toolbar */}
       <div
         className="flex items-center justify-between px-4 py-2 border-b"
-        style={{
-          borderColor: "var(--border)",
-          background: "var(--bg-secondary)",
-          display: zenMode ? "none" : "flex",
-        }}
+        style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{article.title}</span>
@@ -76,24 +71,6 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
             }}
           >
             {previewMode ? "✎" : "👁"}
-          </button>
-          {/* Expand/Zen mode button */}
-          <button
-            onClick={() => setZenMode((z) => !z)}
-            title={zenMode ? "Exit zen mode" : "Enter zen mode"}
-            className="rounded border flex items-center justify-center"
-            style={{
-              width: "32px",
-              height: "24px",
-              background: zenMode ? "var(--accent)" : "var(--bg-tertiary)",
-              color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
-              borderColor: zenMode ? "var(--accent)" : "var(--border)",
-              cursor: "pointer",
-              transition: "background 0.15s ease, color 0.15s ease",
-              fontSize: "14px",
-            }}
-          >
-            ⛶
           </button>
         </div>
       </div>
@@ -140,7 +117,6 @@ export function EditorPane({ article, onChange, theme = "dark" }: Props) {
           borderColor: "var(--border)",
           background: "var(--bg-secondary)",
           color: "var(--text-secondary)",
-          display: zenMode ? "none" : "block",
         }}
       >
         {words} {words === 1 ? "word" : "words"} · {readingTime} min read

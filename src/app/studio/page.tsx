@@ -231,29 +231,26 @@ export default function StudioPage() {
           />
           <VersionStrip slug={selectedSlug} />
 
-          {/* Zen mode toggle button */}
+          {/* Expand/Zen mode button */}
           <button
             onClick={toggleZen}
-            title={zenMode ? "Exit zen mode (F11)" : "Enter zen mode (F11)"}
+            title={zenMode ? "Exit expand mode" : "Enter expand mode"}
             style={{
               position: "absolute",
               top: "12px",
               right: "12px",
-              background: "var(--bg-tertiary)",
+              background: zenMode ? "var(--accent)" : "var(--bg-tertiary)",
               border: "1px solid var(--border)",
-              color: zenMode ? "var(--accent)" : "var(--text-secondary)",
+              color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
               borderRadius: "6px",
               padding: "4px 8px",
               fontSize: "12px",
               cursor: "pointer",
-              opacity: 0.7,
-              transition: "opacity 0.2s ease, color 0.2s ease",
+              transition: "background 0.2s ease, color 0.2s ease",
               zIndex: 10,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
           >
-            {zenMode ? "✕ zen" : "⊡ zen"}
+            ⛶
           </button>
         </div>
 

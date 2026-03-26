@@ -1,11 +1,12 @@
 ---
 name: architect
 description: Write elaborate technical specifications from GitHub issues
+disable-model-invocation: true
 ---
 
 # Architect Skill
 
-Turns a GitHub issue into a detailed technical spec, then posts it as a comment on the issue.
+Turns a GitHub issue $ARGUMENTS into a detailed technical spec, then posts it as a comment on the issue.
 
 ## Usage
 

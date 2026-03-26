@@ -111,6 +111,60 @@ Your GitHub repo already **is** a CMS. It has:
 We just need a UI on top.
 `,
   },
+  {
+    slug: "visualizing-systems-with-mermaid",
+    title: "Visualizing Systems with Mermaid",
+    status: "draft",
+    tags: ["mermaid", "diagrams", "documentation"],
+    content: `# Visualizing Systems with Mermaid
+
+Mermaid lets you write diagrams as code — version-controlled, diff-able, and always in sync with your docs.
+
+## Request Flow
+
+\`\`\`mermaid
+sequenceDiagram
+    participant Browser
+    participant Next.js
+    participant GitHub API
+
+    Browser->>Next.js: GET /studio
+    Next.js->>GitHub API: fetchArticles(repo)
+    GitHub API-->>Next.js: articles[]
+    Next.js-->>Browser: rendered page
+    Browser->>GitHub API: saveCommit(content)
+    GitHub API-->>Browser: commit SHA
+\`\`\`
+
+## Component Architecture
+
+\`\`\`mermaid
+graph TD
+    StudioPage --> ArticleList
+    StudioPage --> EditorPane
+    StudioPage --> SidePanel
+    StudioPage --> VersionStrip
+    EditorPane --> Monaco["Monaco Editor"]
+    SidePanel --> LintTab["Lint Results"]
+    SidePanel --> PublishTab["Publish Controls"]
+    SidePanel --> TocTab["Table of Contents"]
+\`\`\`
+
+## Publish State Machine
+
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review: submit for review
+    Review --> Draft: request changes
+    Review --> Published: approve
+    Published --> Draft: unpublish
+    Published --> [*]
+\`\`\`
+
+Diagrams live next to the prose that describes them. No more stale architecture docs.
+`,
+  },
 ];
 
 export default function StudioPage() {

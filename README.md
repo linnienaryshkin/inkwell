@@ -5,6 +5,7 @@ A browser-based markdown writing studio for developer-writers. Write, edit, and 
 ## Features
 
 ### Implemented
+
 - **Monaco Editor Integration** — Syntax highlighting, IntelliSense, and a familiar coding environment for markdown
 - **Live Markdown Preview** — Split-pane editor with toggle between editing and preview modes
 - **Zen Mode** — Full-screen distraction-free writing with expand button
@@ -12,6 +13,7 @@ A browser-based markdown writing studio for developer-writers. Write, edit, and 
 - **Table of Contents** — Auto-generated from markdown headings with nested structure
 
 ### Planned
+
 - **Git-backed Storage** — Real GitHub API integration for storing articles
 - **Publish Log** — Track which commit SHA was published where and when
 - **Inline Linting** — Linting panel with real-time writing quality feedback (mock data)

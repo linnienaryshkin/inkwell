@@ -207,12 +207,6 @@ export default function StudioPage() {
           >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
-          <span
-            className="text-xs px-2 py-1 rounded"
-            style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
-          >
-            my-writing-repo
-          </span>
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
             style={{ background: "var(--accent)", color: "var(--bg-primary)" }}

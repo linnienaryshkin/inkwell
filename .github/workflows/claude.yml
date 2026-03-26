@@ -41,9 +41,13 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           claude_args: |
-            --model claude-haiku-4-5-20251001
             --permission-mode bypassPermissions
-            --allowedTools Bash(npm:*),mcp__playwright__browser_snapshot,mcp__playwright__browser_click,...
+          
+          custom_instructions: |
+            When the task is complete, post a comment on the issue summarizing:
+            - All tools used (e.g. Bash, Edit, Read, mcp__playwright, gh, etc.)
+            - All skills invoked (e.g. /git-commit, /architect, /ui-engineer, etc.)
+            - Total input and output tokens consumed for this run (available in the session summary)
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |

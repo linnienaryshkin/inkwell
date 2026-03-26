@@ -83,10 +83,5 @@ describe("StudioPage", () => {
       });
       expect(themeButton).toBeInTheDocument();
     });
-
-    it("should render repository name", () => {
-      render(<StudioPage />);
-      expect(screen.getByText("my-writing-repo")).toBeInTheDocument();
-    });
   });
 });

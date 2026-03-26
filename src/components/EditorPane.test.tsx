@@ -5,12 +5,48 @@ import type { Article } from "@/app/studio/page";
 // Mock react-markdown and remark-gfm: next/jest prepends a blanket /node_modules/
 // ignore pattern that prevents ESM packages from being transformed.
 jest.mock("react-markdown", () => {
-  return function DummyMarkdown({ children }: { children: React.ReactNode }) {
+  return function DummyMarkdown(props: {
+    children: string;
+    components?: { code: (props: { className: string; children: string }) => React.ReactNode };
+  }) {
+    const { children, components } = props;
+    const content = children as string;
+
+    // Simulate basic markdown parsing with code fence detection
+    if (content.includes("```mermaid") && components?.code) {
+      // Extract all mermaid code blocks and call the code component renderer for each
+      const mermaidMatches = content.matchAll(/```mermaid\n([\s\S]*?)\n```/g);
+      const rendered = [];
+
+      for (const match of mermaidMatches) {
+        const code = match[1];
+        rendered.push(
+          components.code({
+            className: "language-mermaid",
+            children: code,
+          })
+        );
+      }
+
+      if (rendered.length > 0) {
+        return <div data-testid="markdown-preview">{rendered}</div>;
+      }
+    }
+
     return <div data-testid="markdown-preview">{children}</div>;
   };
 });
 
 jest.mock("remark-gfm", () => ({}));
+
+// Mock MermaidBlock component
+jest.mock("./MermaidBlock", () => ({
+  MermaidBlock: ({ code }: { code: string }) => (
+    <div data-testid="mermaid-block" data-code={code}>
+      Mermaid Diagram
+    </div>
+  ),
+}));
 
 // Mock the Monaco Editor since it's dynamically imported with SSR disabled
 jest.mock("next/dynamic", () => ({
@@ -358,6 +394,70 @@ describe("EditorPane", () => {
 
       const statusBar = screen.getByTestId("status-bar");
       expect(statusBar.textContent).toContain("4 words");
+    });
+  });
+
+  describe("Mermaid diagram support", () => {
+    it("should render MermaidBlock for code fences with language-mermaid", () => {
+      const articleWithMermaid: Article = {
+        ...mockArticle,
+        content: "# Diagram\n\n```mermaid\ngraph TD\n  A[Start]\n```",
+      };
+
+      render(<EditorPane article={articleWithMermaid} onChange={() => {}} />);
+
+      const toggleButton = screen.getByTitle("Switch to preview");
+      fireEvent.click(toggleButton);
+
+      // The MermaidBlock component should be rendered
+      expect(screen.getByTestId("mermaid-block")).toBeInTheDocument();
+    });
+
+    it("should render plain code block for non-mermaid code fences", () => {
+      const articleWithCode: Article = {
+        ...mockArticle,
+        content: "# Code\n\n```javascript\nconst x = 1;\n```",
+      };
+
+      render(<EditorPane article={articleWithCode} onChange={() => {}} />);
+
+      const toggleButton = screen.getByTitle("Switch to preview");
+      fireEvent.click(toggleButton);
+
+      const preview = screen.getByTestId("markdown-preview");
+      expect(preview).toBeInTheDocument();
+    });
+
+    it("should pass trimmed code to MermaidBlock", () => {
+      const articleWithMermaid: Article = {
+        ...mockArticle,
+        content: "# Diagram\n\n```mermaid\n  graph TD\n    A[Start]\n  \n```",
+      };
+
+      render(<EditorPane article={articleWithMermaid} onChange={() => {}} />);
+
+      const toggleButton = screen.getByTitle("Switch to preview");
+      fireEvent.click(toggleButton);
+
+      const mermaidBlock = screen.getByTestId("mermaid-block");
+      expect(mermaidBlock).toHaveAttribute("data-code", expect.stringContaining("graph TD"));
+    });
+
+    it("should handle multiple mermaid diagrams on the same page", () => {
+      const articleWithMultipleDiagrams: Article = {
+        ...mockArticle,
+        content:
+          "# Diagrams\n\n```mermaid\ngraph TD\n  A[Start]\n```\n\nSome text\n\n```mermaid\nflowchart LR\n  B[End]\n```",
+      };
+
+      render(<EditorPane article={articleWithMultipleDiagrams} onChange={() => {}} />);
+
+      const toggleButton = screen.getByTitle("Switch to preview");
+      fireEvent.click(toggleButton);
+
+      // Both mermaid blocks should be rendered
+      const mermaidBlocks = screen.getAllByTestId("mermaid-block");
+      expect(mermaidBlocks).toHaveLength(2);
     });
   });
 });

@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "github-markdown-css/github-markdown-dark.css";
 import type { Article } from "@/app/studio/page";
+import { MermaidBlock } from "./MermaidBlock";
 
 const Editor = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
   ssr: false,
@@ -134,7 +135,20 @@ export function EditorPane({
           className="flex-1 overflow-auto p-6 markdown-body"
           style={{ background: "var(--bg-primary)" }}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ className, children }) {
+                const lang = /language-(\w+)/.exec(className ?? "")?.[1];
+                if (lang === "mermaid") {
+                  return <MermaidBlock code={String(children).trim()} />;
+                }
+                return <code className={className}>{children}</code>;
+              },
+            }}
+          >
+            {article.content}
+          </ReactMarkdown>
         </div>
       )}
 

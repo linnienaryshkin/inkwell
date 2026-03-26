@@ -1,134 +1,130 @@
-# [Inkwell — Personal Writing Studio backed by GitHub](https://github.com/linnienaryshkin/inkwell)
+# Inkwell
 
-A browser-based markdown writing studio for developer-writers. Write, edit, and publish technical content in a streamlined Monaco editor environment while your GitHub repository serves as your content management system.
+A browser-based markdown writing studio for developer-writers, backed by GitHub.
 
-## Features
+## Summary
 
-### Implemented
+Inkwell puts Monaco editor at the center of your writing workflow. Every save becomes a GitHub commit, articles are stored directly in your repository, and the app tracks where and when each version was published — making your GitHub repo the CMS.
 
-- **Monaco Editor Integration** — Syntax highlighting, IntelliSense, and a familiar coding environment for markdown
-- **Live Markdown Preview** — Split-pane editor with toggle between editing and preview modes
-- **Zen Mode** — Full-screen distraction-free writing with expand button
-- **Word Count & Reading Time** — Status bar displays word count and estimated reading time
-- **Table of Contents** — Auto-generated from markdown headings with nested structure
+## Objective
 
-### Planned
+Give developer-writers a distraction-free, code-quality writing environment that feels like an IDE: syntax highlighting, inline linting, version history from Git, and one-click publishing to platforms like dev.to and Hashnode — all without leaving the browser.
 
-- **Git-backed Storage** — Real GitHub API integration for storing articles
-- **Publish Log** — Track which commit SHA was published where and when
-- **Inline Linting** — Linting panel with real-time writing quality feedback (mock data)
-- **Multi-version Tracking** — Version timeline below editor (UI foundation in place)
-- **Multi-platform Publishing** — Publish panel with platform-specific controls (UI foundation)
+## Plans
 
-## Getting Started
+### Now (MVP — UI prototype)
 
-### Prerequisites
+- Three-panel studio layout (article list / Monaco editor / lint + publish sidebar)
+- Live markdown preview with GFM support
+- Zen mode, word count, reading time
+- Auto-generated table of contents from headings
+- Version timeline strip (UI only, mock data)
+- Inline lint results panel (UI only, mock data)
+- Publish controls panel (UI only, mock data)
 
-- Node.js 18+
-- npm or yarn
-- A GitHub account (for future auth and API integration)
+### Next (backend integration)
 
-### Installation
+- **Auth** — NextAuth.js v5 + GitHub OAuth
+- **Storage** — Octokit.js; articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`
+- **API routes** — `/api/articles`, `/api/articles/[slug]`, versions, lint, publish
+- **Branching** — `drafts/` branch for auto-saves, `main` for published checkpoints
+- **Linting** — write-good + alex + Flesch-Kincaid (server-side)
+- **Publishing** — dev.to and Hashnode API integrations
+- **Publish log** — track commit SHA, platform, and timestamp per published version
 
-```bash
-npm install
-```
+## Development
 
-### Quick Start
+### Architecture
 
-```bash
-npm run dev
-```
+Next.js 15 App Router, single-page client app. All UI state lives in `src/app/studio/page.tsx`, which renders the three-panel layout:
 
-Opens the dev server at `http://localhost:3000`. The app redirects `/` to `/studio` where the main editor interface lives.
+| Panel  | Component                     | Role                                                      |
+| ------ | ----------------------------- | --------------------------------------------------------- |
+| Left   | `ArticleList`                 | Article sidebar with draft/published status               |
+| Center | `EditorPane` + `VersionStrip` | Monaco editor, preview toggle, zen mode, version timeline |
+| Right  | `SidePanel`                   | Tabbed lint results, publish controls, table of contents  |
 
-## Architecture
+**Tech stack**
 
-### Current State (MVP)
+- Framework: Next.js 15 (App Router)
+- Editor: Monaco Editor (`@monaco-editor/react`)
+- Styling: Tailwind CSS v4 + CSS custom properties (GitHub Dark theme)
+- Testing: Jest + Testing Library (90% coverage threshold)
+- Deployment: Vercel (intended)
 
-The app is a **static UI prototype** with hardcoded mock data. The three-panel layout includes:
-
-- **Left Panel**: Article list (selectable sidebar with draft/published status)
-- **Center Panel**: Monaco editor for markdown with live preview toggle, zen mode, word count/reading time status bar, and version timeline below
-- **Right Panel**: Tabbed interface with Lint results, Publish controls, and auto-generated Table of Contents
-
-All articles, versions, and lint results are currently mocked—no real GitHub integration or authentication yet. The UI is feature-complete for the MVP scope.
-
-### Tech Stack
-
-- **Framework**: Next.js 15 (App Router)
-- **Editor**: Monaco Editor (`@monaco-editor/react`)
-- **Styling**: Tailwind CSS v4 + CSS custom properties (GitHub Dark theme)
-- **Deployment**: Vercel (intended)
-
-### File Structure
-
-```
-src/
-├── app/
-│   ├── globals.css           # CSS custom properties (GitHub Dark theme)
-│   ├── layout.tsx            # Root layout
-│   ├── page.tsx              # Redirect to /studio
-│   └── studio/
-│       └── page.tsx          # Main "use client" page; renders the three-panel UI
-├── components/
-│   ├── ArticleList.tsx       # Left panel (article sidebar)
-│   ├── EditorPane.tsx        # Center panel (Monaco editor, preview, zen mode)
-│   ├── SidePanel.tsx         # Right panel (tabbed interface)
-│   ├── TocTab.tsx            # Table of contents auto-generated from headings
-│   └── VersionStrip.tsx      # Version timeline (below editor)
-└── hooks/
-    └── useHeadingExtraction.ts  # Hook for extracting headings from markdown
-```
-
-### Styling Pattern
-
-All components use Tailwind CSS combined with inline `style` props that reference CSS variables from `globals.css`:
+**Styling pattern** — components use Tailwind utilities combined with inline `style` props referencing CSS variables:
 
 ```tsx
 <div style={{ color: "var(--text-secondary)" }}>Content</div>
 ```
 
-### Shared Types
+**File structure**
 
-The `Article` type is defined in `src/app/studio/page.tsx` and imported by other components.
+```
+src/
+├── app/
+│   ├── globals.css              # CSS custom properties (GitHub Dark theme)
+│   ├── layout.tsx               # Root layout
+│   ├── page.tsx                 # Redirects / → /studio
+│   └── studio/
+│       └── page.tsx             # Main "use client" entry; Article type lives here
+└── components/
+    ├── ArticleList.tsx           # Left panel
+    ├── EditorPane.tsx            # Center panel (Monaco, preview, zen mode)
+    ├── SidePanel.tsx             # Right panel (lint / publish / TOC tabs)
+    ├── TocTab.tsx                # Table of contents
+    └── VersionStrip.tsx          # Version timeline
+```
 
-## Next Steps (Post-MVP)
+### Installation
 
-The UI is feature-complete. These backend features are planned:
+**Prerequisites**
 
-- **Authentication**: NextAuth.js v5 + GitHub OAuth for user identity
-- **GitHub API Integration**: Octokit.js for reading/writing articles to repository
-- **Storage Structure**: Articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`
-- **API Routes**: `/api/articles`, `/api/articles/[slug]`, versions, lint, publish endpoints
-- **Branching Strategy**: `drafts/` branch for auto-saves, `main` for published versions
-- **Server-side Linting**: Integrate write-good, alex, Flesch-Kincaid for real analysis
-- **Publish Integrations**: Connect to dev.to, Hashnode APIs for direct publishing
-- **Auto-save**: Save drafts to GitHub on interval
+| Tool                                  | Version | Purpose                                   |
+| ------------------------------------- | ------- | ----------------------------------------- |
+| [Node.js](https://nodejs.org)         | 18+     | Runtime and package manager               |
+| [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
+| [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
 
-## Development & Testing
+**Install dependencies**
 
-### Scripts
+```bash
+npm install
+```
 
-- `npm run dev` — Start Next.js dev server
-- `npm run build` — Production build
-- `npm run start` — Serve production build
-- `npm test` — Run Jest tests
+### Launch
 
-### Notes
+```bash
+npm run dev        # dev server at http://localhost:3000
+npm run build      # production build
+npm run start      # serve production build
+```
 
-- Jest is configured for unit testing
-- Quality gates enforce code quality standards
-- TypeScript and ESLint errors are intentionally ignored in production builds (configured in `next.config.ts`)
-- The entire app lives in a single "use client" component for simplicity during prototyping
+**Quality checks** (run before committing)
 
-## Spec-driven development (SDD) Flow
+```bash
+npm run lint:check      # ESLint strict (zero warnings)
+npm run format:check    # Prettier check
+npm run types:check     # TypeScript — no emit
+npm test:coverage       # Jest with 90% coverage threshold
+```
 
-1. **Refine** — Use the claude `/architect <github-issue-url>` skill locally to generate technical specifications from the issue
-2. **Implement** — Comment on the issue with `@claude develop task`
-3. **Review** — Once the PR is created, verify the feature, and add comments if needed
-4. **Merge** — Merge the PR when satisfied with the implementation
+Auto-fix shortcuts:
 
-## License
+```bash
+npm run lint       # ESLint auto-fix
+npm run format     # Prettier auto-format
+```
 
-MIT
+> ESLint and TypeScript errors are intentionally ignored during `next build` to allow the prototype to ship. Fix errors where possible; add an explanatory comment when skipping is necessary.
+
+## SDD
+
+Inkwell uses a spec-driven development flow powered by Claude Code and GitHub Issues.
+
+1. **Architect** — Run `/architect <github-issue-url>` locally to generate a technical spec from the issue. The skill reads the issue, explores the codebase, and writes a detailed implementation plan as a comment.
+2. **Implement** — Comment on the issue with `@claude develop task`. Claude Code picks up the spec and opens a PR.
+3. **Review** — Inspect the PR. Add review comments if changes are needed; Claude iterates.
+4. **Merge** — Merge when satisfied.
+
+This keeps design decisions traceable to issues and implementation traceable to specs.

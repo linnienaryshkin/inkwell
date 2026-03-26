@@ -82,14 +82,14 @@ src/
 
 | Tool                                  | Version | Purpose                                   |
 | ------------------------------------- | ------- | ----------------------------------------- |
-| [Node.js](https://nodejs.org)         | 18+     | Runtime and package manager               |
+| [Node.js](https://nodejs.org)         | 24+     | Runtime and package manager               |
 | [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
 | [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
 
 **Install dependencies**
 
 ```bash
-npm install
+npm ci
 ```
 
 ### Launch

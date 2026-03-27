@@ -48,11 +48,11 @@ npm ci
 
 **Development Guide**
 
-For further development guide follow [CLAUDE.md](.claude/CLAUDE.md)
+For further development, follow [CLAUDE.md](.claude/CLAUDE.md)
 
 **Spec-Driven Development**
 
-Inkwell uses a SDD flow powered by Claude Code and GitHub Issues.
+Inkwell uses an SDD flow powered by Claude Code and GitHub Issues.
 
 1. **Architect** — Run `/architect <github-issue-url>` locally to generate a technical spec from the issue. The skill reads the issue, explores the codebase, and writes a detailed implementation plan as a comment.
 2. **Implement** — Comment on the issue with `@claude develop task`. Claude Code picks up the spec and opens a PR.

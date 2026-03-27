@@ -4,7 +4,9 @@ import tsParser from "@typescript-eslint/parser";
 import nextPlugin from "@next/eslint-plugin-next";
 import reactPlugin from "eslint-plugin-react";
 
-export default [
+// Third-party plugins predate ESLint 9 types; cast to avoid false type errors
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const config: any[] = [
   {
     ignores: [
       "node_modules",
@@ -144,3 +146,5 @@ export default [
     },
   },
 ];
+
+export default config;

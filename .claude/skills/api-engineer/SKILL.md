@@ -92,6 +92,7 @@ Keep these two types in sync when either changes.
 - [ ] Run `uv run ruff check app/ tests/` — zero errors
 - [ ] If adding a new router: register it in `app/main.py`
 - [ ] If the UI consumes the new endpoint: update `ui/src/services/api.ts`
+- [ ] Update `api/README.md` if adding new routers, models, middleware, or changing how the app is organized
 
 ## Common Pitfalls
 

@@ -26,9 +26,9 @@ ui-install
   ├── ui-security
   └── ui-build ──→ upload artifact (ui/dist)
                         │
-                     deploy  (needs all 6 ui-* jobs; targets github-pages environment)
+                     ui-deploy  (needs all 6 ui-* jobs; targets github-pages environment)
 
-api-check (parallel, does NOT block deploy)
+api-check (parallel, does NOT block ui-deploy)
   ├── ruff lint
   └── pytest
 ```

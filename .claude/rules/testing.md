@@ -8,7 +8,7 @@ paths:
 ## Test Files
 
 - Create `.test.tsx` files colocated with components (e.g., `EditorPane.test.tsx` next to `EditorPane.tsx`)
-- Test files are automatically picked up by Jest during `npm test`
+- Test files are automatically picked up by Jest during `npm run test`
 - Each component must maintain 90% coverage threshold globally (lines, functions, branches, statements)
 
 ## BDD Testing Approach
@@ -65,7 +65,7 @@ expect(screen.getByText("Success")).toBeInTheDocument();
 
 ## Coverage & Quality
 
-- Run `npm test` before committing to verify 90% coverage threshold
+- Run `npm run test` before committing to verify 90% coverage threshold
 - Run `npm run test:coverage` to view detailed coverage reports
 
 ## Key Patterns

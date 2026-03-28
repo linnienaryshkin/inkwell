@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Repository Structure
 
@@ -25,7 +25,7 @@ npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
 npm run security     # npm audit --audit-level=high
 
 # Run a single test file
-npm run test src/components/EditorPane.test.tsx --no-coverage
+npx jest src/components/EditorPane.test.tsx --no-coverage
 ```
 
 ### API (from `api/`)

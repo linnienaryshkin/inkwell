@@ -176,8 +176,8 @@ jobs:
       - name: Test
         run: uv run pytest tests/ -v
 
-  deploy:
-    name: deploy
+  ui-deploy:
+    name: ui-deploy
     needs: [ui-lint, ui-format, ui-types, ui-test, ui-build, ui-security]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

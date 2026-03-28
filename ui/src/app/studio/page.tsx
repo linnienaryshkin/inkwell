@@ -175,8 +175,10 @@ export default function StudioPage() {
   const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
 
   useEffect(() => {
+    let ignore = false;
     fetchArticles()
       .then((apiArticles) => {
+        if (ignore) return;
         setArticles(apiArticles);
         setSelectedSlug(apiArticles[0].slug);
         setDataSource("live");
@@ -184,6 +186,9 @@ export default function StudioPage() {
       .catch(() => {
         // API unavailable — keep mock data
       });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;

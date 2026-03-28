@@ -7,7 +7,7 @@ dev-api:
 	cd api && uv run uvicorn app.main:app --reload
 
 test-ui:
-	cd ui && npm test
+	cd ui && npm run test
 
 test-api:
 	cd api && uv run pytest tests/ -v

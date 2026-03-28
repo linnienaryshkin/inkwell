@@ -4,6 +4,8 @@ A browser-based markdown writing studio for developer-writers.
 
 Inkwell puts Monaco editor at the center of your writing workflow. Every save becomes a GitHub commit, articles are stored directly in your repository, and the app tracks where and when each version was published — making your GitHub repo the CMS.
 
+Deployed version: https://linnienaryshkin.github.io/inkwell/
+
 ## Objective
 
 Give developer-writers a distraction-free, code-quality writing environment that feels like an IDE: syntax highlighting, inline linting, version history from Git, and one-click publishing to platforms like dev.to and Hashnode — all without leaving the browser.
@@ -22,9 +24,9 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 ### [Next (backend integration)](https://github.com/linnienaryshkin/inkwell/milestone/1)
 
-- **Auth** — NextAuth.js v5 + GitHub OAuth
+- **Auth** — GitHub OAuth
 - **Storage** — Octokit.js; articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`
-- **API routes** — `/api/articles`, `/api/articles/[slug]`, versions, lint, publish
+- **API** — article CRUD, version history, lint, publish
 - **Branching** — `drafts/` branch for auto-saves, `main` for published checkpoints
 - **Linting** — write-good + alex + Flesch-Kincaid (server-side)
 - **Publishing** — dev.to and Hashnode API integrations
@@ -40,15 +42,16 @@ Give developer-writers a distraction-free, code-quality writing environment that
 | [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
 | [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
 
-**Install dependencies**
+**Run locally**
 
 ```bash
 npm ci
+npm run dev       # http://localhost:5173/inkwell/
 ```
 
-**Development Guide**
+**Development guide**
 
-For further development, follow [CLAUDE.md](.claude/CLAUDE.md)
+See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.
 
 **Spec-Driven Development**
 

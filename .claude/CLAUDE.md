@@ -5,8 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ## Commands
 
 ```bash
-npm run dev          # Vite dev server at localhost:5173/inkwell/
+npm run dev          # Vite dev server at localhost:5173/inkwell/ (production: https://linnienaryshkin.github.io/inkwell/)
 npm run build        # Vite production build → dist/
+npm run preview      # Serve the dist/ build locally to test before deploy
 npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
 npm test             # Jest (no coverage threshold)
@@ -27,8 +28,8 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 **Three-panel layout:**
 
 - **Left** – `ArticleList`: selects the active article
-- **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar; `VersionStrip` renders below it (version timeline, currently mock data)
-- **Right** – `SidePanel`: lint / publish / TOC tabs
+- **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar. `EditorPane` receives `key={selectedSlug}` — this intentionally forces a full remount when the article changes, resetting Monaco's internal state. `VersionStrip` renders below it (version timeline, mock data; "Restore" and "View diff" buttons are not yet wired up)
+- **Right** – `SidePanel`: lint / publish / TOC tabs. Lint results are mock (hardcoded readability score + two example issues). Publish tab lists five hardcoded platforms (dev.to, Hashnode, Medium, Substack, LinkedIn) — no real API calls yet
 
 **State ownership rules** (enforced by `ui-engineer` skill):
 
@@ -36,13 +37,19 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 - Component-local state (e.g., `previewMode` in `EditorPane`, `lintResults` in `SidePanel`) stays in the component that owns it
 - The `Article` type is defined in `studio/page.tsx` — import it from there, don't redefine
 
-**Theming:** `data-theme` attribute on `<html>` switches between dark (default) and light CSS variable sets. Use `style={{ color: "var(--text-secondary)" }}` patterns for themed colors, Tailwind for layout/spacing.
+**Keyboard shortcuts:** `F11` or `Ctrl+Shift+Z` toggle zen mode (collapses header, article list, and side panel).
+
+**Theming:** `data-theme` attribute on `<html>` switches between dark (default) and light CSS variable sets defined in `src/app/globals.css`. Always use CSS variables for colors (`var(--bg-primary)`, `var(--bg-secondary)`, `var(--bg-tertiary)`, `var(--border)`, `var(--text-primary)`, `var(--text-secondary)`, `var(--accent)`, `var(--accent-hover)`, `var(--green)`, `var(--yellow)`, `var(--red)`). Use Tailwind for layout/spacing only.
+
+**Path alias:** `@/` resolves to `src/`. Use it for all internal imports.
 
 **Custom hook:** `src/hooks/useHeadingExtraction.ts` — parses markdown into a nested heading tree for the TOC tab.
 
 **Current state:** Pure UI prototype. All article data is hardcoded mock data. No backend, auth, or real GitHub integration yet.
 
 ## Testing
+
+Rules are in `.claude/rules/testing.md`. Key points:
 
 - Test files colocated with components as `ComponentName.test.tsx`
 - Test user behavior, not implementation internals
@@ -55,4 +62,5 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 - `/architect <issue-url>` — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a comment, and labels the issue `refined`
 - `/git-commit [ISSUE_ID] [description]` — runs the full quality gate then commits with `#ISSUE: description` format
 - `/ui-engineer` — invoked automatically for UI changes; enforces state ownership and styling rules
+- `/devops` — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
 - `claude-code-action` — GitHub Actions agent; communicates exclusively via GitHub comment updates (console output is invisible to users); only acts on the comment containing `@claude`

@@ -125,6 +125,7 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -132,6 +133,7 @@ jobs:
   deploy:
     name: deploy
     needs: [lint, format, types, test, build, security]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write

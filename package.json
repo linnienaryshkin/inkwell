@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "vite",
+    "build": "vite build --logLevel silent",
+    "preview": "vite preview",
     "format": "prettier --write .",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "format:check": "prettier --check .",
@@ -14,14 +14,14 @@
     "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
     "test": "jest",
     "test:coverage": "jest --coverage --silent",
-    "quality-gate": "npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage",
+    "security": "npm audit --audit-level=high",
+    "quality-gate": "npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage && npm run security",
     "prepare": "husky"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "github-markdown-css": "^5.9.0",
     "mermaid": "^11.13.0",
-    "next": "^15.3.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.6.0",
@@ -30,8 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
-    "@next/eslint-plugin-next": "^15.3.1",
-    "@tailwindcss/postcss": "^4.1.4",
+    "@tailwindcss/vite": "^4.2.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
@@ -40,6 +39,7 @@
     "@types/react-dom": "^19.1.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.0.0",
     "eslint-plugin-react": "^7.34.0",
     "husky": "^9.1.7",
@@ -50,6 +50,7 @@
     "tailwindcss": "^4.1.4",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^8.0.3"
   }
 }

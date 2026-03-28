@@ -5,17 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ## Commands
 
 ```bash
-npm run dev          # dev server at localhost:3000
+npm run dev          # Vite dev server at localhost:5173/inkwell/
 npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
 npm test             # Jest (no coverage threshold)
 npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
 
 # Pre-commit quality gate (same order as CI)
-npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage
+npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage && npm run security
 ```
-
-`npm run build` intentionally ignores ESLint and TypeScript errors (`next.config.ts`). Fix errors where possible; add a comment when intentionally skipping.
 
 ## Architecture
 

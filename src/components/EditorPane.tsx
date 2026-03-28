@@ -1,24 +1,22 @@
-"use client";
-
-import { useState } from "react";
-import dynamic from "next/dynamic";
+import { useState, lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "github-markdown-css/github-markdown-dark.css";
 import type { Article } from "@/app/studio/page";
 import { MermaidBlock } from "./MermaidBlock";
 
-const Editor = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
-  ssr: false,
-  loading: () => (
+const Editor = lazy(() => import("@monaco-editor/react").then((m) => ({ default: m.default })));
+
+function EditorFallback() {
+  return (
     <div
       className="flex-1 flex items-center justify-center"
       style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}
     >
       Loading editor…
     </div>
-  ),
-});
+  );
+}
 
 type Props = {
   article: Article;
@@ -107,26 +105,28 @@ export function EditorPane({
 
       {/* Monaco Editor */}
       <div className="flex-1 overflow-hidden" style={{ display: previewMode ? "none" : "block" }}>
-        <Editor
-          height="100%"
-          language="markdown"
-          theme={theme === "dark" ? "vs-dark" : "light"}
-          value={article.content}
-          onChange={(value) => onChange(value ?? "")}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            lineHeight: 22,
-            padding: { top: 16 },
-            wordWrap: "on",
-            lineNumbers: "on",
-            renderLineHighlight: "gutter",
-            scrollBeyondLastLine: false,
-            cursorBlinking: "smooth",
-            smoothScrolling: true,
-            tabSize: 2,
-          }}
-        />
+        <Suspense fallback={<EditorFallback />}>
+          <Editor
+            height="100%"
+            language="markdown"
+            theme={theme === "dark" ? "vs-dark" : "light"}
+            value={article.content}
+            onChange={(value: string | undefined) => onChange(value ?? "")}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineHeight: 22,
+              padding: { top: 16 },
+              wordWrap: "on",
+              lineNumbers: "on",
+              renderLineHighlight: "gutter",
+              scrollBeyondLastLine: false,
+              cursorBlinking: "smooth",
+              smoothScrolling: true,
+              tabSize: 2,
+            }}
+          />
+        </Suspense>
       </div>
 
       {/* Markdown Preview */}

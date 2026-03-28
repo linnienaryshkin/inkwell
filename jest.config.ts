@@ -1,12 +1,17 @@
 import type { Config } from "jest";
-import nextJest from "next/jest.js";
-
-const createJestConfig = nextJest({
-  dir: "./",
-});
 
 const config: Config = {
   coverageProvider: "v8",
+  transform: {
+    "^.+\\.(ts|tsx)$": [
+      "ts-jest",
+      {
+        tsconfig: {
+          esModuleInterop: true,
+        },
+      },
+    ],
+  },
   testEnvironment: "jsdom",
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
@@ -26,11 +31,11 @@ const config: Config = {
     "!src/**/*.spec.tsx", // exclude spec files
     "!src/**/__tests__/**", // exclude __tests__ directories
     "!src/**/index.tsx", // exclude barrel files
-    "!src/app/**", // exclude Next.js app directory (layout, redirects, etc)
+    "!src/main.tsx", // exclude Vite entry point
+    "!src/app/studio/page.tsx", // exclude top-level page (covered via integration)
   ],
   coverageReporters: ["text", "lcov", "html"],
   coverageThreshold: {
-    // optional: enforce minimums, adjust as needed
     global: {
       branches: 90,
       functions: 90,
@@ -40,4 +45,4 @@ const config: Config = {
   },
 };
 
-export default createJestConfig(config);
+export default config;

@@ -1,7 +1,6 @@
 import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import nextPlugin from "@next/eslint-plugin-next";
 import reactPlugin from "eslint-plugin-react";
 
 // Third-party plugins predate ESLint 9 types; cast to avoid false type errors
@@ -19,8 +18,6 @@ const config: any[] = [
       ".DS_Store",
       ".git",
       ".github",
-      "next.config.ts",
-      "next-env.d.ts",
       "scripts/**",
     ],
   },
@@ -43,7 +40,6 @@ const config: any[] = [
     },
     plugins: {
       react: reactPlugin,
-      "@next/next": nextPlugin,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -83,14 +79,11 @@ const config: any[] = [
     plugins: {
       "@typescript-eslint": tsPlugin,
       react: reactPlugin,
-      "@next/next": nextPlugin,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...reactPlugin.configs.recommended.rules,
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs["core-web-vitals"].rules,
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
@@ -128,7 +121,6 @@ const config: any[] = [
     plugins: {
       "@typescript-eslint": tsPlugin,
       react: reactPlugin,
-      "@next/next": nextPlugin,
     },
     rules: {
       ...js.configs.recommended.rules,

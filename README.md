@@ -20,7 +20,7 @@ Give developer-writers a distraction-free, code-quality writing environment that
 - Inline lint results panel (UI only, mock data)
 - Publish controls panel (UI only, mock data)
 
-### Next (backend integration)
+### [Next (backend integration)](https://github.com/linnienaryshkin/inkwell/milestone/1)
 
 - **Auth** — NextAuth.js v5 + GitHub OAuth
 - **Storage** — Octokit.js; articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`

@@ -4,6 +4,7 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
+import { fetchArticles } from "@/services/api";
 
 export type Article = {
   slug: string;
@@ -171,6 +172,24 @@ export default function StudioPage() {
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
+
+  useEffect(() => {
+    let ignore = false;
+    fetchArticles()
+      .then((apiArticles) => {
+        if (ignore) return;
+        setArticles(apiArticles);
+        setSelectedSlug(apiArticles[0].slug);
+        setDataSource("live");
+      })
+      .catch(() => {
+        // API unavailable — keep mock data
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;
 
@@ -225,6 +244,16 @@ export default function StudioPage() {
           </h1>
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             Personal Writing Studio
+          </span>
+          <span
+            className="text-xs px-1.5 py-0.5 rounded"
+            style={{
+              background: dataSource === "live" ? "var(--green)" : "var(--yellow)",
+              color: "var(--bg-primary)",
+              fontWeight: 500,
+            }}
+          >
+            {dataSource === "live" ? "live" : "demo mode"}
           </span>
         </div>
         <div className="flex items-center gap-3">

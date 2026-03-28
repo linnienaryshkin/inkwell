@@ -119,7 +119,7 @@ Stats are non-interactive (no click). No tooltip needed for MVP.
 
 4. **Update `EditorPane.test.tsx`** — add rendering tests for the stats pill.
 
-5. **Run `npm run lint && npm run types:check && npm test:coverage`** — verify no regressions.
+5. **Run `npm run lint && npm run types:check && npm run test:coverage`** — verify no regressions.
 
 ---
 

@@ -74,6 +74,10 @@ const config: any[] = [
         window: "readonly",
         document: "readonly",
         navigator: "readonly",
+        fetch: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        AbortController: "readonly",
       },
     },
     plugins: {
@@ -110,6 +114,7 @@ const config: any[] = [
         project: "./tsconfig.json",
       },
       globals: {
+        global: "writable",
         describe: "readonly",
         it: "readonly",
         expect: "readonly",

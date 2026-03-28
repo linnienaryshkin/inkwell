@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 // Mock the heavy components that use ESM modules
 jest.mock("@/components/EditorPane", () => ({
@@ -17,9 +17,45 @@ jest.mock("@/components/VersionStrip", () => ({
   VersionStrip: () => <div data-testid="version-strip">Version Strip</div>,
 }));
 
+jest.mock("@/services/api", () => ({
+  fetchArticles: jest.fn(),
+}));
+
 import StudioPage from "./page";
+import { fetchArticles } from "@/services/api";
+
+const mockFetchArticles = fetchArticles as jest.MockedFunction<typeof fetchArticles>;
 
 describe("StudioPage", () => {
+  beforeEach(() => {
+    mockFetchArticles.mockRejectedValue(new Error("API unavailable"));
+  });
+
+  describe("Data Source Indicator", () => {
+    it("should show demo mode badge when API is unavailable", async () => {
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByText("demo mode")).toBeInTheDocument();
+      });
+    });
+
+    it("should show live badge when API responds", async () => {
+      mockFetchArticles.mockResolvedValue([
+        {
+          slug: "test",
+          title: "Test",
+          status: "draft",
+          content: "# Test",
+          tags: [],
+        },
+      ]);
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByText("live")).toBeInTheDocument();
+      });
+    });
+  });
+
   describe("GitHub Repository Link", () => {
     it("should render GitHub icon link in header", () => {
       render(<StudioPage />);

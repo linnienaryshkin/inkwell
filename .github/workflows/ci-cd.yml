@@ -7,9 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  install:
-    name: install
+  ui-install:
+    name: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
@@ -18,6 +21,7 @@ jobs:
         with:
           node-version: "24"
           cache: "npm"
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -25,100 +29,118 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache/save@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
-  lint:
-    name: lint
-    needs: install
+  ui-lint:
+    name: ui-lint
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check ESLint
         run: npm run lint:check
 
-  format:
-    name: format
-    needs: install
+  ui-format:
+    name: ui-format
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check Prettier formatting
         run: npm run format:check
 
-  types:
-    name: types
-    needs: install
+  ui-types:
+    name: ui-types
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check TypeScript
         run: npm run types:check
 
-  test:
-    name: test
-    needs: install
+  ui-test:
+    name: ui-test
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Run tests
         run: npm run test:coverage
 
-  security:
-    name: security
-    needs: install
+  ui-security:
+    name: ui-security
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Audit dependencies
         run: npm run security
 
-  build:
-    name: build
-    needs: install
+  ui-build:
+    name: ui-build
+    needs: ui-install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Build
@@ -128,11 +150,35 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ui/dist
 
-  deploy:
-    name: deploy
-    needs: [lint, format, types, test, build, security]
+  api-check:
+    name: api-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Lint
+        run: uv run ruff check app/ tests/
+
+      - name: Test
+        run: uv run pytest tests/ -v
+
+  ui-deploy:
+    name: ui-deploy
+    needs: [ui-lint, ui-format, ui-types, ui-test, ui-build, ui-security]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

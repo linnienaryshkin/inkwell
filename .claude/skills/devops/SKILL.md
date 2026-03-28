@@ -8,6 +8,7 @@ description: CI/CD changes, workflow files, branch protection, deployment enviro
 ## Trigger Conditions
 
 Invoke this skill when the task involves any of:
+
 - Editing `.github/workflows/*.yml`
 - Changing branch protection rules on `main`
 - Modifying the `github-pages` deployment environment
@@ -50,6 +51,7 @@ install
 Required status checks (must all pass before merge): `build`, `format`, `lint`, `security`, `test`, `types`.
 
 To update required checks:
+
 ```bash
 gh api repos/linnienaryshkin/inkwell/branches/main/protection \
   --method PUT \
@@ -80,6 +82,7 @@ When adding a new CI job that should gate merges, add it to both the workflow fi
 The `deploy` job targets the `github-pages` environment. Default state: deployments restricted to `main` only.
 
 ### Restrict to `main` (production state)
+
 ```bash
 # Enable custom branch policy
 gh api repos/linnienaryshkin/inkwell/environments/github-pages \
@@ -94,6 +97,7 @@ gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch
 ```
 
 ### Temporarily open to all branches (to validate a fix)
+
 ```bash
 gh api repos/linnienaryshkin/inkwell/environments/github-pages \
   --method PUT --field deployment_branch_policy=null
@@ -106,11 +110,13 @@ Always restore `main`-only restriction after validation.
 ## GitHub Pages Source
 
 Must be set to **GitHub Actions** (one-time setup via website or API):
+
 ```bash
 gh api repos/linnienaryshkin/inkwell/pages --method PUT --field build_type="workflow"
 ```
 
 Check current config and live URL:
+
 ```bash
 gh api repos/linnienaryshkin/inkwell/pages | jq '{build_type, html_url, status}'
 ```

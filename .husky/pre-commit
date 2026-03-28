@@ -1,3 +1,4 @@
+cd ui
 npm run format:check
 npm run types:check
 npm run lint:check

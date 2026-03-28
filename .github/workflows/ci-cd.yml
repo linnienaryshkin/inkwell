@@ -10,6 +10,9 @@ jobs:
   install:
     name: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
@@ -18,6 +21,7 @@ jobs:
         with:
           node-version: "24"
           cache: "npm"
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -25,20 +29,23 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache/save@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
   lint:
     name: lint
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check ESLint
@@ -48,13 +55,16 @@ jobs:
     name: format
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check Prettier formatting
@@ -64,13 +74,16 @@ jobs:
     name: types
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Check TypeScript
@@ -80,13 +93,16 @@ jobs:
     name: test
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Run tests
@@ -96,13 +112,16 @@ jobs:
     name: security
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Audit dependencies
@@ -112,13 +131,16 @@ jobs:
     name: build
     needs: install
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - uses: actions/checkout@v4
 
       - name: Restore node_modules
         uses: actions/cache/restore@v4
         with:
-          path: node_modules
+          path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
       - name: Build
@@ -128,7 +150,31 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ui/dist
+
+  api-check:
+    name: api-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Lint
+        run: uv run ruff check app/ tests/
+
+      - name: Test
+        run: uv run pytest tests/ -v
 
   deploy:
     name: deploy

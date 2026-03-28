@@ -18,15 +18,19 @@ Located in `workflows/`.
 `ci-cd.yml` job dependency graph:
 
 ```
-install
+install (working-directory: ui)
   ├── lint
   ├── format
   ├── types
   ├── test
   ├── security
-  └── build ──→ upload artifact
+  └── build ──→ upload artifact (ui/dist)
                       │
                    deploy  (needs all 6 above; targets github-pages environment)
+
+api-check (parallel, does NOT block deploy)
+  ├── ruff lint
+  └── pytest
 ```
 
 ---

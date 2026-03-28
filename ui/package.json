@@ -16,7 +16,7 @@
     "test:coverage": "jest --coverage --silent",
     "security": "npm audit --audit-level=high",
     "quality-gate": "npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage && npm run security",
-    "prepare": "husky"
+    "prepare": "cd .. && npx husky"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

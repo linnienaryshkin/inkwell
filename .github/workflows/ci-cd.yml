@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  install:
-    name: install
+  ui-install:
+    name: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,9 +32,9 @@ jobs:
           path: ui/node_modules
           key: node-modules-${{ github.sha }}
 
-  lint:
-    name: lint
-    needs: install
+  ui-lint:
+    name: ui-lint
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,9 +51,9 @@ jobs:
       - name: Check ESLint
         run: npm run lint:check
 
-  format:
-    name: format
-    needs: install
+  ui-format:
+    name: ui-format
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,9 +70,9 @@ jobs:
       - name: Check Prettier formatting
         run: npm run format:check
 
-  types:
-    name: types
-    needs: install
+  ui-types:
+    name: ui-types
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -89,9 +89,9 @@ jobs:
       - name: Check TypeScript
         run: npm run types:check
 
-  test:
-    name: test
-    needs: install
+  ui-test:
+    name: ui-test
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -108,9 +108,9 @@ jobs:
       - name: Run tests
         run: npm run test:coverage
 
-  security:
-    name: security
-    needs: install
+  ui-security:
+    name: ui-security
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -127,9 +127,9 @@ jobs:
       - name: Audit dependencies
         run: npm run security
 
-  build:
-    name: build
-    needs: install
+  ui-build:
+    name: ui-build
+    needs: ui-install
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -178,7 +178,7 @@ jobs:
 
   deploy:
     name: deploy
-    needs: [lint, format, types, test, build, security]
+    needs: [ui-lint, ui-format, ui-types, ui-test, ui-build, ui-security]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

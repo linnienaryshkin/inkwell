@@ -18,15 +18,15 @@ Located in `workflows/`.
 `ci-cd.yml` job dependency graph:
 
 ```
-install (working-directory: ui)
-  ├── lint
-  ├── format
-  ├── types
-  ├── test
-  ├── security
-  └── build ──→ upload artifact (ui/dist)
-                      │
-                   deploy  (needs all 6 above; targets github-pages environment)
+ui-install
+  ├── ui-lint
+  ├── ui-format
+  ├── ui-types
+  ├── ui-test
+  ├── ui-security
+  └── ui-build ──→ upload artifact (ui/dist)
+                        │
+                     deploy  (needs all 6 ui-* jobs; targets github-pages environment)
 
 api-check (parallel, does NOT block deploy)
   ├── ruff lint
@@ -43,7 +43,7 @@ api-check (parallel, does NOT block deploy)
 
 | Setting | Value |
 |---------|-------|
-| Required status checks | `build`, `format`, `lint`, `security`, `test`, `types` |
+| Required status checks | `ui-build`, `ui-format`, `ui-lint`, `ui-security`, `ui-test`, `ui-types` |
 | Require branch up to date | `true` (strict) |
 | Enforce admins | `false` |
 | Allow force pushes | `false` |
@@ -65,12 +65,12 @@ gh api repos/linnienaryshkin/inkwell/branches/main/protection \
   "required_status_checks": {
     "strict": true,
     "checks": [
-      { "context": "build" },
-      { "context": "format" },
-      { "context": "lint" },
-      { "context": "security" },
-      { "context": "test" },
-      { "context": "types" }
+      { "context": "ui-build" },
+      { "context": "ui-format" },
+      { "context": "ui-lint" },
+      { "context": "ui-security" },
+      { "context": "ui-test" },
+      { "context": "ui-types" }
     ]
   },
   "enforce_admins": false,

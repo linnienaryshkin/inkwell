@@ -12,7 +12,7 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 ## Plans
 
-### Now (MVP — UI prototype)
+### Now (MVP — UI prototype + API backend)
 
 - Three-panel studio layout (article list / Monaco editor / lint + publish sidebar)
 - Live markdown preview with GFM support
@@ -21,14 +21,16 @@ Give developer-writers a distraction-free, code-quality writing environment that
 - Version timeline strip (UI only, mock data)
 - Inline lint results panel (UI only, mock data)
 - Publish controls panel (UI only, mock data)
+- FastAPI backend with article CRUD (in-memory store, phase 1)
+- UI connects to API with automatic fallback to mock data for static demo
 
 ### [Next (backend integration)](https://github.com/linnienaryshkin/inkwell/milestone/1)
 
 - **Auth** — GitHub OAuth
 - **Storage** — Octokit.js; articles stored as `articles/{slug}/content.md` + `meta.json` + `publish-log.json`
-- **API** — article CRUD, version history, lint, publish
+- **Persistence** — swap in-memory store for SQLite/Postgres
 - **Branching** — `drafts/` branch for auto-saves, `main` for published checkpoints
-- **Linting** — write-good + alex + Flesch-Kincaid (server-side)
+- **Linting** — write-good + alex + Flesch-Kincaid (server-side, via `api/app/ai/`)
 - **Publishing** — dev.to and Hashnode API integrations
 - **Publish log** — track commit SHA, platform, and timestamp per published version
 
@@ -39,14 +41,19 @@ Give developer-writers a distraction-free, code-quality writing environment that
 | Tool                                  | Version | Purpose                                   |
 | ------------------------------------- | ------- | ----------------------------------------- |
 | [Node.js](https://nodejs.org)         | 24+     | Runtime and package manager               |
+| [uv](https://docs.astral.sh/uv/)     | latest  | Python package manager (auto-installs Python 3.12 for api/) |
 | [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
 | [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
 
 **Run locally**
 
+Makefile shortcuts from the repo root:
+
 ```bash
-npm ci
-npm run dev       # http://localhost:5173/inkwell/
+make dev-ui     # Start Vite dev server
+make dev-api    # Start FastAPI dev server
+make test-ui    # Run UI tests
+make test-api   # Run API tests
 ```
 
 **Development guide**

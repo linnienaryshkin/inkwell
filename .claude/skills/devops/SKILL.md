@@ -20,15 +20,19 @@ Invoke this skill when the task involves any of:
 `ci-cd.yml` runs on push and PR to `main`. Job dependency graph:
 
 ```
-install
-  ├── lint
-  ├── format
-  ├── types
-  ├── test       (90% coverage threshold)
-  ├── security   (npm audit --audit-level=high)
-  └── build ──→ upload artifact
-                      │
-                   deploy  (needs all 6 above; targets github-pages environment)
+ui-install
+  ├── ui-lint
+  ├── ui-format
+  ├── ui-types
+  ├── ui-test       (90% coverage threshold)
+  ├── ui-security   (npm audit --audit-level=high)
+  └── ui-build ──→ upload artifact (ui/dist)
+                        │
+                     deploy  (needs all 6 ui-* jobs; targets github-pages environment)
+
+api-check (parallel, does NOT block deploy)
+  ├── ruff lint
+  └── pytest
 ```
 
 `claude.yml` triggers on `@claude` mentions in issues and PR comments.
@@ -48,7 +52,7 @@ install
 
 ## Branch Protection (`main`)
 
-Required status checks (must all pass before merge): `build`, `format`, `lint`, `security`, `test`, `types`.
+Required status checks (must all pass before merge): `ui-build`, `ui-format`, `ui-lint`, `ui-security`, `ui-test`, `ui-types`.
 
 To update required checks:
 
@@ -60,12 +64,12 @@ gh api repos/linnienaryshkin/inkwell/branches/main/protection \
   "required_status_checks": {
     "strict": true,
     "checks": [
-      { "context": "build" },
-      { "context": "format" },
-      { "context": "lint" },
-      { "context": "security" },
-      { "context": "test" },
-      { "context": "types" }
+      { "context": "ui-build" },
+      { "context": "ui-format" },
+      { "context": "ui-lint" },
+      { "context": "ui-security" },
+      { "context": "ui-test" },
+      { "context": "ui-types" }
     ]
   },
   "enforce_admins": false,

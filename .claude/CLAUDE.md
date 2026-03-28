@@ -20,15 +20,12 @@ npm run build        # Vite production build → dist/
 npm run preview      # Serve the dist/ build locally to test before deploy
 npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
-npm test             # Jest (no coverage threshold)
+npm run test             # Jest (no coverage threshold)
 npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
 npm run security     # npm audit --audit-level=high
 
 # Run a single test file
-npx jest src/components/EditorPane.test.tsx --no-coverage
-
-# Full quality gate (same order as CI)
-npm run quality-gate
+npm run test src/components/EditorPane.test.tsx --no-coverage
 ```
 
 ### API (from `api/`)
@@ -112,5 +109,6 @@ Rules are in `.claude/rules/testing.md`. Key points:
 - `/architect <issue-url>` — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a comment, and labels the issue `refined`
 - `/git-commit [ISSUE_ID] [description]` — runs the full quality gate then commits with `#ISSUE: description` format
 - `/ui-engineer` — invoked automatically for UI changes; enforces state ownership and styling rules
+- `/api-engineer` — invoked automatically for FastAPI backend changes; enforces API conventions, schema sync, and testing
 - `/devops` — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
 - `claude-code-action` — GitHub Actions agent; communicates exclusively via GitHub comment updates (console output is invisible to users); only acts on the comment containing `@claude`

@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -92,6 +92,22 @@ jobs:
       - name: Run tests
         run: npm run test:coverage
 
+  security:
+    name: Security
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ github.sha }}
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
   build:
     name: Build
     needs: install
@@ -116,7 +132,7 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: [lint, format, types, test, build]
+    needs: [lint, format, types, test, build, security]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

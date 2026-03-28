@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ## Commands
 
 ```bash
-npm run dev          # dev server at localhost:3000
+npm run dev          # Vite dev server at localhost:5173/inkwell/
 npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
 npm test             # Jest (no coverage threshold)

@@ -3,8 +3,11 @@ import { MermaidBlock } from "./MermaidBlock";
 
 // Mock mermaid entirely since it relies on DOM APIs unavailable in jsdom
 jest.mock("mermaid", () => ({
-  initialize: jest.fn(),
-  render: jest.fn(),
+  __esModule: true,
+  default: {
+    initialize: jest.fn(),
+    render: jest.fn(),
+  },
 }));
 
 import mermaid from "mermaid";
@@ -134,8 +137,11 @@ describe("MermaidBlock", () => {
         rerender(<MermaidBlock code="graph TD\n  C[End]" />);
 
         // Resolve the pending render
-        if (resolveFirst) {
-          resolveFirst({ svg: "<svg><text>Result</text></svg>", diagramType: "flowchart" });
+        if (resolveFirst !== null) {
+          (resolveFirst as (value: { svg: string; diagramType: string }) => void)({
+            svg: "<svg><text>Result</text></svg>",
+            diagramType: "flowchart",
+          });
         }
 
         // Check that render was called multiple times due to rerenders

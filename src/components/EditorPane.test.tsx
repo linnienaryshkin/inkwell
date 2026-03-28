@@ -48,26 +48,18 @@ jest.mock("./MermaidBlock", () => ({
   ),
 }));
 
-// Mock the Monaco Editor since it's dynamically imported with SSR disabled
-jest.mock("next/dynamic", () => ({
+// Mock Monaco Editor — it's lazy-loaded via React.lazy
+jest.mock("@monaco-editor/react", () => ({
   __esModule: true,
-  default: (_loader: () => Promise<unknown>, _options: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const DynamicComponent = ({ ...props }: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const MockEditor = ({ value, onChange, ...editorProps }: any) => (
-        <textarea
-          data-testid="monaco-editor"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          {...editorProps}
-        />
-      );
-      return <MockEditor {...props} />;
-    };
-    DynamicComponent.displayName = "DynamicComponent";
-    return DynamicComponent;
-  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: ({ value, onChange, ...editorProps }: any) => (
+    <textarea
+      data-testid="monaco-editor"
+      value={value}
+      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+      {...editorProps}
+    />
+  ),
 }));
 
 describe("EditorPane", () => {

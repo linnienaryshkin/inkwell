@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
 import { FaGithub } from "react-icons/fa";
 import { ArticleList } from "@/components/ArticleList";

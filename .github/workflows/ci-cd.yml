@@ -1,4 +1,4 @@
-name: CI/CD
+name: ci-cd
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   install:
-    name: Install
+    name: install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
           key: node-modules-${{ github.sha }}
 
   lint:
-    name: Lint
+    name: lint
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +45,7 @@ jobs:
         run: npm run lint:check
 
   format:
-    name: Format
+    name: format
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -61,7 +61,7 @@ jobs:
         run: npm run format:check
 
   types:
-    name: Types
+    name: types
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -77,7 +77,7 @@ jobs:
         run: npm run types:check
 
   test:
-    name: Tests
+    name: test
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -93,7 +93,7 @@ jobs:
         run: npm run test:coverage
 
   security:
-    name: Security
+    name: security
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -106,10 +106,10 @@ jobs:
           key: node-modules-${{ github.sha }}
 
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm run security
 
   build:
-    name: Build
+    name: build
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -131,7 +131,7 @@ jobs:
           path: dist
 
   deploy:
-    name: Deploy to GitHub Pages
+    name: deploy
     needs: [lint, format, types, test, build, security]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

@@ -14,7 +14,8 @@
     "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
     "test": "jest",
     "test:coverage": "jest --coverage --silent",
-    "quality-gate": "npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage",
+    "security": "npm audit --audit-level=high",
+    "quality-gate": "npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage && npm run security",
     "prepare": "husky"
   },
   "dependencies": {

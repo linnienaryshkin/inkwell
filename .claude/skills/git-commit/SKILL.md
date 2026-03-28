@@ -19,6 +19,7 @@ Both parameters are optional. If `description` is omitted, inspect staged diff (
 2. `npm run types:check`
 3. `npm run lint:check`
 4. `npm run test:coverage` — must pass with ≥90% branch coverage
+5. `npm run security` — `npm audit --audit-level=high`; fails on high/critical vulnerabilities
 
 If coverage is below 90%: review the report, remove untestable dead code, add tests, rerun.
 

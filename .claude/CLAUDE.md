@@ -6,18 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ```bash
 npm run dev          # Vite dev server at localhost:5173/inkwell/
+npm run build        # Vite production build → dist/
 npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
 npm test             # Jest (no coverage threshold)
 npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
+npm run security     # npm audit --audit-level=high
 
-# Pre-commit quality gate (same order as CI)
-npm run format:check && npm run types:check && npm run lint:check && npm run test:coverage && npm run security
+# Run a single test file
+npx jest src/components/EditorPane.test.tsx --no-coverage
+
+# Full quality gate (same order as CI)
+npm run quality-gate
 ```
 
 ## Architecture
 
-Single-page app. `/` redirects to `/studio`. All UI state lives in `src/app/studio/page.tsx` (a `"use client"` component).
+Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` directly. All UI state lives in `src/app/studio/page.tsx`.
 
 **Three-panel layout:**
 

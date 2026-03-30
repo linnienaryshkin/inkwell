@@ -110,5 +110,5 @@ Rules are in `.claude/rules/testing.md`. Key points:
 - `/git-commit [ISSUE_ID] [description]` — runs the full quality gate then commits with `#ISSUE: description` format
 - `/ui-engineer` — invoked automatically for UI changes; enforces state ownership and styling rules
 - `/api-engineer` — invoked automatically for FastAPI backend changes; enforces API conventions, schema sync, and testing
-- `/devops` — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
+- `/devops` — invoked automatically for CI/CD changes; manages workflow files, `settings.yml`, branch protection, deployment environment, and GitHub Pages config. All reference docs and `gh` CLI commands live in `.claude/skills/devops/SKILL.md`
 - `claude-code-action` — GitHub Actions agent; communicates exclusively via GitHub comment updates (console output is invisible to users); only acts on the comment containing `@claude`

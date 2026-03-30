@@ -1,10 +1,10 @@
 # Probot Settings — https://probot.github.io/apps/settings/
 # Applied automatically on every push to main.
-# Keep in sync with .github/CLAUDE.md § "GitHub Settings (settings.yml)"
+# Reference: .claude/skills/devops/SKILL.md § "Settings as Code"
 
 repository:
   name: inkwell
-  description: AI-powered writing studio for technical authors
+  description: AI-powered browser-based markdown Writing Studio
   homepage: https://linnienaryshkin.github.io/inkwell/
   topics:
     - writing
@@ -13,11 +13,8 @@ repository:
     - fastapi
     - typescript
 
-  # Merge strategy — squash and rebase only; no merge commits
-  allow_squash_merge: true
+  # Disable merge commits — squash and rebase remain available (GitHub defaults)
   allow_merge_commit: false
-  allow_rebase_merge: true
-  delete_branch_on_merge: true
 
 labels:
   - name: bug
@@ -28,19 +25,34 @@ labels:
     description: New feature or request
   - name: refined
     color: "0075ca"
-    description: Issue has a technical spec / is ready to implement
+    description: Issue has a technical spec — ready to implement
   - name: wip
     color: "fbca04"
     description: Work in progress — not ready for review
-  - name: settings
+  - name: auth
+    color: "bfd4f2"
+    description: Authentication and session management
+  - name: articles
+    color: "c5def5"
+    description: Article management (create, rename, delete, list)
+  - name: editor
+    color: "d4edda"
+    description: Monaco editor features
+  - name: versioning
     color: "e4e669"
-    description: Repository or app configuration
+    description: Version history and diff features
+  - name: linting
+    color: "f9d0c4"
+    description: Content linting and style analysis
   - name: publishing
     color: "d4edda"
     description: Publishing and distribution features
   - name: sharing
     color: "c5def5"
     description: Sharing and preview features
+  - name: settings
+    color: "e4e669"
+    description: Repository or app configuration
   - name: documentation
     color: "0075ca"
     description: Improvements or additions to documentation

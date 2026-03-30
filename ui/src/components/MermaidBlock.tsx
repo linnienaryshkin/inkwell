@@ -6,7 +6,7 @@ mermaid.initialize({ startOnLoad: false, theme: "dark" });
 type Props = { code: string };
 
 export function MermaidBlock({ code }: Props) {
-  const id = useId().replace(/:/g, ""); // mermaid ids can't contain colons
+  const id = useId().replace(/:/g, "-"); // mermaid ids can't contain colons
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

@@ -78,7 +78,30 @@ export function MermaidBlock({ code }: Props) {
 
   if (!svg) {
     return (
-      <div style={{ color: "var(--text-secondary)", fontSize: "13px" }}>Rendering diagram…</div>
+      <div
+        role="status"
+        aria-label="Rendering diagram"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "var(--text-secondary)",
+          fontSize: "13px",
+        }}
+      >
+        <div
+          style={{
+            width: "14px",
+            height: "14px",
+            borderRadius: "50%",
+            border: "2px solid var(--border)",
+            borderTopColor: "var(--accent)",
+            animation: "spin 0.8s linear infinite",
+            flexShrink: 0,
+          }}
+        />
+        Rendering diagram…
+      </div>
     );
   }
 

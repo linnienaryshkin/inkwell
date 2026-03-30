@@ -32,6 +32,19 @@ describe("MermaidBlock", () => {
 
       expect(screen.getByText("Rendering diagram…")).toBeInTheDocument();
     });
+
+    it("should show spinner with role status while render is pending", async () => {
+      mockMermaid.render.mockImplementation(
+        () =>
+          new Promise(() => {
+            // Never resolves to keep component in loading state
+          })
+      );
+
+      render(<MermaidBlock code="graph TD\n A[Start]" />);
+
+      expect(screen.getByRole("status", { name: "Rendering diagram" })).toBeInTheDocument();
+    });
   });
 
   describe("Success state", () => {

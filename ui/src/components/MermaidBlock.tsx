@@ -5,15 +5,19 @@ mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 type Props = { code: string };
 
+const MAX_PREVIEW_LENGTH = 120;
+
 export function MermaidBlock({ code }: Props) {
   const id = useId().replace(/:/g, "-"); // mermaid ids can't contain colons
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setError(null);
     setSvg(null);
+    setExpanded(false);
 
     mermaid
       .render(`mermaid-${id}`, code)
@@ -30,6 +34,9 @@ export function MermaidBlock({ code }: Props) {
   }, [code, id]);
 
   if (error) {
+    const isLong = error.length > MAX_PREVIEW_LENGTH;
+    const displayedError = isLong && !expanded ? error.slice(0, MAX_PREVIEW_LENGTH) + "…" : error;
+
     return (
       <div
         style={{
@@ -41,9 +48,30 @@ export function MermaidBlock({ code }: Props) {
           fontFamily: "monospace",
           fontSize: "12px",
           whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          overflowWrap: "break-word",
         }}
       >
-        Mermaid error: {error}
+        <span>Mermaid error: {displayedError}</span>
+        {isLong && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            title={expanded ? "Show less" : "Show full error"}
+            style={{
+              marginLeft: "8px",
+              background: "none",
+              border: "none",
+              color: "#f85149",
+              cursor: "pointer",
+              fontFamily: "monospace",
+              fontSize: "12px",
+              padding: 0,
+              textDecoration: "underline",
+            }}
+          >
+            {expanded ? "show less" : "show more"}
+          </button>
+        )}
       </div>
     );
   }

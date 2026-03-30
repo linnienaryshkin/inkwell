@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MermaidBlock } from "./MermaidBlock";
 
 // Mock mermaid entirely since it relies on DOM APIs unavailable in jsdom
@@ -101,6 +101,63 @@ describe("MermaidBlock", () => {
         const errorBox = container.querySelector('div[style*="rgba(248, 81, 73"]');
         expect(errorBox).toBeInTheDocument();
       });
+    });
+
+    it("should truncate long error messages with show more button", async () => {
+      const longError = "A".repeat(200);
+      mockMermaid.render.mockRejectedValue(new Error(longError));
+
+      render(<MermaidBlock code="invalid" />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/A+…/)).toBeInTheDocument();
+        expect(screen.getByTitle("Show full error")).toBeInTheDocument();
+      });
+    });
+
+    it("should expand full error when show more is clicked", async () => {
+      const longError = "B".repeat(200);
+      mockMermaid.render.mockRejectedValue(new Error(longError));
+
+      render(<MermaidBlock code="invalid" />);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Show full error")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle("Show full error"));
+
+      expect(screen.getByText(new RegExp("B".repeat(200)))).toBeInTheDocument();
+      expect(screen.getByTitle("Show less")).toBeInTheDocument();
+    });
+
+    it("should collapse error when show less is clicked", async () => {
+      const longError = "C".repeat(200);
+      mockMermaid.render.mockRejectedValue(new Error(longError));
+
+      render(<MermaidBlock code="invalid" />);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Show full error")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle("Show full error"));
+      fireEvent.click(screen.getByTitle("Show less"));
+
+      expect(screen.getByTitle("Show full error")).toBeInTheDocument();
+    });
+
+    it("should not show expand button for short errors", async () => {
+      const shortError = "Short error";
+      mockMermaid.render.mockRejectedValue(new Error(shortError));
+
+      render(<MermaidBlock code="invalid" />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Short error/)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTitle("Show full error")).not.toBeInTheDocument();
     });
   });
 

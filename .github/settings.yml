@@ -1,0 +1,64 @@
+# Probot Settings — https://probot.github.io/apps/settings/
+# Applied automatically on every push to main.
+# Keep in sync with .github/CLAUDE.md § "GitHub Settings (settings.yml)"
+
+repository:
+  name: inkwell
+  description: AI-powered writing studio for technical authors
+  homepage: https://linnienaryshkin.github.io/inkwell/
+  topics:
+    - writing
+    - markdown
+    - react
+    - fastapi
+    - typescript
+
+  # Merge strategy — squash and rebase only; no merge commits
+  allow_squash_merge: true
+  allow_merge_commit: false
+  allow_rebase_merge: true
+  delete_branch_on_merge: true
+
+labels:
+  - name: bug
+    color: "d73a4a"
+    description: Something isn't working
+  - name: enhancement
+    color: "a2eeef"
+    description: New feature or request
+  - name: refined
+    color: "0075ca"
+    description: Issue has a technical spec / is ready to implement
+  - name: wip
+    color: "fbca04"
+    description: Work in progress — not ready for review
+  - name: settings
+    color: "e4e669"
+    description: Repository or app configuration
+  - name: publishing
+    color: "d4edda"
+    description: Publishing and distribution features
+  - name: sharing
+    color: "c5def5"
+    description: Sharing and preview features
+  - name: documentation
+    color: "0075ca"
+    description: Improvements or additions to documentation
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - ui-build
+          - ui-format
+          - ui-lint
+          - ui-security
+          - ui-test
+          - ui-types
+      enforce_admins: false
+      required_pull_request_reviews: null
+      restrictions: null
+      allow_force_pushes: false
+      allow_deletions: false

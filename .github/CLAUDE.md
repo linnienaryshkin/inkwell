@@ -2,7 +2,22 @@
 
 This file documents the live GitHub settings for this repository — branch protection, deployment environments, Pages configuration, secrets, and workflows — along with the `gh` CLI commands and website URLs to manage them.
 
-> **Keep this file current.** Whenever a setting is changed (via CLI or website), update the "Current state" for the relevant section below.
+> **Keep this file current.** Whenever a setting is changed (via CLI or website), update the "Current state" for the relevant section below, **and keep `.github/settings.yml` in sync** — Probot applies that file on every push to `main`.
+
+---
+
+## 0. Settings as Code (`settings.yml`)
+
+**File:** `.github/settings.yml`
+**Applied by:** [Probot Settings app](https://probot.github.io/apps/settings/) on every push to `main`
+
+The file declaratively manages:
+- **Repository metadata** — description, homepage, topics
+- **Merge strategy** — squash + rebase only (`allow_merge_commit: false`, `delete_branch_on_merge: true`)
+- **Labels** — canonical set used across all issues/PRs (`bug`, `enhancement`, `refined`, `wip`, `settings`, `publishing`, `sharing`, `documentation`)
+- **Branch protection for `main`** — mirrors the manual settings in §1 below
+
+> **Rule:** Any time you update branch protection via `gh api` (§1), also update `settings.yml` to match, and vice versa. The two sources of truth must stay in sync.
 
 ---
 

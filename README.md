@@ -38,12 +38,12 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 ### Prerequisites
 
-| Tool                                   | Version | Purpose                                   |
-| ------------------------------------- | ------- | ----------------------------------------- |
-| [Node.js](https://nodejs.org)         | 24+     | Runtime and package manager               |
-| [uv](https://docs.astral.sh/uv/)     | latest  | Python package manager (auto-installs Python 3.12 for api/) |
-| [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
-| [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
+| Tool                                   | Version | Purpose                                                     |
+| -------------------------------------- | ------- | ----------------------------------------------------------- |
+| [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
+| [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
+| [gh](https://cli.github.com)           | latest  | GitHub CLI — used in the SDD workflow                       |
+| [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
 
 ### Run locally
 
@@ -64,9 +64,9 @@ See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, an
 
 Inkwell uses an SDD flow powered by Claude Code and GitHub Issues.
 
-1. **Architect** — Run `/architect <github-issue-url>` locally to generate a technical spec from the issue. The skill reads the issue, explores the codebase, and writes a detailed implementation plan as a comment.
+1. **Architect** — Paste the GitHub issue URL into Claude Code. The `architect-agent` reads the issue, explores the codebase, asks clarifying questions, and writes a detailed spec as a comment on the issue.
 2. **Implement** — Comment on the issue with `@claude develop task`. Claude Code picks up the spec and opens a PR.
-3. **Review** — Inspect the PR. Add review comments if changes are needed; Claude iterates.
+3. **Review** — Inspect the PR. Add review comments if needed; Claude iterates.
 4. **Merge** — Merge when satisfied.
 
 This keeps design decisions traceable to issues and implementation traceable to specs.

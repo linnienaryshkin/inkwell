@@ -14,6 +14,3 @@ test-api:
 
 lint-api:
 	cd api && uv run ruff check app/ tests/
-
-quality-gate-ui:
-	cd ui && npm run quality-gate

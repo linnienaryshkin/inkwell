@@ -22,6 +22,7 @@ npm run lint         # ESLint auto-fix
 npm run format       # Prettier auto-format
 npm run test             # Jest (no coverage threshold)
 npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
+npm run types:check  # TypeScript type-check without emitting (tsc --noEmit)
 npm run security     # npm audit --audit-level=high
 
 # Run a single test file
@@ -40,13 +41,14 @@ uv run ruff check app/ tests/    # Lint
 
 ### Root Makefile shortcuts
 
+Use these from the repo root to avoid `cd` commands:
+
 ```bash
 make dev-ui          # Start Vite dev server
 make dev-api         # Start FastAPI dev server
 make test-ui         # Run UI tests
 make test-api        # Run API tests
 make lint-api        # Lint API code
-make quality-gate-ui # Full UI quality gate
 ```
 
 ## Architecture
@@ -83,12 +85,12 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 
 **Endpoints:**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/articles` | List all articles |
-| `GET` | `/articles/{slug}` | Get article by slug |
-| `POST` | `/articles` | Create article (409 on slug conflict) |
-| `PATCH` | `/articles/{slug}` | Partial update (404 on unknown slug) |
+| Method | Path              | Description                                |
+| ------ | ----------------- | ------------------------------------------ |
+| `GET`  | `/articles`       | List all articles                          |
+| `GET`  | `/articles/{slug}` | Get article by slug                        |
+| `POST` | `/articles`       | Create article (409 on slug conflict)      |
+| `PATCH` | `/articles/{slug}` | Partial update (404 on unknown slug)       |
 
 **Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/models/article.py`, `app/ai/` (reserved for LangChain).
 
@@ -96,19 +98,26 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 
 ## Testing
 
+### UI Testing
+
 Rules are in `.claude/rules/testing.md`. Key points:
 
 - Test files colocated with components as `ComponentName.test.tsx`
-- Test user behavior, not implementation internals
+- Use BDD approach: test user behavior, not implementation internals
 - Query priority: `getByRole` > `getByLabelText` > `getByText` > `data-testid`
 - Mock only external libraries (Monaco, ReactMarkdown); never mock internal components
-- 90% coverage required on branches, functions, lines, and statements
+- 90% coverage required on branches, functions, lines, and statements (enforced in CI)
 
-## Skills
+### API Testing
 
-- `/architect <issue-url>` — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a comment, and labels the issue `refined`
-- `/git-commit [ISSUE_ID] [description]` — runs the full quality gate then commits with `#ISSUE: description` format
-- `/ui-engineer` — invoked automatically for UI changes; enforces state ownership and styling rules
-- `/api-engineer` — invoked automatically for FastAPI backend changes; enforces API conventions, schema sync, and testing
-- `/devops` — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
-- `claude-code-action` — GitHub Actions agent; communicates exclusively via GitHub comment updates (console output is invisible to users); only acts on the comment containing `@claude`
+- Test files in `api/tests/` directory
+- Write tests for all endpoint behavior: success cases, error cases, edge cases
+- 90% coverage required (enforced in CI)
+
+## Skills & Agents
+
+- **architect-agent** — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a GitHub comment, and labels the issue `refined`
+- **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs
+- **ui-engineer skill** — invoked automatically for UI changes; enforces state ownership and styling rules
+- **api-engineer skill** — invoked automatically for API changes; enforces API conventions, schema sync, and testing
+- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config

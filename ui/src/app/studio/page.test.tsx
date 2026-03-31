@@ -19,16 +19,20 @@ jest.mock("@/components/VersionStrip", () => ({
 
 jest.mock("@/services/api", () => ({
   fetchArticles: jest.fn(),
+  fetchCurrentUser: jest.fn(),
+  API_BASE: "http://localhost:8000",
 }));
 
 import StudioPage from "./page";
-import { fetchArticles } from "@/services/api";
+import { fetchArticles, fetchCurrentUser } from "@/services/api";
 
 const mockFetchArticles = fetchArticles as jest.MockedFunction<typeof fetchArticles>;
+const mockFetchCurrentUser = fetchCurrentUser as jest.MockedFunction<typeof fetchCurrentUser>;
 
 describe("StudioPage", () => {
   beforeEach(() => {
     mockFetchArticles.mockRejectedValue(new Error("API unavailable"));
+    mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
   });
 
   describe("Data Source Indicator", () => {
@@ -118,6 +122,56 @@ describe("StudioPage", () => {
         name: /☀ Light/,
       });
       expect(themeButton).toBeInTheDocument();
+    });
+  });
+
+  describe("GitHub OAuth UI", () => {
+    it("renders Sign in with GitHub link when unauthenticated", async () => {
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
+      });
+    });
+
+    it("does not render avatar when unauthenticated", async () => {
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.queryByRole("img")).not.toBeInTheDocument();
+      });
+    });
+
+    it("renders avatar and login handle when authenticated", async () => {
+      mockFetchCurrentUser.mockResolvedValue({
+        login: "testuser",
+        name: "Test",
+        avatar_url: "https://example.com/a.png",
+      });
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByRole("img", { name: "testuser" })).toBeInTheDocument();
+        expect(screen.getByText("testuser")).toBeInTheDocument();
+      });
+    });
+
+    it("does not render Sign in button when authenticated", async () => {
+      mockFetchCurrentUser.mockResolvedValue({
+        login: "testuser",
+        name: "Test",
+        avatar_url: "https://example.com/a.png",
+      });
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("link", { name: /sign in with github/i })
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("demo mode badge remains visible when unauthenticated", async () => {
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByText("demo mode")).toBeInTheDocument();
+      });
     });
   });
 });

@@ -5,11 +5,17 @@
       "mcp__playwright__execute-code",
       "mcp__playwright__get-screenshot",
       "mcp__playwright__init-browser",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh:*)"
     ]
   },
   "autoMemoryEnabled": false,
   "model": "haiku",
   "effortLevel": "low",
-  "alwaysThinkingEnabled": false
+  "alwaysThinkingEnabled": false,
+  "statusLine": {
+    "type": "command",
+    "command": "sh .claude/statusline-command.sh"
+  }
 }

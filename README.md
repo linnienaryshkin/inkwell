@@ -4,7 +4,7 @@ A browser-based markdown writing studio for developer-writers.
 
 Inkwell puts Monaco editor at the center of your writing workflow. Every save becomes a GitHub commit, articles are stored directly in your repository, and the app tracks where and when each version was published — making your GitHub repo the CMS.
 
-Deployed version: https://linnienaryshkin.github.io/inkwell/
+Deployed version: <https://linnienaryshkin.github.io/inkwell/>
 
 ## Objective
 
@@ -34,18 +34,18 @@ Give developer-writers a distraction-free, code-quality writing environment that
 - **Publishing** — dev.to and Hashnode API integrations
 - **Publish log** — track commit SHA, platform, and timestamp per published version
 
-## Development
+## Development | "Everything as code"
 
-**Prerequisites**
+### Prerequisites
 
-| Tool                                  | Version | Purpose                                   |
+| Tool                                   | Version | Purpose                                   |
 | ------------------------------------- | ------- | ----------------------------------------- |
 | [Node.js](https://nodejs.org)         | 24+     | Runtime and package manager               |
 | [uv](https://docs.astral.sh/uv/)     | latest  | Python package manager (auto-installs Python 3.12 for api/) |
 | [gh](https://cli.github.com)          | latest  | GitHub CLI — used in the SDD workflow     |
 | [Claude Code](https://claude.ai/code) | latest  | AI-assisted spec and development workflow |
 
-**Run locally**
+### Run locally
 
 Makefile shortcuts from the repo root:
 
@@ -56,11 +56,11 @@ make test-ui    # Run UI tests
 make test-api   # Run API tests
 ```
 
-**Development guide**
+### Development guide
 
 See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.
 
-**Spec-Driven Development**
+### Spec-Driven Development
 
 Inkwell uses an SDD flow powered by Claude Code and GitHub Issues.
 

@@ -1,4 +1,7 @@
-.PHONY: dev-ui dev-api test-ui test-api lint-api quality-gate-ui
+.PHONY: dev dev-ui dev-api test-ui test-api lint-ui lint-api quality-gate-ui
+
+dev:
+	make dev-api & make dev-ui
 
 dev-ui:
 	cd ui && npm run dev
@@ -11,6 +14,9 @@ test-ui:
 
 test-api:
 	cd api && uv run pytest tests/ -v
+
+lint-ui:
+	cd ui && npm run lint && npm run format && npm run types:check
 
 lint-api:
 	cd api && uv run ruff check app/ tests/

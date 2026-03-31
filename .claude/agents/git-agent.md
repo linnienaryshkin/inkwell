@@ -41,7 +41,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
 
 ### 4. Create Branch (if needed)
-- **Format:** `#42/feature-[description]` or `#0/bug-[description]`
+- **Format:** `#42/feature-[description]`, `#0/bug-[description]`, or `#0/chore-[description]` (example: `#0/chore-makefile-cors-fixes`)
 - Only create if no branch exists for these changes
 
 ### 5. Push and Create PR (if needed)

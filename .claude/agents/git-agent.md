@@ -50,6 +50,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
   - Clear title (under 70 chars)
   - Description with: summary (1-3 bullets), test plan, note that it was generated with Claude Code
   - Link to issue if applicable
+- If there is a linked issue, copy all labels from the issue to the PR using `gh pr edit --add-label`
 
 **Example PR description:**
 

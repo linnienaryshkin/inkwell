@@ -70,7 +70,33 @@ When given a GitHub issue URL, you will:
    - Performance budgets specified where it matters (e.g., "heading extraction must not block typing", "debounce keystrokes to 300ms")
    - Every edge case has a specified behavior, not just identification
 
-4. **Post as GitHub Comment & Label**
+4. **Decide Whether QA Is Required**
+
+   After writing the spec, assess whether this feature warrants manual QA (invocation of the `qa-agent` after implementation). QA adds value for:
+   - New or significantly changed UI flows (visible user interactions, layout changes, new components)
+   - API + UI integration features where end-to-end data flow must be verified in a live browser
+   - Features that are hard to fully cover with unit tests alone (e.g., Monaco editor interactions, Playwright-only scenarios)
+
+   QA is **not** needed for:
+   - Pure refactors with no behavioral change
+   - Backend-only changes (new endpoint, schema change) with no UI surface
+   - Documentation or config changes
+   - Small bug fixes fully covered by a unit test
+
+   Ask the user one direct question:
+
+   ```
+   **QA required?**
+   - A) Yes — add `qa` label; spec will include a QA section instructing the qa-agent what to test
+   - B) No — skip QA; unit/integration tests are sufficient
+   ```
+
+   If QA is required, add a **QA Validation** section to the spec that tells the `qa-agent`:
+   - Which feature area and user flows to exercise in the browser
+   - Specific edge cases and error conditions to verify manually
+   - What a passing QA verdict looks like (no console errors, correct visual state, etc.)
+
+5. **Post as GitHub Comment & Label**
    - Post the spec via heredoc to avoid shell quoting issues:
      ```bash
      gh issue comment <URL> --body "$(cat <<'EOF'
@@ -79,9 +105,10 @@ When given a GitHub issue URL, you will:
      )"
      ```
    - Add the `refined` label: `gh issue edit <URL> --add-label refined`
+   - If QA was requested, also add the `qa` label: `gh issue edit <URL> --add-label qa`
    - Use markdown formatting (headers, code blocks, tables)
 
-5. **Project Context**
+6. **Project Context**
    - **Structure**: `ui/` (Vite+React, TypeScript, entry `src/main.tsx` → `StudioPage`), `api/` (FastAPI, Python with uv, Pydantic models)
    - **State ownership**: global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`) lives in `StudioPage`; component-local state stays in the component
    - **Styling**: CSS variables (`--bg-primary`, `--text-primary`, `--accent`, etc.) + Tailwind for layout/spacing; never hardcode colors
@@ -90,7 +117,7 @@ When given a GitHub issue URL, you will:
    - **Type ownership**: `Article` type defined in `studio/page.tsx` — import from there, never redefine
    - **Path alias**: `@/` resolves to `src/`
 
-6. **Handle Errors Gracefully**
+7. **Handle Errors Gracefully**
    - If the GitHub URL is invalid or cannot be fetched, explain the error and ask for a valid URL
    - If required context is ambiguous, ask follow-up questions before writing the spec
    - If the issue is already labeled `refined`, confirm with the user before proceeding

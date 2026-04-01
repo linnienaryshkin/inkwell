@@ -44,10 +44,12 @@ uv run ruff check app/ tests/    # Lint
 Use these from the repo root to avoid `cd` commands:
 
 ```bash
+make dev             # Start both servers concurrently
 make dev-ui          # Start Vite dev server
 make dev-api         # Start FastAPI dev server
 make test-ui         # Run UI tests
 make test-api        # Run API tests
+make lint-ui         # ESLint + Prettier + tsc --noEmit
 make lint-api        # Lint API code
 ```
 
@@ -98,26 +100,20 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 
 ## Testing
 
-### UI Testing
+Rules are in `.claude/rules/unit-test.md`. Both packages follow the same conventions:
 
-Rules are in `.claude/rules/testing.md`. Key points:
-
-- Test files colocated with components as `ComponentName.test.tsx`
-- Use BDD approach: test user behavior, not implementation internals
-- Query priority: `getByRole` > `getByLabelText` > `getByText` > `data-testid`
-- Mock only external libraries (Monaco, ReactMarkdown); never mock internal components
-- 90% coverage required on branches, functions, lines, and statements (enforced in CI)
-
-### API Testing
-
-- Test files in `api/tests/` directory
-- Write tests for all endpoint behavior: success cases, error cases, edge cases
-- 90% coverage required (enforced in CI)
+- BDD approach: test behavior (user interactions / HTTP contract), not implementation internals
+- 90% coverage on lines, functions, branches, and statements (enforced in CI)
+- **UI:** test files colocated with the source file as `FileName.test.{ts,tsx}`; query priority: `getByRole` > `getByLabelText` > `getByText` > `data-testid`; mock only external libraries (Monaco, ReactMarkdown)
+- **API:** test files in `api/tests/`; cover success cases, error cases, and edge cases for every endpoint; mock only external I/O
 
 ## Skills & Agents
 
 - **architect-agent** — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a GitHub comment, and labels the issue `refined`
+- **dev-engineer** — primary implementation agent; handles feature development from GitHub issues, bug fixes, code reviews, and architectural questions following all CLAUDE.md conventions
+- **qa-agent** — manual-only QA agent; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs found, and delegates fixes to the appropriate engineer
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs
 - **ui-engineer skill** — invoked automatically for UI changes; enforces state ownership and styling rules
 - **api-engineer skill** — invoked automatically for API changes; enforces API conventions, schema sync, and testing
 - **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
+- **review-pr skill** — `/review-pr <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

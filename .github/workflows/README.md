@@ -8,12 +8,10 @@ This file documents the live GitHub settings for this repository — branch prot
 
 ## Workflows
 
-Located in `workflows/`.
-
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `workflows/ci-cd.yml` | push / PR → `main` | Quality gate (lint, format, types, test, security, build) + GitHub Pages deploy |
-| `workflows/claude.yml` | issue/PR comments containing `@claude` | Runs Claude Code Action to respond to `@claude` mentions |
+| `ci-cd.yml` | push / PR → `main` | Quality gate (lint, format, types, test, security, build) + GitHub Pages deploy |
+| `claude.yml` | issue/PR comments containing `@claude` | Runs Claude Code Action to respond to `@claude` mentions |
 
 `ci-cd.yml` job dependency graph:
 
@@ -37,7 +35,7 @@ api-check (parallel, does NOT block ui-deploy)
 
 ## 1. Branch Protection (`main`)
 
-**Website:** https://github.com/linnienaryshkin/inkwell/settings/branches
+**Website:** <https://github.com/linnienaryshkin/inkwell/settings/branches>
 
 ### Current state
 
@@ -92,7 +90,7 @@ gh api repos/linnienaryshkin/inkwell/branches/main/protection --method DELETE
 
 ## 2. Deployment Environment (`github-pages`)
 
-**Website:** https://github.com/linnienaryshkin/inkwell/settings/environments/13524189492/edit
+**Website:** <https://github.com/linnienaryshkin/inkwell/settings/environments/13524189492/edit>
 
 ### Current state
 
@@ -154,14 +152,14 @@ gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch
 
 ## 3. GitHub Pages
 
-**Website:** https://github.com/linnienaryshkin/inkwell/settings/pages
+**Website:** <https://github.com/linnienaryshkin/inkwell/settings/pages>
 
 ### Current state
 
 | Setting | Value |
 |---------|-------|
 | Source | GitHub Actions (`workflow`) |
-| Live URL | https://linnienaryshkin.github.io/inkwell/ |
+| Live URL | <https://linnienaryshkin.github.io/inkwell/> |
 
 ### View
 
@@ -185,13 +183,13 @@ gh api repos/linnienaryshkin/inkwell/pages --method PUT --field build_type="work
 
 ## 4. Secrets
 
-**Website:** https://github.com/linnienaryshkin/inkwell/settings/secrets/actions
+**Website:** <https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>
 
 ### Current state
 
 | Secret | Used by | Last updated |
 |--------|---------|--------------|
-| `ANTHROPIC_API_KEY` | `workflows/claude.yml` | 2026-03-24 |
+| `ANTHROPIC_API_KEY` | `claude.yml` | 2026-03-24 |
 
 ### List secrets (names only — values are never shown)
 

@@ -1,4 +1,12 @@
-.PHONY: dev dev-ui dev-api test-ui test-api lint-ui lint-api quality-gate-ui
+.PHONY: install install-ui install-api dev dev-ui dev-api test-ui test-api lint-ui lint-api quality-gate-ui
+
+install: install-ui install-api
+
+install-ui:
+	cd ui && npm install
+
+install-api:
+	cd api && uv sync --extra dev
 
 dev:
 	make dev-api & make dev-ui

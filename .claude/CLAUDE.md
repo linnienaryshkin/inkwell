@@ -44,6 +44,9 @@ uv run ruff check app/ tests/    # Lint
 Use these from the repo root to avoid `cd` commands:
 
 ```bash
+make install         # Install all dependencies (ui + api)
+make install-ui      # npm install
+make install-api     # uv sync --extra dev
 make dev             # Start both servers concurrently
 make dev-ui          # Start Vite dev server
 make dev-api         # Start FastAPI dev server

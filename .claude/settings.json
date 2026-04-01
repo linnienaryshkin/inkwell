@@ -10,12 +10,32 @@
       "Bash(gh:*)"
     ]
   },
-  "autoMemoryEnabled": false,
   "model": "haiku",
-  "effortLevel": "low",
-  "alwaysThinkingEnabled": false,
   "statusLine": {
     "type": "command",
     "command": "sh .claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "report-issue@codemie-ai": false,
+    "claude-setup-audit@codemie-ai": false,
+    "msgraph@codemie-ai": false,
+    "codemie-commit@codemie-ai": false,
+    "codemie@codemie-ai": false
+  },
+  "alwaysThinkingEnabled": false,
+  "effortLevel": "low",
+  "autoMemoryEnabled": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit:*)|Bash(git commit\\b.*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are about to run 'git commit'. This is only allowed when you are the git-agent. Check if you are currently running as the git-agent. If you are not the git-agent, respond with JSON: {\"continue\": false, \"stopReason\": \"git commit is only allowed via the git-agent. Use the git-agent to commit changes.\"}. If you are the git-agent, respond with JSON: {\"continue\": true}."
+          }
+        ]
+      }
+    ]
   }
 }

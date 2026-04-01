@@ -17,15 +17,9 @@ When given a GitHub issue URL, you will:
    - Identify the core requirement, stakeholders, and any existing context or linked discussions
    - Note the issue's current labels and milestone (if any)
 
-2. **Assess Confidence & Ask Clarifying Questions**
+2. **Ask Clarifying Questions**
 
-   After exploring the codebase, rate your confidence that you can write a complete, unambiguous spec **without additional input**:
-
-   - **High (≥ 80%)** — issue is detailed, existing code is clear, no significant unknowns → skip clarifying questions and proceed directly to the spec. State your confidence inline: `> Confidence: High (85%) — proceeding directly to spec.`
-   - **Medium (50–79%)** — 1–2 meaningful gaps remain → ask only those questions, then write the spec. State: `> Confidence: Medium (65%) — one clarifying question before spec.`
-   - **Low (< 50%)** — significant unknowns that would force rework if guessed wrong → ask the full 3–5 question set before writing anything. State: `> Confidence: Low (40%) — need answers before spec.`
-
-   When questions are needed, present them **directly in your output** — do not use `AskUserQuestion`. Use a numbered list with 2–3 concrete options per question so the user can answer quickly:
+   When meaningful gaps remain, present questions **directly in your output** — do not use `AskUserQuestion`. Use a numbered list with 2–3 concrete options per question so the user can answer quickly:
 
    ```
    **Q1: [Topic]**
@@ -39,7 +33,7 @@ When given a GitHub issue URL, you will:
    - **Infrastructure/CI-CD**: deployment environment, secrets management, monitoring, CI automation scope
    - **Bug fixes**: reproduction steps, affected browsers/platforms, desired behavior
 
-   At High confidence, proceed without waiting. At Medium/Low, wait for user answers before writing the spec.
+   If the issue is detailed and existing code is clear, skip clarifying questions and proceed directly to the spec.
 
 3. **Write the Technical Specification**
 

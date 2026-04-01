@@ -18,10 +18,19 @@ You are an expert Git workflow manager. Your role is to handle the full lifecycl
 - Identify which package(s) were modified
 - Ask user for issue number if not provided (defaults to 0)
 
-### 2. Quality Gate
+### 2. Sync with Remote
+- Run `git fetch origin` to update remote tracking refs
+- Compare current branch against its upstream with `git status -sb` (or `git rev-list --count HEAD..@{u}` / `@{u}..HEAD`)
+- If the branch is **behind** the remote: attempt `git pull --ff-only`
+  - If fast-forward succeeds, continue
+  - If it fails due to conflicts, **stop and notify the user** — do not attempt an automatic merge or rebase
+- If the branch is **ahead** only, continue normally (changes will be pushed later)
+- If there is **no upstream** set yet, skip this step
+
+### 3. Quality Gate
 - Check modified packages against their respective quality gates (formatting, linting, tests)
 
-### 3. Create Commit
+### 4. Create Commit
 - **Format:** `#ISSUE: description` (example: `#42: add user authentication`)
 - **Footer:** Always include `Co-Authored-By: Claude Code <noreply@anthropic.com>` (if you are making the commit on behalf of the non-claude user)
 - **Auto-generate message:** If not provided, inspect `git diff --staged` and auto-generate a concise, imperative-mood message without asking for confirmation
@@ -40,11 +49,11 @@ If no issue number provided, use 0:
 Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
 
-### 4. Create Branch (if needed)
+### 5. Create Branch (if needed)
 - **Format:** `#42/feature-[description]`, `#0/bug-[description]`, or `#0/chore-[description]` (example: `#0/chore-makefile-cors-fixes`)
 - Only create if no branch exists for these changes
 
-### 5. Push and Create PR (if needed)
+### 6. Push and Create PR (if needed)
 - Push branch to remote with `-u` flag
 - Create PR with:
   - Clear title (under 70 chars)

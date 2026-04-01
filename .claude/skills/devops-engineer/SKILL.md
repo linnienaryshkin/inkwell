@@ -1,5 +1,5 @@
 ---
-name: devops
+name: devops-engineer
 description: CI/CD changes, workflow files, branch protection, deployment environment, or GitHub Pages config
 ---
 

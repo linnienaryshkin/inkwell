@@ -118,5 +118,5 @@ Rules are in `.claude/rules/unit-test.md`. Both packages follow the same convent
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs
 - **ui-engineer skill** — invoked automatically for UI changes; enforces state ownership and styling rules
 - **api-engineer skill** — invoked automatically for API changes; enforces API conventions, schema sync, and testing
-- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config
+- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config. Live GitHub settings (branch protection, environments, Pages, secrets, re-running jobs) are documented in `.github/workflows/README.md`
 - **review-pr skill** — `/review-pr <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

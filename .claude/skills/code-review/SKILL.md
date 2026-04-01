@@ -1,6 +1,7 @@
 ---
-name: review-pr
+name: code-review
 description: Code review a pull request. Requires a PR URL or number as argument. Performs focused review passes and posts inline comments via GitHub CLI. All comments are signed "Generated with Claude Code".
+argument-hint: <PR URL or number>
 ---
 
 # Code Review Skill
@@ -8,7 +9,7 @@ description: Code review a pull request. Requires a PR URL or number as argument
 ## Usage
 
 ```
-/review-pr <PR URL or number>
+/code-review $ARGUMENTS
 ```
 
 ## Process
@@ -119,7 +120,7 @@ EOF
 For inline comments on specific lines use:
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/<PR number>/comments \
+gh api repos/{owner}/{repo}/pulls/<PR>/comments \
   --method POST \
   --field body='<comment text>
 

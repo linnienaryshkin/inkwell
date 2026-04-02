@@ -1,13 +1,26 @@
 {
   "permissions": {
+    "deny": [
+      "Skill(codemie:codemie-commit)",
+      "Skill(update-config)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git tag*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr merge*)"
+    ],
     "allow": [
-      "Bash(npm run:*)",
       "mcp__playwright__execute-code",
       "mcp__playwright__get-screenshot",
       "mcp__playwright__init-browser",
+      "Bash(npm run:*)",
       "Bash(npm audit:*)",
-      "Bash(gh pr:*)",
-      "Bash(gh:*)"
+      "Bash(make *)",
+      "Bash(uv *)"
     ]
   },
   "model": "haiku",
@@ -26,13 +39,32 @@
   "effortLevel": "low",
   "autoMemoryEnabled": false,
   "hooks": {
-    "PreToolUse": [
+    "Stop": [
       {
-        "matcher": "Bash(git commit:*)|Bash(git commit\\b.*)",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "You are about to run 'git commit'. This is only allowed when you are the git-agent. Check if you are currently running as the git-agent. If you are not the git-agent, respond with JSON: {\"continue\": false, \"stopReason\": \"git commit is only allowed via the git-agent. Use the git-agent to commit changes.\"}. If you are the git-agent, respond with JSON: {\"continue\": true}."
+            "type": "command",
+            "command": "osascript -e 'display notification \"Claude has finished\" with title \"Claude Code\"' 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "msg=$(jq -r '.message // \"Claude needs your input\"' 2>/dev/null); osascript -e \"display notification \\\"$msg\\\" with title \\\"Claude Code\\\"\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); if echo \"$input\" | jq -r '.. | strings' 2>/dev/null | grep -q '/Users/Ilia_Naryshkin/projects/inkwell/.env'; then echo 'Access to .env file is not allowed.' >&2; exit 2; fi"
           }
         ]
       }

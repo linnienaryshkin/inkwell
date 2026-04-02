@@ -40,6 +40,7 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 | Tool                                   | Version | Purpose                                                     |
 | -------------------------------------- | ------- | ----------------------------------------------------------- |
+| [GIT](https://git-scm.com)             | latest  | Version control, branching, commit history                   |
 | [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
 | [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
 | [gh](https://cli.github.com)           | latest  | GitHub CLI — used in the SDD workflow                       |

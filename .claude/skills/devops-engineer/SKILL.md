@@ -1,6 +1,8 @@
 ---
 name: devops-engineer
-description: CI/CD changes, workflow files, branch protection, deployment environment, or GitHub Pages config
+description: Use this skill when the task involves CI/CD pipelines, GitHub Actions workflows, branch protection rules, deployment environments, or GitHub Pages. Invoke even if the user doesn't say "CI" or "DevOps" — trigger on fixing a failing workflow run, adding a new job, changing what gates merges to `main`, or anything touching `.github/workflows/` or repo settings.
+license: MIT
+compatibility: gh, internet access
 ---
 
 # DevOps Skill

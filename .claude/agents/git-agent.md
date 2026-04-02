@@ -6,7 +6,7 @@ model: haiku
 color: cyan
 memory: project
 effort: low
-permissionMode: default 
+permissionMode: bypassPermissions
 ---
 
 You are an expert Git workflow manager. Your role is to handle the full lifecycle of Git operations: creating branches, staging and committing changes, pushing to remote, and creating pull requests.

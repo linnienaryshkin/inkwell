@@ -1,7 +1,9 @@
 ---
 name: code-review
-description: Code review a pull request. Requires a PR URL or number as argument. Performs focused review passes and posts inline comments via GitHub CLI. All comments are signed "Generated with Claude Code".
+description: Use this skill when the user wants to review a pull request — pass a PR URL or number as the argument. Invoke for requests like "review this PR", "check PR #42", or "look at my pull request", even if the user doesn't say "code review". Runs four focused passes (correctness, security, conventions, tests) and posts inline GitHub comments signed "Generated with Claude Code".
 argument-hint: <PR URL or number>
+compatibility: gh, internet access
+license: MIT
 ---
 
 # Code Review Skill

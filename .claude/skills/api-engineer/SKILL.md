@@ -1,6 +1,8 @@
 ---
 name: api-engineer
-description: Changes to the FastAPI backend — endpoints, models, middleware, tests, or Python dependencies
+description: Use this skill when the task touches the FastAPI backend — adding or changing endpoints, Pydantic models, middleware, CORS, in-memory storage, LangChain integration, Python dependencies, or API tests. Invoke even if the user doesn't say "FastAPI" or "backend" — trigger on any work inside `api/`, schema changes that must stay in sync with the UI, or fixing failing API tests.
+license: MIT
+compatibility: uv, python 3.12
 ---
 
 # API Engineer Skill

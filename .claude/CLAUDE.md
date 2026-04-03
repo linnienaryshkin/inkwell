@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Inkwell
 
-A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend (in-memory, phase 1). Articles will eventually be stored as GitHub repo files. Deployed at https://linnienaryshkin.github.io/inkwell/.
+A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend (in-memory, phase 1). Articles will eventually be stored as GitHub repo files. Deployed at <https://linnienaryshkin.github.io/inkwell/>.
 
 **What's currently mock (not wired up):** lint results in SidePanel, publish platform calls, VersionStrip restore/diff buttons, GitHub OAuth, SQLite/Postgres persistence.
 
@@ -126,6 +126,14 @@ Rules are in `.claude/rules/unit-test.md`. Both packages follow the same convent
 **All git operations (commit, push, branch, merge, PR) are restricted to the `git-agent`.** Direct `git commit`, `git push`, `gh pr create`, etc. are denied by project permissions. Always delegate to the git-agent after code changes are complete.
 
 Commit format: `#ISSUE: description` (e.g. `#42: add user authentication`). Use `#0` when no issue applies.
+
+## GitHub MCP & Environment Setup
+
+Claude Code uses GitHub MCP server for AI-assisted GitHub workflows. **Setup required before launching Claude Code:**
+
+```bash
+source .dev-env
+```
 
 ## Skills & Agents
 

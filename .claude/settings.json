@@ -2,16 +2,9 @@
   "permissions": {
     "deny": [
       "Skill(codemie:codemie-commit)",
-      "Skill(update-config)",
-      "Bash(git commit*)",
-      "Bash(git push*)",
-      "Bash(git checkout*)",
-      "Bash(git branch*)",
-      "Bash(git merge*)",
-      "Bash(git rebase*)",
-      "Bash(git tag*)",
-      "Bash(gh pr create*)",
-      "Bash(gh pr merge*)"
+      "Skill(msgraph)",
+      "Skill(claude-setup-audit)",
+      "Skill(report-issue)"
     ],
     "allow": [
       "mcp__playwright__execute-code",
@@ -44,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "osascript -e 'display notification \"Claude has finished\" with title \"Claude Code\"' 2>/dev/null || true"
+            "command": "terminal-notifier -message \"Claude has finished\" -title \"Claude Code\" 2>/dev/null || true"
           }
         ]
       }
@@ -54,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "msg=$(jq -r '.message // \"Claude needs your input\"' 2>/dev/null); osascript -e \"display notification \\\"$msg\\\" with title \\\"Claude Code\\\"\" 2>/dev/null || true"
+            "command": "msg=$(jq -r '.message // \"Claude needs your input\"' 2>/dev/null); terminal-notifier -message \"$msg\" -title \"Claude Code\" 2>/dev/null || true"
           }
         ]
       }

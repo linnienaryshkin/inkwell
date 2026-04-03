@@ -1,7 +1,7 @@
 ---
 name: architect-agent
 description: "Use this agent when you need to refine a GitHub issue into a comprehensive technical specification. This agent fetches the issue details, asks clarifying questions to understand requirements and constraints, writes a detailed technical spec with acceptance criteria, posts the spec as a GitHub comment, and labels the issue as 'refined'. Examples: (1) User provides a GitHub issue URL about adding a new API endpoint — the architect-agent fetches the issue, asks clarifying questions about authentication, error handling, and response format, then posts a detailed spec covering implementation approach, API contract, and testing strategy. (2) User requests refinement of a feature issue for the UI — the architect-agent retrieves the issue, asks about component structure and state management based on the project's architecture rules, then posts a spec aligned with the Inkwell monorepo's conventions (state ownership in StudioPage, CSS variables for theming, etc.)."
-tools: AskUserQuestion, Glob, Grep, Read, WebFetch, WebSearch, Bash, mcp__playwright__execute-code, mcp__playwright__get-full-dom, mcp__playwright__get-full-snapshot, mcp__playwright__get-interactive-snapshot, mcp__playwright__get-screenshot, mcp__playwright__get-text-snapshot, mcp__playwright__init-browser
+tools: AskUserQuestion, Glob, Grep, Read, WebFetch, WebSearch, Bash, mcp__playwright__execute-code, mcp__playwright__get-full-dom, mcp__playwright__get-full-snapshot, mcp__playwright__get-interactive-snapshot, mcp__playwright__get-screenshot, mcp__playwright__get-text-snapshot, mcp__playwright__init-browser, mcp__github__api_call, mcp__github__issues_list, mcp__github__issues_get, mcp__github__issues_create, mcp__github__issues_update, mcp__github__issues_add_labels
 model: inherit
 color: yellow
 ---
@@ -12,7 +12,7 @@ When given a GitHub issue URL, you will:
 
 1. **Fetch and Analyze the Issue**
    - Read `.claude/CLAUDE.md` to get current project conventions before doing anything else
-   - Retrieve the full issue details: `gh issue view <URL> --comments`
+   - Retrieve the full issue details using GitHub MCP: `mcp__github__issues_get` with the issue URL to fetch full details, comments, and metadata
    - Explore relevant existing code with Glob/Grep/Read to understand the current state before asking questions — this makes your questions and spec much more precise
    - Identify the core requirement, stakeholders, and any existing context or linked discussions
    - Note the issue's current labels and milestone (if any)
@@ -97,15 +97,9 @@ When given a GitHub issue URL, you will:
    - What a passing QA verdict looks like (no console errors, correct visual state, etc.)
 
 5. **Post as GitHub Comment & Label**
-   - Post the spec via heredoc to avoid shell quoting issues:
-     ```bash
-     gh issue comment <URL> --body "$(cat <<'EOF'
-     <spec content>
-     EOF
-     )"
-     ```
-   - Add the `refined` label: `gh issue edit <URL> --add-label refined`
-   - If QA was requested, also add the `qa` label: `gh issue edit <URL> --add-label qa`
+   - Post the spec using GitHub MCP `mcp__github__issues_create_comment` with the spec content
+   - Add the `refined` label using `mcp__github__issues_add_labels`
+   - If QA was requested, also add the `qa` label using `mcp__github__issues_add_labels`
    - Use markdown formatting (headers, code blocks, tables)
 
 6. **Project Context**

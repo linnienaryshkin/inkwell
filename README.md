@@ -43,8 +43,50 @@ Give developer-writers a distraction-free, code-quality writing environment that
 | [GIT](https://git-scm.com)             | latest  | Version control, branching, commit history                   |
 | [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
 | [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
-| [gh](https://cli.github.com)           | latest  | GitHub CLI — used in the SDD workflow                       |
 | [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
+
+### Environment Setup
+
+**GitHub MCP Integration:**
+
+The project uses Claude Code's GitHub MCP server for AI-assisted workflows. To enable GitHub integration:
+
+1. **Generate a GitHub Personal Access Token (PAT):**
+   - Go to <https://github.com/settings/tokens/new>
+   - Select scopes: `repo`, `read:org`, `read:user`
+   - Copy the token
+
+2. **Create `.env` file and add your token:**
+
+```bash
+cp .env.example .env
+nano .env  # Add your GITHUB_TOKEN
+```
+
+1. **Load environment and launch Claude Code:**
+
+```bash
+source .dev-env && codemie-claude
+```
+
+```bash
+source .dev-env && claude
+```
+
+For detailed setup instructions, see [GITHUB_MCP_SETUP.md](./GITHUB_MCP_SETUP.md).
+
+**Or, quick one-liner:**
+
+```bash
+export GITHUB_TOKEN=<your-token> && claude
+```
+
+**Or, add environment variable to your shell configuration:**
+
+```bash
+echo 'export GITHUB_TOKEN=<your-token>' >> ~/.zshrc
+source ~/.zshrc
+```
 
 ### Run locally
 

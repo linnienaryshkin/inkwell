@@ -1,8 +1,8 @@
 # GitHub Configuration
 
-This file documents the live GitHub settings for this repository — branch protection, deployment environments, Pages configuration, secrets, and workflows — along with the `gh` CLI commands and website URLs to manage them.
+This file documents the live GitHub settings for this repository — branch protection, deployment environments, Pages configuration, secrets, and workflows — along with the GitHub MCP API calls and website URLs to manage them.
 
-> **Keep this file current.** Whenever a setting is changed (via CLI or website), update the "Current state" for the relevant section below.
+> **Keep this file current.** Whenever a setting is changed (via API or website), update the "Current state" for the relevant section below.
 
 ---
 
@@ -49,16 +49,12 @@ api-check (parallel, does NOT block ui-deploy)
 
 ### View
 
-```bash
-gh api repos/linnienaryshkin/inkwell/branches/main/protection
-```
+Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/branches/main/protection`
 
 ### Update required status checks
 
-```bash
-gh api repos/linnienaryshkin/inkwell/branches/main/protection \
-  --method PUT \
-  --input - <<'EOF'
+Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` and body:
+```json
 {
   "required_status_checks": {
     "strict": true,
@@ -75,16 +71,13 @@ gh api repos/linnienaryshkin/inkwell/branches/main/protection \
   "required_pull_request_reviews": null,
   "restrictions": null
 }
-EOF
 ```
 
 When adding a new CI job that should gate merges, add it to both the workflow file and the `checks` array above, then update the current state table.
 
 ### Remove branch protection entirely
 
-```bash
-gh api repos/linnienaryshkin/inkwell/branches/main/protection --method DELETE
-```
+Use GitHub MCP: `mcp__github__api_call` with DELETE `/repos/linnienaryshkin/inkwell/branches/main/protection`
 
 ---
 
@@ -101,52 +94,46 @@ gh api repos/linnienaryshkin/inkwell/branches/main/protection --method DELETE
 
 ### View
 
-```bash
-gh api repos/linnienaryshkin/inkwell/environments/github-pages
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies
-```
+Use GitHub MCP:
+- `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/environments/github-pages`
+- `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
 
 ### Restrict deployments to `main` only (production state)
 
-```bash
-# 1. Enable custom branch policies
-gh api repos/linnienaryshkin/inkwell/environments/github-pages \
-  --method PUT \
-  --input - <<'EOF'
-{ "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true } }
-EOF
+Use GitHub MCP:
 
-# 2. Add main policy (if not already present)
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies \
-  --method POST --field name="main" --field type="branch"
+1. Enable custom branch policies with PUT `/repos/linnienaryshkin/inkwell/environments/github-pages`:
+```json
+{ "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true } }
+```
+
+2. Add main policy with POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`:
+```json
+{ "name": "main", "type": "branch" }
 ```
 
 ### Temporarily allow all branches (to validate a fix)
 
-```bash
-gh api repos/linnienaryshkin/inkwell/environments/github-pages \
-  --method PUT --field deployment_branch_policy=null
+Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` with body:
+```json
+{ "deployment_branch_policy": null }
 ```
 
 > **Important:** Name-based branch policies do NOT match PR merge refs (`refs/pull/*/merge`). When deploying from a PR context, use `null` (all branches) rather than a named policy. Always restore `main`-only restriction after validation, and update the current state table above.
 
 ### Allow a specific branch temporarily
 
-```bash
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies \
-  --method POST --field name="fix/my-branch" --field type="branch"
+Use GitHub MCP: POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies` with body:
+```json
+{ "name": "fix/my-branch", "type": "branch" }
 ```
 
 ### Remove a specific branch policy
 
-```bash
-# Get the policy ID
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies
+Use GitHub MCP:
 
-# Delete by ID
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID> \
-  --method DELETE
-```
+1. Get the policy ID with GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
+2. Delete with DELETE `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID>`
 
 ---
 
@@ -163,20 +150,20 @@ gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch
 
 ### View
 
-```bash
-gh api repos/linnienaryshkin/inkwell/pages | jq '{build_type, status, html_url}'
-```
+Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/pages` and extract `build_type`, `status`, and `html_url`
 
 ### Enable (first-time setup)
 
-```bash
-gh api repos/linnienaryshkin/inkwell/pages --method POST --field build_type="workflow"
+Use GitHub MCP: `mcp__github__api_call` with POST `/repos/linnienaryshkin/inkwell/pages` and body:
+```json
+{ "build_type": "workflow" }
 ```
 
 ### Update source to GitHub Actions (if previously set to a branch)
 
-```bash
-gh api repos/linnienaryshkin/inkwell/pages --method PUT --field build_type="workflow"
+Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/pages` and body:
+```json
+{ "build_type": "workflow" }
 ```
 
 ---
@@ -193,34 +180,20 @@ gh api repos/linnienaryshkin/inkwell/pages --method PUT --field build_type="work
 
 ### List secrets (names only — values are never shown)
 
-```bash
-gh secret list --repo linnienaryshkin/inkwell
-```
+Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/actions/secrets`
 
 ### Add or update a secret
 
-```bash
-gh secret set ANTHROPIC_API_KEY --repo linnienaryshkin/inkwell
-# Prompts for value securely (not echoed to terminal)
-```
+Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/actions/secrets/ANTHROPIC_API_KEY` with encrypted secret value (base64-encoded)
 
 ---
 
 ## 5. Re-running Failed Workflow Jobs
 
-```bash
-# List recent runs on a branch
-gh run list --repo linnienaryshkin/inkwell --branch <branch> --limit 5
+Use GitHub MCP: `mcp__github__api_call` for workflow operations:
 
-# View failure summary
-gh run view <RUN_ID> --repo linnienaryshkin/inkwell
-
-# View failure logs
-gh run view <RUN_ID> --repo linnienaryshkin/inkwell --log-failed
-
-# Re-run only failed jobs (fastest)
-gh run rerun <RUN_ID> --repo linnienaryshkin/inkwell --failed
-
-# Re-run all jobs
-gh run rerun <RUN_ID> --repo linnienaryshkin/inkwell
-```
+- **List recent runs on a branch**: GET `/repos/linnienaryshkin/inkwell/actions/runs?branch=<branch>&per_page=5`
+- **View failure summary**: GET `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>`
+- **View failure logs**: GET `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/attempts/<ATTEMPT_NUMBER>/logs`
+- **Re-run failed jobs**: POST `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/rerun-failed-jobs`
+- **Re-run all jobs**: POST `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/rerun`

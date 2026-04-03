@@ -2,7 +2,7 @@
 name: devops-engineer
 description: Use this skill when the task involves CI/CD pipelines, GitHub Actions workflows, branch protection rules, deployment environments, or GitHub Pages. Invoke even if the user doesn't say "CI" or "DevOps" — trigger on fixing a failing workflow run, adding a new job, changing what gates merges to `main`, or anything touching `.github/workflows/` or repo settings.
 license: MIT
-compatibility: gh, internet access
+compatibility: GitHub MCP, internet access
 ---
 
 # DevOps Skill
@@ -19,7 +19,7 @@ Invoke this skill when the task involves any of:
 
 ## Reference
 
-All current settings, `gh` CLI commands, and API URLs are documented in **`.github/CLAUDE.md`**. Read that file before making any changes — it is the single source of truth for:
+All current settings, GitHub MCP API calls, and API URLs are documented in **`.github/CLAUDE.md`**. Read that file before making any changes — it is the single source of truth for:
 
 - Workflow job dependency graph
 - Branch protection required checks
@@ -31,7 +31,7 @@ All current settings, `gh` CLI commands, and API URLs are documented in **`.gith
 ## Before Editing a Workflow
 
 1. Read `.github/CLAUDE.md` and the current workflow file — never edit from memory
-2. Check live branch protection and deployment environment state using the `gh api` commands in `.github/CLAUDE.md`
+2. Check live branch protection and deployment environment state using the GitHub MCP API calls documented in `.github/CLAUDE.md`
 
 ## Implementation Checklist
 
@@ -45,7 +45,7 @@ All current settings, `gh` CLI commands, and API URLs are documented in **`.gith
 
 ## Common Pitfalls
 
-- **Deploy fails with 404** — GitHub Pages not enabled; set source to "GitHub Actions" in repo settings
-- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use `null` policy instead of a named branch
+- **Deploy fails with 404** — GitHub Pages not enabled; use GitHub MCP to set source to "GitHub Actions" in repo settings
+- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use GitHub MCP to set `null` policy instead of a named branch
 - **New CI job doesn't gate merges** — added to workflow but not to branch protection required checks
-- **Re-run fails instantly** — environment branch policy still restricts the ref; check with `gh api .../deployment-branch-policies`
+- **Re-run fails instantly** — environment branch policy still restricts the ref; check with GitHub MCP API

@@ -2,7 +2,7 @@
 name: code-review
 description: Use this skill when the user wants to review a pull request — pass a PR URL or number as the argument. Invoke for requests like "review this PR", "check PR #42", or "look at my pull request", even if the user doesn't say "code review". Runs four focused passes (correctness, security, conventions, tests) and posts inline GitHub comments signed "Generated with Claude Code".
 argument-hint: <PR URL or number>
-compatibility: gh, internet access
+compatibility: GitHub MCP, internet access
 license: MIT
 ---
 
@@ -20,10 +20,9 @@ Fetch the PR, then run **four focused passes** in sequence. Each pass has a sing
 
 ### Step 0 — Fetch PR context
 
-```bash
-gh pr view <PR> --json number,title,body,baseRefName,headRefName,files,additions,deletions
-gh pr diff <PR>
-```
+Use GitHub MCP to fetch PR details:
+- `mcp__github__pulls_get` to retrieve PR metadata (title, body, base/head refs, files)
+- `mcp__github__api_call` to get the PR diff
 
 Read `.claude/CLAUDE.md` for project conventions before reviewing.
 
@@ -84,11 +83,11 @@ Check:
 
 ## Posting Comments
 
-After all four passes, post findings as inline PR review comments using `gh pr review`.
+After all four passes, post findings as inline PR review comments using GitHub MCP `mcp__github__pulls_create_review`.
 
 **Rules:**
 - Post **inline comments** on the specific file + line where the issue occurs, not a single top-level comment
-- Group all comments into a single `gh pr review` call using `--comment` flags so they appear as one review
+- Group all comments into a single review using GitHub MCP so they appear as one review
 - Only comment on real issues — do not add praise or filler ("looks good", "nice work")
 - Each comment must be concise: one sentence stating the problem, one sentence stating the fix
 - Every comment **must** end with the attribution line:
@@ -109,34 +108,10 @@ After all four passes, post findings as inline PR review comments using `gh pr r
 
 **Posting the review:**
 
-```bash
-gh pr review <PR> --comment \
-  --body "$(cat <<'EOF'
-<!-- summary of all findings across all passes, or "No issues found." -->
-
-> Generated with Claude Code
-EOF
-)"
-```
-
-For inline comments on specific lines use:
-
-```bash
-gh api repos/{owner}/{repo}/pulls/<PR>/comments \
-  --method POST \
-  --field body='<comment text>
-
-> Generated with Claude Code' \
-  --field commit_id='<head SHA>' \
-  --field path='<file path>' \
-  --field line=<line number> \
-  --field side='RIGHT'
-```
-
-Get the head SHA with:
-```bash
-gh pr view <PR> --json headRefOid --jq '.headRefOid'
-```
+Use GitHub MCP `mcp__github__pulls_create_review` with:
+- Array of inline comments (file path, line number, comment body)
+- Overall review body summarizing findings
+- Review event (COMMENT, APPROVE, or REQUEST_CHANGES)
 
 ---
 
@@ -174,4 +149,4 @@ After inline comments, post one top-level review summary:
 > Generated with Claude Code
 ```
 
-Post with `gh pr review <PR> --approve` or `--request-changes` or `--comment` depending on verdict.
+Post with GitHub MCP `mcp__github__pulls_create_review` using either APPROVE or REQUEST_CHANGES depending on verdict.

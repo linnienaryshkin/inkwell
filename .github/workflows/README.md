@@ -41,7 +41,7 @@ api-check (parallel, does NOT block ui-deploy)
 
 | Setting | Value |
 |---------|-------|
-| Required status checks | `ui-build`, `ui-format`, `ui-lint`, `ui-security`, `ui-test`, `ui-types` |
+| Required status checks | `api-check`, `ui-build`, `ui-format`, `ui-lint`, `ui-security`, `ui-test`, `ui-types` |
 | Require branch up to date | `true` (strict) |
 | Enforce admins | `false` |
 | Allow force pushes | `false` |
@@ -59,6 +59,7 @@ Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell
   "required_status_checks": {
     "strict": true,
     "checks": [
+      { "context": "api-check" },
       { "context": "ui-build" },
       { "context": "ui-format" },
       { "context": "ui-lint" },

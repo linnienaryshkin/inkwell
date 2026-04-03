@@ -1,0 +1,44 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install API dependencies
+    cmds:
+      - uv sync --extra dev
+
+  dev:
+    desc: Start FastAPI dev server at localhost:8000
+    cmds:
+      - uv run uvicorn app.main:app --reload
+
+  test:
+    desc: Run pytest tests
+    cmds:
+      - uv run pytest tests/ -v
+
+  lint:
+    desc: Lint API code with ruff (auto-fix)
+    cmds:
+      - uv run ruff check app/ tests/
+
+  lint-check:
+    desc: Lint API code with ruff (read-only)
+    cmds:
+      - uv run ruff check app/ tests/
+
+  format:
+    desc: Auto-format API code with ruff
+    cmds:
+      - uv run ruff format app/ tests/
+
+  format-check:
+    desc: Check API formatting with ruff (read-only)
+    cmds:
+      - uv run ruff format --check app/ tests/
+
+  quality-gate:
+    desc: Run all API quality checks in sequence
+    cmds:
+      - task: lint-check
+      - task: format-check
+      - task: test

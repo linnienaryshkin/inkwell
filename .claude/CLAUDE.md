@@ -34,7 +34,7 @@ npm run types:check  # TypeScript type-check without emitting (tsc --noEmit)
 npm run security     # npm audit --audit-level=high
 
 # Run a single test file
-npx jest src/components/EditorPane.test.tsx --no-coverage
+npm run test src/components/EditorPane.test.tsx --no-coverage
 ```
 
 ### API (from `api/`)

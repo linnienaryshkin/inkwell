@@ -40,10 +40,11 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 | Tool                                   | Version | Purpose                                                     |
 | -------------------------------------- | ------- | ----------------------------------------------------------- |
-| [GIT](https://git-scm.com)             | latest  | Version control, branching, commit history                   |
+| [GIT](https://git-scm.com)             | latest  | Version control, branching, commit history                  |
 | [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
 | [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
 | [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
+| [Task](https://taskfile.dev)           | latest  | Task runner for unified commands across UI and API          |
 
 ### Environment Setup
 
@@ -90,13 +91,21 @@ source ~/.zshrc
 
 ### Run locally
 
-Makefile shortcuts from the repo root:
+Use these from the repo root to avoid `cd` commands:
 
 ```bash
-make dev-ui     # Start Vite dev server
-make dev-api    # Start FastAPI dev server
-make test-ui    # Run UI tests
-make test-api   # Run API tests
+task install         # Install all dependencies (ui + api)
+task dev             # Start both servers concurrently
+task test            # Run all tests (ui + api)
+task quality-gate    # Run all quality checks (ui then api)
+task ui:install      # npm install
+task ui:dev          # Start Vite dev server
+task ui:test         # Run UI tests
+task ui:lint         # ESLint auto-fix
+task api:install     # uv sync --extra dev
+task api:dev         # Start FastAPI dev server
+task api:test        # Run API tests
+task api:lint        # Lint API code
 ```
 
 ### Development guide

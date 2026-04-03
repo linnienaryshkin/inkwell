@@ -7,11 +7,10 @@
       "env": {}
     },
     "github": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@github/mcp-server"],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
       }
     }
   }

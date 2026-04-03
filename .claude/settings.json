@@ -10,6 +10,8 @@
       "mcp__playwright__execute-code",
       "mcp__playwright__get-screenshot",
       "mcp__playwright__init-browser",
+      "mcp__github__list_issues",
+      "mcp__github__search_issues",
       "Bash(npm run:*)",
       "Bash(npm audit:*)",
       "Bash(make *)",

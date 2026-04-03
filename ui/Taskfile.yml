@@ -1,0 +1,77 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install UI dependencies
+    cmds:
+      - npm install
+
+  install-ci:
+    desc: Install UI dependencies (CI, clean install)
+    cmds:
+      - npm ci
+
+  dev:
+    desc: Start Vite dev server at localhost:5173/inkwell/
+    cmds:
+      - npm run dev
+
+  build:
+    desc: Vite production build → dist/
+    cmds:
+      - npm run build
+
+  preview:
+    desc: Serve the dist/ build locally
+    cmds:
+      - npm run preview
+
+  test:
+    desc: Run Jest tests (no coverage threshold)
+    cmds:
+      - npm run test
+
+  test-coverage:
+    desc: Run Jest tests with 90% coverage threshold
+    cmds:
+      - npm run test:coverage
+
+  lint:
+    desc: ESLint auto-fix
+    cmds:
+      - npm run lint
+
+  lint-check:
+    desc: ESLint read-only check (used in CI)
+    cmds:
+      - npm run lint:check
+
+  format:
+    desc: Prettier auto-format
+    cmds:
+      - npm run format
+
+  format-check:
+    desc: Prettier read-only check (used in CI)
+    cmds:
+      - npm run format:check
+
+  types-check:
+    desc: TypeScript type-check without emitting
+    cmds:
+      - npm run types:check
+
+  security:
+    desc: npm audit at high severity level
+    cmds:
+      - npm audit --audit-level=high
+
+  quality-gate:
+    desc: Run all UI quality checks in sequence
+    cmds:
+      - task: lint-check
+      - task: format-check
+      - task: types-check
+      - task: test-coverage
+      - task: security
+      - task: build

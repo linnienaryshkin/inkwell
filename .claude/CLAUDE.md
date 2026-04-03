@@ -48,21 +48,25 @@ uv run ruff check app/ tests/    # Lint
 uv run ruff format app/ tests/   # Auto-format
 ```
 
-### Root Makefile shortcuts
+### Root Taskfile shortcuts
+
+Requires [Task](https://taskfile.dev) — install with `brew install go-task` (macOS).
 
 Use these from the repo root to avoid `cd` commands:
 
 ```bash
-make install         # Install all dependencies (ui + api)
-make install-ui      # npm install
-make install-api     # uv sync --extra dev
-make dev             # Start both servers concurrently
-make dev-ui          # Start Vite dev server
-make dev-api         # Start FastAPI dev server
-make test-ui         # Run UI tests
-make test-api        # Run API tests
-make lint-ui         # ESLint + Prettier + tsc --noEmit
-make lint-api        # Lint API code
+task install         # Install all dependencies (ui + api)
+task dev             # Start both servers concurrently
+task test            # Run all tests (ui + api)
+task quality-gate    # Run all quality checks (ui then api)
+task ui:install      # npm install
+task ui:dev          # Start Vite dev server
+task ui:test         # Run UI tests
+task ui:lint         # ESLint auto-fix
+task api:install     # uv sync --extra dev
+task api:dev         # Start FastAPI dev server
+task api:test        # Run API tests
+task api:lint        # Lint API code
 ```
 
 ## Architecture

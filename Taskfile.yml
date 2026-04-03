@@ -1,0 +1,34 @@
+version: "3"
+
+includes:
+  ui:
+    taskfile: ./ui/Taskfile.yml
+    dir: ./ui
+  api:
+    taskfile: ./api/Taskfile.yml
+    dir: ./api
+
+tasks:
+  install:
+    desc: Install all dependencies (ui + api)
+    cmds:
+      - task: ui:install
+      - task: api:install
+
+  dev:
+    desc: Start both dev servers concurrently
+    deps:
+      - task: api:dev
+      - task: ui:dev
+
+  test:
+    desc: Run all tests (ui + api)
+    cmds:
+      - task: ui:test
+      - task: api:test
+
+  quality-gate:
+    desc: Run all quality checks (ui then api) in sequence
+    cmds:
+      - task: ui:quality-gate
+      - task: api:quality-gate

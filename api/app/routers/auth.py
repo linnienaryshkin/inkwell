@@ -10,10 +10,11 @@ from itsdangerous import BadSignature, SignatureExpired, TimestampSigner
 
 from app.models.auth import CookiePayload, SessionData, UserProfile
 
-_REQUIRED_ENV = ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GITHUB_CALLBACK_URL", "SESSION_SECRET"]
+_REQUIRED_ENV = ["OAUTH_CLIENT_ID", "OAUTH_CLIENT_SECRET", "OAUTH_CALLBACK_URL", "SESSION_SECRET"]
 
 SESSION_COOKIE = "inkwell_session"
 STATE_COOKIE = "gh_oauth_state"
+
 
 # Read config once at module load — fail fast if env vars are missing
 def _load_config() -> tuple[str, str, str, str]:
@@ -21,9 +22,9 @@ def _load_config() -> tuple[str, str, str, str]:
     if missing:
         raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
     return (
-        os.environ["GITHUB_CLIENT_ID"],
-        os.environ["GITHUB_CLIENT_SECRET"],
-        os.environ["GITHUB_CALLBACK_URL"],
+        os.environ["OAUTH_CLIENT_ID"],
+        os.environ["OAUTH_CLIENT_SECRET"],
+        os.environ["OAUTH_CALLBACK_URL"],
         os.environ["SESSION_SECRET"],
     )
 

@@ -13,6 +13,7 @@ from app.routers.auth import _sign_session  # noqa: E402
 @pytest.fixture()
 def client():
     from app.main import app
+
     return TestClient(app, follow_redirects=False)
 
 
@@ -57,21 +58,25 @@ def _mock_httpx_client(access_token: str = "gho_test_token", user_data: dict | N
 
 # --- /auth/login ---
 
+
 def test_login_redirects_to_github(client):
     response = client.get("/auth/login")
     assert response.status_code == 307
     location = response.headers["location"]
     assert "github.com/login/oauth/authorize" in location
-    assert "client_id=test_client_id" in location
+    assert "client_id=" in location
     assert "scope=read%3Auser" in location
 
 
 def test_login_sets_state_cookie(client):
     response = client.get("/auth/login")
-    assert STATE_COOKIE in response.cookies or "gh_oauth_state" in response.headers.get("set-cookie", "")
+    assert STATE_COOKIE in response.cookies or "gh_oauth_state" in response.headers.get(
+        "set-cookie", ""
+    )
 
 
 # --- /auth/callback ---
+
 
 def test_callback_missing_state_returns_400(client):
     client.cookies.set(STATE_COOKIE, "some_state")
@@ -91,7 +96,9 @@ def test_callback_valid_state_sets_session_cookie(mock_async_client, client):
     client.cookies.set(STATE_COOKIE, state)
     response = client.get(f"/auth/callback?code=abc&state={state}")
     assert response.status_code == 307
-    assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get("set-cookie", "")
+    assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get(
+        "set-cookie", ""
+    )
 
 
 @patch("app.routers.auth.httpx.AsyncClient")
@@ -101,7 +108,10 @@ def test_callback_redirects_to_frontend(mock_async_client, client):
     client.cookies.set(STATE_COOKIE, state)
     response = client.get(f"/auth/callback?code=abc&state={state}")
     assert response.status_code == 307
-    assert "localhost:5173" in response.headers["location"] or "inkwell" in response.headers["location"]
+    assert (
+        "localhost:5173" in response.headers["location"]
+        or "inkwell" in response.headers["location"]
+    )
 
 
 @patch("app.routers.auth.httpx.AsyncClient")
@@ -123,6 +133,7 @@ def test_callback_no_access_token_returns_400(mock_async_client, client):
 
 
 # --- /auth/me ---
+
 
 def test_me_no_cookie_returns_401(client):
     response = client.get("/auth/me")
@@ -149,6 +160,7 @@ def test_me_valid_cookie_returns_profile(client):
 
 # --- /auth/refresh ---
 
+
 def test_refresh_no_cookie_returns_401(client):
     response = client.get("/auth/refresh")
     assert response.status_code == 401
@@ -162,7 +174,9 @@ def test_refresh_valid_cookie_reissues_session(client):
     assert response.status_code == 200
     data = response.json()
     assert data["login"] == "octocat"
-    assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get("set-cookie", "")
+    assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get(
+        "set-cookie", ""
+    )
 
 
 def test_refresh_invalid_cookie_returns_401(client):

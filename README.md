@@ -112,12 +112,12 @@ task api:lint        # Lint API code
 
 The API requires four environment variables for GitHub OAuth login. The server raises a `RuntimeError` at startup if any are absent.
 
-| Variable | Description |
-|---|---|
-| `GITHUB_CLIENT_ID` | OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | OAuth App client secret |
-| `GITHUB_CALLBACK_URL` | Must exactly match the callback URL registered in the OAuth App |
-| `SESSION_SECRET` | Random secret for signing session cookies — generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| Variable | Description | Where to get it |
+|---|---|---|
+| `GITHUB_CLIENT_ID` | OAuth App client ID | From GitHub OAuth App settings (Client ID field) |
+| `GITHUB_CLIENT_SECRET` | OAuth App client secret | From GitHub OAuth App settings (generate a new client secret) |
+| `GITHUB_CALLBACK_URL` | Must exactly match the "Authorization callback URL" registered in the OAuth App | Set by you when creating the OAuth App |
+| `SESSION_SECRET` | Random secret for signing session cookies | Generate locally: `python -c "import secrets; print(secrets.token_hex(32))"` |
 
 **Create a GitHub OAuth App:**
 

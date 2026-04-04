@@ -121,7 +121,7 @@ The API requires four environment variables for GitHub OAuth login. The server r
 
 **Create a GitHub OAuth App:**
 
-1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App** | <https://github.com/settings/developers>
 2. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (dev) or your production URL
 3. Copy the **Client ID** and generate a **Client Secret**
 

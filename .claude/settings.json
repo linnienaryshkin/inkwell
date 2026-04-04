@@ -15,7 +15,8 @@
       "Bash(npm run:*)",
       "Bash(npm audit:*)",
       "Bash(make *)",
-      "Bash(uv *)"
+      "Bash(uv *)",
+      "Bash(task *)"
     ]
   },
   "model": "haiku",
@@ -59,13 +60,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); repo=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$repo\" ] && echo \"$input\" | jq -r '.. | strings' 2>/dev/null | grep -qE \"${repo}/\\.env($|[^.])\"; then echo 'Access to .env file is not allowed.' >&2; exit 2; fi"
+            "command": "input=$(cat); repo=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$repo\" ] && echo \"$input\" | jq -r '.. | strings' 2>/dev/null | grep -qE \"${repo}(/.*)?\\.env($|[^.])\"; then echo 'Access to .env file is not allowed.' >&2; exit 2; fi"
           }
         ]
       }
     ]
-  },
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }

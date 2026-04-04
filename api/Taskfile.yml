@@ -9,7 +9,7 @@ tasks:
   dev:
     desc: Start FastAPI dev server at localhost:8000
     cmds:
-      - uv run uvicorn app.main:app --reload
+      - uv run uvicorn app.main:app --reload --env-file .env
 
   test:
     desc: Run pytest tests

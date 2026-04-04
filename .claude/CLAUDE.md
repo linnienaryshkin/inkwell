@@ -42,7 +42,7 @@ npm run test src/components/EditorPane.test.tsx --no-coverage
 ```bash
 cd api
 uv sync --extra dev              # Install deps (creates .venv automatically)
-uv run uvicorn app.main:app --reload --env-file ../.env   # Dev server at localhost:8000 (requires .env)
+uv run uvicorn app.main:app --reload --env-file .env   # Dev server at localhost:8000 (requires api/.env)
 uv run pytest tests/ -v          # Run tests
 uv run ruff check app/ tests/    # Lint
 uv run ruff format app/ tests/   # Auto-format
@@ -95,7 +95,7 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 | `GET`  | `/auth/me` | Returns current user profile (401 if not authenticated) |
 | `GET`  | `/auth/refresh` | Re-issues session cookie (401 if not authenticated) |
 
-**Auth:** `itsdangerous` signed session cookies (`inkwell_session`). Access token stored server-side in `_session_store` (in-memory), never in the cookie. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `SESSION_SECRET` env vars — server raises `RuntimeError` at startup if any are missing. See `.env.example` for placeholder values used in CI/tests.
+**Auth:** `itsdangerous` signed session cookies (`inkwell_session`). Access token stored server-side in `_session_store` (in-memory), never in the cookie. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `SESSION_SECRET` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
 **Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/ai/` (reserved for LangChain).
 

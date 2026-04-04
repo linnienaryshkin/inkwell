@@ -1,9 +1,13 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import articles, auth
 
 app = FastAPI(title="Inkwell API", version="0.1.0")
+
+_frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,6 +16,7 @@ app.add_middleware(
         "http://localhost:5174",
         "http://localhost:5175",
         "https://linnienaryshkin.github.io",
+        _frontend_url,
     ],
     allow_credentials=True,
     allow_methods=["*"],

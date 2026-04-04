@@ -193,20 +193,20 @@ PUT `/repos/linnienaryshkin/inkwell/pages` with body:
 
 ### Source of truth: `.env.example`
 
-`.env.example` is the canonical list of every secret/env var this project needs. It lives at the repo root and contains placeholder values so CI and tests can run without real credentials.
+`.env.example` is the canonical list of every secret/env var this project needs. It lives at `api/.env.example` (API secrets) and `ui/.env.example` (Vite vars) and contains placeholder values so CI and tests can run without real credentials.
 
 **Three-layer contract:**
 
 | Layer | Who manages it | Purpose |
 |-------|---------------|---------|
-| `.env.example` | Committed to repo (devops skill keeps it up to date) | Documents every required var with a placeholder value; used by `api/tests/conftest.py` to seed test env |
-| `.env` | **Manual — each developer** copies `.env.example` and fills in real values; never committed | Local dev with real credentials |
+| `api/.env.example`, `ui/.env.example` | Committed to repo (devops skill keeps them up to date) | Documents every required var with a placeholder value; `api/.env.example` used by `api/tests/conftest.py` to seed test env |
+| `api/.env`, `ui/.env` | **Manual — each developer** copies the example and fills in real values; never committed | Local dev with real credentials |
 | GitHub Actions secrets (<https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>) | **Manual — repo owner** adds real values via the UI; devops skill creates the secret slot if missing | CI/CD with real credentials |
 
 **Rules:**
-- Whenever a new secret is added to `.env.example`, the devops skill must also create the corresponding GitHub Actions secret slot (with a placeholder). The **user must then fill in the real value** in both `.env` (locally) and the GitHub Actions secret (via the website above).
-- `.env` must never be committed — it is gitignored.
-- `.env.example` must never contain real secret values — only placeholders like `ci-placeholder` or empty strings.
+- Whenever a new secret is added to `api/.env.example` or `ui/.env.example`, the devops skill must also create the corresponding GitHub Actions secret slot (with a placeholder). The **user must then fill in the real value** in both the local `.env` and the GitHub Actions secret (via the website above).
+- `api/.env` and `ui/.env` must never be committed — they are gitignored.
+- `.env.example` files must never contain real secret values — only placeholders like `ci-placeholder` or empty strings.
 
 ### Current state
 

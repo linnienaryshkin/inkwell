@@ -10,26 +10,33 @@ from itsdangerous import BadSignature, SignatureExpired, TimestampSigner
 
 from app.models.auth import CookiePayload, SessionData, UserProfile
 
-_REQUIRED_ENV = ["OAUTH_CLIENT_ID", "OAUTH_CLIENT_SECRET", "OAUTH_CALLBACK_URL", "SESSION_SECRET"]
+_REQUIRED_ENV = [
+    "OAUTH_CLIENT_ID",
+    "OAUTH_CLIENT_SECRET",
+    "OAUTH_CALLBACK_URL",
+    "SESSION_SECRET",
+    "FRONTEND_URL",
+]
 
 SESSION_COOKIE = "inkwell_session"
 STATE_COOKIE = "gh_oauth_state"
 
 
 # Read config once at module load — fail fast if env vars are missing
-def _load_config() -> tuple[str, str, str, str]:
-    missing = [v for v in _REQUIRED_ENV if not os.environ.get(v)]
-    if missing:
-        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+def _load_config() -> tuple[str, str, str, str, str]:
+    for v in _REQUIRED_ENV:
+        if not os.environ.get(v):
+            raise RuntimeError(f"Missing required environment variable: {v}")
     return (
         os.environ["OAUTH_CLIENT_ID"],
         os.environ["OAUTH_CLIENT_SECRET"],
         os.environ["OAUTH_CALLBACK_URL"],
         os.environ["SESSION_SECRET"],
+        os.environ["FRONTEND_URL"],
     )
 
 
-_CLIENT_ID, _CLIENT_SECRET, _CALLBACK_URL, _SESSION_SECRET = _load_config()
+_CLIENT_ID, _CLIENT_SECRET, _CALLBACK_URL, _SESSION_SECRET, _FRONTEND_URL = _load_config()
 
 # Maps session_id → access_token (server-side, never exposed in the cookie)
 _session_store: dict[str, str] = {}
@@ -128,8 +135,7 @@ async def callback(
     )
     session_token = _sign_session(session)
 
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173/inkwell/")
-    redirect = RedirectResponse(url=frontend_url)
+    redirect = RedirectResponse(url=_FRONTEND_URL)
     redirect.set_cookie(
         key=SESSION_COOKIE,
         value=session_token,

@@ -1,15 +1,10 @@
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-# Set required env vars before importing the app
-os.environ.setdefault("GITHUB_CLIENT_ID", "test_client_id")
-os.environ.setdefault("GITHUB_CLIENT_SECRET", "test_client_secret")
-os.environ.setdefault("GITHUB_CALLBACK_URL", "http://localhost:8000/auth/callback")
-os.environ.setdefault("SESSION_SECRET", "test_session_secret")
-os.environ.setdefault("ENVIRONMENT", "development")
+STATE_COOKIE = "gh_oauth_state"
+SESSION_COOKIE = "inkwell_session"
 
 from app.models.auth import SessionData  # noqa: E402
 from app.routers.auth import _sign_session  # noqa: E402
@@ -36,39 +31,6 @@ def _make_session(
     return _sign_session(session)
 
 
-# --- /auth/login ---
-
-def test_login_redirects_to_github(client):
-    response = client.get("/auth/login")
-    assert response.status_code == 307
-    location = response.headers["location"]
-    assert "github.com/login/oauth/authorize" in location
-    assert "client_id=test_client_id" in location
-    assert "scope=read%3Auser" in location
-
-
-def test_login_sets_state_cookie(client):
-    response = client.get("/auth/login")
-    assert STATE_COOKIE in response.cookies or "gh_oauth_state" in response.headers.get("set-cookie", "")
-
-
-STATE_COOKIE = "gh_oauth_state"
-SESSION_COOKIE = "inkwell_session"
-
-
-# --- /auth/callback ---
-
-def test_callback_missing_state_returns_400(client):
-    client.cookies.set(STATE_COOKIE, "some_state")
-    response = client.get("/auth/callback?code=abc&state=wrong_state")
-    assert response.status_code == 400
-
-
-def test_callback_no_state_cookie_returns_400(client):
-    response = client.get("/auth/callback?code=abc&state=some_state")
-    assert response.status_code == 400
-
-
 def _mock_httpx_client(access_token: str = "gho_test_token", user_data: dict | None = None):
     if user_data is None:
         user_data = {
@@ -93,6 +55,35 @@ def _mock_httpx_client(access_token: str = "gho_test_token", user_data: dict | N
     return mock_client
 
 
+# --- /auth/login ---
+
+def test_login_redirects_to_github(client):
+    response = client.get("/auth/login")
+    assert response.status_code == 307
+    location = response.headers["location"]
+    assert "github.com/login/oauth/authorize" in location
+    assert "client_id=test_client_id" in location
+    assert "scope=read%3Auser" in location
+
+
+def test_login_sets_state_cookie(client):
+    response = client.get("/auth/login")
+    assert STATE_COOKIE in response.cookies or "gh_oauth_state" in response.headers.get("set-cookie", "")
+
+
+# --- /auth/callback ---
+
+def test_callback_missing_state_returns_400(client):
+    client.cookies.set(STATE_COOKIE, "some_state")
+    response = client.get("/auth/callback?code=abc&state=wrong_state")
+    assert response.status_code == 400
+
+
+def test_callback_no_state_cookie_returns_400(client):
+    response = client.get("/auth/callback?code=abc&state=some_state")
+    assert response.status_code == 400
+
+
 @patch("app.routers.auth.httpx.AsyncClient")
 def test_callback_valid_state_sets_session_cookie(mock_async_client, client):
     mock_async_client.return_value = _mock_httpx_client()
@@ -101,6 +92,16 @@ def test_callback_valid_state_sets_session_cookie(mock_async_client, client):
     response = client.get(f"/auth/callback?code=abc&state={state}")
     assert response.status_code == 307
     assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get("set-cookie", "")
+
+
+@patch("app.routers.auth.httpx.AsyncClient")
+def test_callback_redirects_to_frontend(mock_async_client, client):
+    mock_async_client.return_value = _mock_httpx_client()
+    state = "valid_state_value"
+    client.cookies.set(STATE_COOKIE, state)
+    response = client.get(f"/auth/callback?code=abc&state={state}")
+    assert response.status_code == 307
+    assert "localhost:5173" in response.headers["location"] or "inkwell" in response.headers["location"]
 
 
 @patch("app.routers.auth.httpx.AsyncClient")

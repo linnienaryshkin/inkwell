@@ -12,3 +12,10 @@ class SessionData(BaseModel):
     login: str
     name: str | None
     avatar_url: str
+
+
+class CookiePayload(BaseModel):
+    session_id: str
+    login: str
+    name: str | None
+    avatar_url: str

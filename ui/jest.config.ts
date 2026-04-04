@@ -2,15 +2,9 @@ import type { Config } from "jest";
 
 const config: Config = {
   coverageProvider: "v8",
+  setupFiles: ["<rootDir>/jest.setup.env.ts"],
   transform: {
-    "^.+\\.(ts|tsx)$": [
-      "ts-jest",
-      {
-        tsconfig: {
-          esModuleInterop: true,
-        },
-      },
-    ],
+    "^.+\\.(ts|tsx)$": "<rootDir>/jest.transform.cjs",
   },
   testEnvironment: "jsdom",
   roots: ["<rootDir>/src"],

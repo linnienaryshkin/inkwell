@@ -175,6 +175,12 @@ jobs:
 
       - name: Test
         run: uv run pytest tests/ -v
+        env:
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'ci-placeholder' }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'ci-placeholder' }}
+          GITHUB_CALLBACK_URL: ${{ secrets.GITHUB_CALLBACK_URL || 'http://localhost:8000/auth/callback' }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET || 'ci-placeholder-secret' }}
+          ENVIRONMENT: development
 
   ui-deploy:
     name: ui-deploy

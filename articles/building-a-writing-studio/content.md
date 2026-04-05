@@ -8,7 +8,7 @@ What if your writing environment felt as powerful as your IDE?
 |-------|--------|
 | Framework | Next.js 15 |
 | Editor | Monaco |
-| Storage | GitHub repo |
+| Storage | GitHub repo |fd
 | Deploy | Vercel |
 
 ## Key Insight

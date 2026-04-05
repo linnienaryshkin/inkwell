@@ -88,6 +88,10 @@ async def save_article_endpoint(
     body: ArticleSave,
     access_token: str = Depends(require_auth),
 ) -> Article:
+    if not re.match(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$", slug):
+        raise HTTPException(
+            status_code=422, detail="Slug must be lowercase alphanumeric with hyphens"
+        )
     try:
         return await gh_save_article(
             access_token,

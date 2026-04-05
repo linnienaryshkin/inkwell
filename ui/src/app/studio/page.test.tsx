@@ -36,15 +36,18 @@ jest.mock("@/components/VersionStrip", () => ({
   VersionStrip: ({
     isDirty,
     saving,
+    saveError,
     onSave,
   }: {
     isDirty?: boolean;
     saving?: boolean;
+    saveError?: boolean;
     onSave?: () => void;
   }) => (
     <div data-testid="version-strip">
       <span data-testid="is-dirty">{isDirty ? "dirty" : "clean"}</span>
       <span data-testid="is-saving">{saving ? "saving" : "idle"}</span>
+      {saveError && <span data-testid="save-error">Save failed</span>}
       <button onClick={onSave}>Save</button>
     </div>
   ),
@@ -97,7 +100,7 @@ describe("StudioPage", () => {
       });
     });
 
-    it("should show live badge when API responds", async () => {
+    it("should not show live badge when API responds", async () => {
       mockFetchArticles.mockResolvedValue([
         {
           slug: "test",
@@ -114,7 +117,7 @@ describe("StudioPage", () => {
       });
       render(<StudioPage />);
       await waitFor(() => {
-        expect(screen.getByText("live")).toBeInTheDocument();
+        expect(screen.queryByText("live")).not.toBeInTheDocument();
       });
     });
   });
@@ -588,6 +591,29 @@ describe("StudioPage", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+      });
+    });
+
+    it("handleSave shows save error when API rejects", async () => {
+      mockSaveArticle.mockRejectedValue(new Error("network error"));
+
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("save-error")).toHaveTextContent("Save failed");
       });
     });
   });

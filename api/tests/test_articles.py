@@ -420,3 +420,17 @@ class TestSaveArticleEndpoint:
 
         assert response.status_code == 200
         mock_save.assert_awaited_once_with(TOKEN, slug, "T", [], "c", f"update {slug}")
+
+    def test_returns_422_on_invalid_slug(self, client: TestClient):
+        """
+        Slug with uppercase letters or invalid characters is rejected with 422 before
+        the GitHub API is called.
+        """
+        for bad_slug in ["BadSlug", "has.dots", "UPPER"]:
+            response = client.patch(
+                f"/articles/{bad_slug}",
+                json={"title": "T", "tags": [], "content": "c"},
+                headers=COOKIE_HEADER,
+            )
+            assert response.status_code == 422, f"expected 422 for slug {bad_slug!r}"
+            assert "Slug must be lowercase" in response.json()["detail"]

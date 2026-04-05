@@ -1,4 +1,4 @@
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "github-markdown-css/github-markdown-dark.css";
@@ -76,10 +76,12 @@ export function EditorPane({
     onTagsChange?.(resolvedTags.filter((t) => t !== tag));
   };
 
+  useEffect(() => {
+    if (addingTag) tagInputRef.current?.focus();
+  }, [addingTag]);
+
   const openTagInput = () => {
     setAddingTag(true);
-    // Focus after render
-    setTimeout(() => tagInputRef.current?.focus(), 0);
   };
 
   return (

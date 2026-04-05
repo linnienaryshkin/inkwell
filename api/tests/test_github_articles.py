@@ -457,91 +457,159 @@ class TestGetArticle:
 # ---------------------------------------------------------------------------
 
 
-def _make_put_client_mock(
+def _make_git_data_client_mock(
     get_url_map: dict[str, httpx.Response],
-    put_url_map: dict[str, httpx.Response],
+    post_responses: list[httpx.Response],
+    patch_url_map: dict[str, httpx.Response],
 ) -> MagicMock:
     """
-    Return a mock AsyncClient that handles both .get() and .put() calls.
-    Captures each .put() call so tests can inspect the request body.
+    Return a mock AsyncClient for the Git Data API write path.
+    - .get() looks up by URL in get_url_map
+    - .post() pops responses sequentially from post_responses; captures call args
+    - .patch() looks up by URL in patch_url_map
     """
-    put_calls: list[dict] = []
+    post_calls: list[dict] = []
+    post_queue = list(post_responses)
 
     async def _get(url: str, **kwargs) -> httpx.Response:
         if url in get_url_map:
             return get_url_map[url]
         raise KeyError(f"Unexpected GET URL in test: {url}")
 
-    async def _put(url: str, **kwargs) -> httpx.Response:
-        put_calls.append({"url": url, "json": kwargs.get("json", {})})
-        if url in put_url_map:
-            return put_url_map[url]
-        raise KeyError(f"Unexpected PUT URL in test: {url}")
+    async def _post(url: str, **kwargs) -> httpx.Response:
+        post_calls.append({"url": url, "json": kwargs.get("json", {})})
+        if post_queue:
+            return post_queue.pop(0)
+        raise KeyError(f"Unexpected POST URL in test (queue exhausted): {url}")
+
+    async def _patch(url: str, **kwargs) -> httpx.Response:
+        if url in patch_url_map:
+            return patch_url_map[url]
+        raise KeyError(f"Unexpected PATCH URL in test: {url}")
 
     mock_client = MagicMock()
     mock_client.get = AsyncMock(side_effect=_get)
-    mock_client.put = AsyncMock(side_effect=_put)
+    mock_client.post = AsyncMock(side_effect=_post)
+    mock_client.patch = AsyncMock(side_effect=_patch)
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
-    mock_client._put_calls = put_calls
+    mock_client._post_calls = post_calls
 
     client_class = MagicMock(return_value=mock_client)
     return client_class
 
 
-def _make_two_phase_client_mock(
+def _make_two_phase_git_mock(
     write_get_url_map: dict[str, httpx.Response],
-    write_put_url_map: dict[str, httpx.Response],
+    write_post_responses: list[httpx.Response],
+    write_patch_url_map: dict[str, httpx.Response],
     read_get_url_map: dict[str, httpx.Response],
 ) -> tuple[MagicMock, MagicMock]:
     """
-    create_article and save_article open one AsyncClient for writes, then call
-    get_article() which opens a second AsyncClient for reads.  This factory
-    returns (class_mock, write_client_mock) so tests can inspect .put() call args.
-
-    The returned class mock uses side_effect to return the write client on the
-    first instantiation and a read-only client on the second.
+    create_article and save_article open one AsyncClient for writes (Git Data API),
+    then call get_article() which opens a second AsyncClient for reads (Contents API).
+    Returns (class_mock, write_client_mock).
     """
-    write_client_mock_wrapper = _make_put_client_mock(write_get_url_map, write_put_url_map)
-    read_client_mock_wrapper = _make_client_mock(read_get_url_map)
+    write_wrapper = _make_git_data_client_mock(
+        write_get_url_map, write_post_responses, write_patch_url_map
+    )
+    read_wrapper = _make_client_mock(read_get_url_map)
 
-    write_client = write_client_mock_wrapper.return_value
-    read_client = read_client_mock_wrapper.return_value
+    write_client = write_wrapper.return_value
+    read_client = read_wrapper.return_value
 
     call_count = [0]
 
     def _side_effect(*args, **kwargs):
         call_count[0] += 1
-        if call_count[0] == 1:
-            return write_client
-        return read_client
+        return write_client if call_count[0] == 1 else read_client
 
     class_mock = MagicMock(side_effect=_side_effect)
     return class_mock, write_client
 
 
-def _put_201_response(url: str) -> httpx.Response:
-    """Successful PUT response (GitHub returns 201 Created for new files)."""
+def _blob_response(sha: str) -> httpx.Response:
     return httpx.Response(
-        201, json={"content": {}, "commit": {}}, request=httpx.Request("PUT", url)
+        201,
+        json={"sha": sha},
+        request=httpx.Request("POST", f"{GITHUB_API_BASE}/repos/{REPO}/git/blobs"),
     )
 
 
-def _put_200_response(url: str) -> httpx.Response:
-    """Successful PUT response for updates (GitHub returns 200)."""
+def _ref_response(head_sha: str) -> httpx.Response:
     return httpx.Response(
-        200, json={"content": {}, "commit": {}}, request=httpx.Request("PUT", url)
+        200,
+        json={"object": {"sha": head_sha}},
+        request=httpx.Request("GET", f"{GITHUB_API_BASE}/repos/{REPO}/git/ref/heads/main"),
     )
 
 
-def _put_error_response(status: int, url: str) -> httpx.Response:
-    """Error PUT response that will raise HTTPStatusError when raise_for_status() is called."""
-    return httpx.Response(status, json={"message": "error"}, request=httpx.Request("PUT", url))
+def _commit_get_response(head_sha: str, tree_sha: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"tree": {"sha": tree_sha}},
+        request=httpx.Request(
+            "GET", f"{GITHUB_API_BASE}/repos/{REPO}/git/commits/{head_sha}"
+        ),
+    )
 
 
-def _sha_response(sha: str, url: str) -> httpx.Response:
-    """Mock GET response that returns just the sha field (used by save_article's get_sha)."""
-    return httpx.Response(200, json={"sha": sha}, request=httpx.Request("GET", url))
+def _tree_response(tree_sha: str) -> httpx.Response:
+    return httpx.Response(
+        201,
+        json={"sha": tree_sha},
+        request=httpx.Request("POST", f"{GITHUB_API_BASE}/repos/{REPO}/git/trees"),
+    )
+
+
+def _commit_post_response(commit_sha: str) -> httpx.Response:
+    return httpx.Response(
+        201,
+        json={"sha": commit_sha},
+        request=httpx.Request("POST", f"{GITHUB_API_BASE}/repos/{REPO}/git/commits"),
+    )
+
+
+def _ref_patch_response() -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"object": {"sha": "updated"}},
+        request=httpx.Request(
+            "PATCH", f"{GITHUB_API_BASE}/repos/{REPO}/git/refs/heads/main"
+        ),
+    )
+
+
+def _error_response(status: int, method: str, url: str) -> httpx.Response:
+    return httpx.Response(
+        status, json={"message": "error"}, request=httpx.Request(method, url)
+    )
+
+
+def _default_write_maps(
+    head_sha: str = "head-sha",
+    base_tree_sha: str = "base-tree-sha",
+    new_tree_sha: str = "new-tree-sha",
+    new_commit_sha: str = "new-commit-sha",
+) -> tuple[dict, list, dict]:
+    """Return (get_map, post_responses, patch_map) for a successful _commit_files call."""
+    get_map = {
+        f"{GITHUB_API_BASE}/repos/{REPO}/git/ref/heads/main": _ref_response(head_sha),
+        f"{GITHUB_API_BASE}/repos/{REPO}/git/commits/{head_sha}": _commit_get_response(
+            head_sha, base_tree_sha
+        ),
+    }
+    # post_responses are consumed in order: blob×2, tree×1, commit×1
+    post_responses = [
+        _blob_response("blob-meta-sha"),
+        _blob_response("blob-content-sha"),
+        _tree_response(new_tree_sha),
+        _commit_post_response(new_commit_sha),
+    ]
+    patch_map = {
+        f"{GITHUB_API_BASE}/repos/{REPO}/git/refs/heads/main": _ref_patch_response(),
+    }
+    return get_map, post_responses, patch_map
 
 
 # ---------------------------------------------------------------------------
@@ -554,12 +622,6 @@ GITHUB_API_BASE_URL = "https://api.github.com"
 
 
 class TestCreateArticle:
-    def _meta_put_url(self, slug: str) -> str:
-        return f"{GITHUB_API_BASE_URL}/repos/{REPO}/contents/articles/{slug}/meta.json"
-
-    def _content_put_url(self, slug: str) -> str:
-        return f"{GITHUB_API_BASE_URL}/repos/{REPO}/contents/articles/{slug}/content.md"
-
     def _content_get_url(self, slug: str) -> str:
         return f"{GITHUB_API_BASE_URL}/repos/{REPO}/contents/articles/{slug}/content.md"
 
@@ -580,19 +642,16 @@ class TestCreateArticle:
     @pytest.mark.asyncio
     async def test_success_returns_article_with_version(self):
         """
-        Two PUTs succeed; the subsequent get_article() returns an Article with versions[0].
+        All Git Data API calls succeed; the subsequent get_article() returns an Article.
         """
         slug = "new-article"
         title = "New Article"
         tags = ["python"]
         content = "# New Article\n\nHello."
 
-        put_url_map = {
-            self._meta_put_url(slug): _put_201_response(self._meta_put_url(slug)),
-            self._content_put_url(slug): _put_201_response(self._content_put_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, _ = _make_two_phase_client_mock({}, put_url_map, read_url_map)
+        class_mock, _ = _make_two_phase_git_mock(get_map, post_responses, patch_map, read_url_map)
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             result = await create_article(TOKEN, title, slug, tags, content)
@@ -602,9 +661,9 @@ class TestCreateArticle:
         assert len(result.versions) == 1
 
     @pytest.mark.asyncio
-    async def test_meta_json_content_is_correct(self):
+    async def test_meta_json_blob_content_is_correct(self):
         """
-        The body of the PUT for meta.json, when base64-decoded, must be
+        The blob POST for meta.json, when base64-decoded, must contain
         {"title": ..., "status": "draft", "tags": [...]}.
         """
         slug = "meta-check"
@@ -612,63 +671,59 @@ class TestCreateArticle:
         tags = ["a", "b"]
         content = "content body"
 
-        put_url_map = {
-            self._meta_put_url(slug): _put_201_response(self._meta_put_url(slug)),
-            self._content_put_url(slug): _put_201_response(self._content_put_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, write_client = _make_two_phase_client_mock({}, put_url_map, read_url_map)
+        class_mock, write_client = _make_two_phase_git_mock(
+            get_map, post_responses, patch_map, read_url_map
+        )
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             await create_article(TOKEN, title, slug, tags, content)
 
-        # First put() call is for meta.json
-        meta_put_body = write_client._put_calls[0]["json"]
-        decoded = json.loads(base64.b64decode(meta_put_body["content"]).decode("utf-8"))
+        # Blob POSTs come first (parallel, but index 0 = meta, 1 = content by list order)
+        meta_blob_body = write_client._post_calls[0]["json"]
+        decoded = json.loads(base64.b64decode(meta_blob_body["content"]).decode("utf-8"))
         assert decoded["title"] == title
         assert decoded["status"] == "draft"
         assert decoded["tags"] == tags
 
     @pytest.mark.asyncio
-    async def test_content_md_is_correct(self):
+    async def test_content_md_blob_content_is_correct(self):
         """
-        The body of the PUT for content.md, when base64-decoded, must match the supplied content.
+        The blob POST for content.md, when base64-decoded, must match the supplied content.
         """
         slug = "content-check"
         title = "Content Check"
         tags = []
         content = "# Content Check\n\nBody text here."
 
-        put_url_map = {
-            self._meta_put_url(slug): _put_201_response(self._meta_put_url(slug)),
-            self._content_put_url(slug): _put_201_response(self._content_put_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, write_client = _make_two_phase_client_mock({}, put_url_map, read_url_map)
+        class_mock, write_client = _make_two_phase_git_mock(
+            get_map, post_responses, patch_map, read_url_map
+        )
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             await create_article(TOKEN, title, slug, tags, content)
 
-        # Second put() call is for content.md
-        content_put_body = write_client._put_calls[1]["json"]
-        decoded = base64.b64decode(content_put_body["content"]).decode("utf-8")
+        content_blob_body = write_client._post_calls[1]["json"]
+        decoded = base64.b64decode(content_blob_body["content"]).decode("utf-8")
         assert decoded == content
 
     @pytest.mark.asyncio
-    async def test_first_put_422_raises_http_status_error(self):
+    async def test_blob_post_error_raises_http_status_error(self):
         """
-        If meta.json PUT returns 422, the HTTPStatusError propagates immediately.
+        If blob POST returns an error, HTTPStatusError propagates.
         """
         slug = "conflict-slug"
         title = "Conflict"
         tags = []
         content = "content"
 
-        error_response = _put_error_response(422, self._meta_put_url(slug))
-        put_url_map = {
-            self._meta_put_url(slug): error_response,
-        }
-        class_mock, _ = _make_two_phase_client_mock({}, put_url_map, {})
+        error = _error_response(422, "POST", f"{GITHUB_API_BASE}/repos/{REPO}/git/blobs")
+        get_map, _, patch_map = _default_write_maps()
+        # Replace blob responses with one error (second blob won't be reached)
+        class_mock, _ = _make_two_phase_git_mock(get_map, [error], patch_map, {})
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
@@ -677,26 +732,27 @@ class TestCreateArticle:
         assert exc_info.value.response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_second_put_422_raises_http_status_error(self):
+    async def test_ref_get_error_raises_http_status_error(self):
         """
-        If content.md PUT returns 422, the HTTPStatusError propagates.
+        If GET /git/ref/heads/main returns 404, HTTPStatusError propagates.
         """
-        slug = "conflict-slug-2"
-        title = "Conflict 2"
+        slug = "ref-error"
+        title = "Ref Error"
         tags = []
         content = "content"
 
-        put_url_map = {
-            self._meta_put_url(slug): _put_201_response(self._meta_put_url(slug)),
-            self._content_put_url(slug): _put_error_response(422, self._content_put_url(slug)),
+        ref_url = f"{GITHUB_API_BASE}/repos/{REPO}/git/ref/heads/main"
+        get_map = {
+            ref_url: _error_response(404, "GET", ref_url),
         }
-        class_mock, _ = _make_two_phase_client_mock({}, put_url_map, {})
+        _, post_responses, patch_map = _default_write_maps()
+        class_mock, _ = _make_two_phase_git_mock(get_map, post_responses, patch_map, {})
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await create_article(TOKEN, title, slug, tags, content)
 
-        assert exc_info.value.response.status_code == 422
+        assert exc_info.value.response.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -714,12 +770,6 @@ class TestSaveArticle:
     def _commits_url(self) -> str:
         return f"{GITHUB_API_BASE_URL}/repos/{REPO}/commits"
 
-    def _make_sha_get_map(self, slug: str, meta_sha: str, content_sha: str) -> dict:
-        return {
-            self._meta_url(slug): _sha_response(meta_sha, self._meta_url(slug)),
-            self._content_url(slug): _sha_response(content_sha, self._content_url(slug)),
-        }
-
     def _make_read_url_map(self, slug: str, title: str, content: str, tags: list) -> dict:
         meta_str = json.dumps({"title": title, "status": "draft", "tags": tags})
         return {
@@ -731,7 +781,7 @@ class TestSaveArticle:
     @pytest.mark.asyncio
     async def test_success_returns_updated_article(self):
         """
-        GETs the SHAs, PUTs both files, then returns the updated Article from get_article().
+        All Git Data API calls succeed; returns the updated Article from get_article().
         """
         slug = "existing-article"
         title = "Updated Title"
@@ -739,13 +789,9 @@ class TestSaveArticle:
         content = "# Updated\n\nNew content."
         message = "update existing-article"
 
-        get_url_map = self._make_sha_get_map(slug, "sha-meta-001", "sha-content-001")
-        put_url_map = {
-            self._meta_url(slug): _put_200_response(self._meta_url(slug)),
-            self._content_url(slug): _put_200_response(self._content_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, _ = _make_two_phase_client_mock(get_url_map, put_url_map, read_url_map)
+        class_mock, _ = _make_two_phase_git_mock(get_map, post_responses, patch_map, read_url_map)
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             result = await save_article(TOKEN, slug, title, tags, content, message)
@@ -755,96 +801,9 @@ class TestSaveArticle:
         assert result.meta.title == title
 
     @pytest.mark.asyncio
-    async def test_sha_included_in_put_body(self):
+    async def test_commit_message_used_in_git_commit(self):
         """
-        The PUT request body must include the 'sha' field obtained from the GET response.
-        """
-        slug = "sha-check"
-        title = "SHA Check"
-        tags = []
-        content = "content"
-        message = "update sha-check"
-        expected_meta_sha = "abc-meta-sha"
-        expected_content_sha = "abc-content-sha"
-
-        get_url_map = self._make_sha_get_map(slug, expected_meta_sha, expected_content_sha)
-        put_url_map = {
-            self._meta_url(slug): _put_200_response(self._meta_url(slug)),
-            self._content_url(slug): _put_200_response(self._content_url(slug)),
-        }
-        read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, write_client = _make_two_phase_client_mock(
-            get_url_map, put_url_map, read_url_map
-        )
-
-        with patch("app.github_articles.httpx.AsyncClient", class_mock):
-            await save_article(TOKEN, slug, title, tags, content, message)
-
-        # Both PUT calls must include "sha" in the body
-        for call in write_client._put_calls:
-            assert "sha" in call["json"], f"PUT to {call['url']} missing 'sha' field"
-
-    @pytest.mark.asyncio
-    async def test_meta_get_404_raises_http_status_error(self):
-        """
-        If GET meta.json returns 404, HTTPStatusError propagates.
-        """
-        slug = "not-found-meta"
-        title = "T"
-        tags = []
-        content = "c"
-        message = "update not-found-meta"
-
-        not_found = httpx.Response(
-            404,
-            json={"message": "Not Found"},
-            request=httpx.Request("GET", self._meta_url(slug)),
-        )
-        # content SHA will not matter — meta fails first (or concurrently)
-        get_url_map = {
-            self._meta_url(slug): not_found,
-            self._content_url(slug): _sha_response("some-sha", self._content_url(slug)),
-        }
-        class_mock, _ = _make_two_phase_client_mock(get_url_map, {}, {})
-
-        with patch("app.github_articles.httpx.AsyncClient", class_mock):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await save_article(TOKEN, slug, title, tags, content, message)
-
-        assert exc_info.value.response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_content_get_404_raises_http_status_error(self):
-        """
-        If GET content.md returns 404, HTTPStatusError propagates.
-        """
-        slug = "not-found-content"
-        title = "T"
-        tags = []
-        content = "c"
-        message = "update not-found-content"
-
-        not_found = httpx.Response(
-            404,
-            json={"message": "Not Found"},
-            request=httpx.Request("GET", self._content_url(slug)),
-        )
-        get_url_map = {
-            self._meta_url(slug): _sha_response("some-sha", self._meta_url(slug)),
-            self._content_url(slug): not_found,
-        }
-        class_mock, _ = _make_two_phase_client_mock(get_url_map, {}, {})
-
-        with patch("app.github_articles.httpx.AsyncClient", class_mock):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await save_article(TOKEN, slug, title, tags, content, message)
-
-        assert exc_info.value.response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_custom_commit_message_used(self):
-        """
-        The 'message' field in each PUT body must equal the supplied commit message.
+        The message field in the git commit POST body must equal the supplied commit message.
         """
         slug = "msg-check"
         title = "Msg Check"
@@ -852,27 +811,23 @@ class TestSaveArticle:
         content = "content"
         custom_message = "fix: correct heading typo"
 
-        get_url_map = self._make_sha_get_map(slug, "sha-m", "sha-c")
-        put_url_map = {
-            self._meta_url(slug): _put_200_response(self._meta_url(slug)),
-            self._content_url(slug): _put_200_response(self._content_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, write_client = _make_two_phase_client_mock(
-            get_url_map, put_url_map, read_url_map
+        class_mock, write_client = _make_two_phase_git_mock(
+            get_map, post_responses, patch_map, read_url_map
         )
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             await save_article(TOKEN, slug, title, tags, content, custom_message)
 
-        for call in write_client._put_calls:
-            assert call["json"]["message"] == custom_message
+        # post_calls order: blob×2, tree, commit
+        commit_post_body = write_client._post_calls[3]["json"]
+        assert commit_post_body["message"] == custom_message
 
     @pytest.mark.asyncio
     async def test_default_commit_message_used_when_none(self):
         """
         The router fills in 'update <slug>' when the client omits the message field.
-        Verify that passing the default string directly causes PUT bodies to use it.
         """
         slug = "default-msg"
         title = "Default Msg"
@@ -880,18 +835,36 @@ class TestSaveArticle:
         content = "content"
         default_message = f"update {slug}"
 
-        get_url_map = self._make_sha_get_map(slug, "sha-m", "sha-c")
-        put_url_map = {
-            self._meta_url(slug): _put_200_response(self._meta_url(slug)),
-            self._content_url(slug): _put_200_response(self._content_url(slug)),
-        }
+        get_map, post_responses, patch_map = _default_write_maps()
         read_url_map = self._make_read_url_map(slug, title, content, tags)
-        class_mock, write_client = _make_two_phase_client_mock(
-            get_url_map, put_url_map, read_url_map
+        class_mock, write_client = _make_two_phase_git_mock(
+            get_map, post_responses, patch_map, read_url_map
         )
 
         with patch("app.github_articles.httpx.AsyncClient", class_mock):
             await save_article(TOKEN, slug, title, tags, content, default_message)
 
-        for call in write_client._put_calls:
-            assert call["json"]["message"] == default_message
+        commit_post_body = write_client._post_calls[3]["json"]
+        assert commit_post_body["message"] == default_message
+
+    @pytest.mark.asyncio
+    async def test_ref_get_404_raises_http_status_error(self):
+        """
+        If GET /git/ref/heads/main returns 404, HTTPStatusError propagates.
+        """
+        slug = "not-found"
+        title = "T"
+        tags = []
+        content = "c"
+        message = "update not-found"
+
+        ref_url = f"{GITHUB_API_BASE}/repos/{REPO}/git/ref/heads/main"
+        get_map = {ref_url: _error_response(404, "GET", ref_url)}
+        _, post_responses, patch_map = _default_write_maps()
+        class_mock, _ = _make_two_phase_git_mock(get_map, post_responses, patch_map, {})
+
+        with patch("app.github_articles.httpx.AsyncClient", class_mock):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await save_article(TOKEN, slug, title, tags, content, message)
+
+        assert exc_info.value.response.status_code == 404

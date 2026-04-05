@@ -17,6 +17,7 @@ type Props = {
   isDirty?: boolean;
   saving?: boolean;
   deleting?: boolean;
+  saveError?: boolean;
   onSave?: () => void;
   onDelete?: () => void;
 };
@@ -27,6 +28,7 @@ export function VersionStrip({
   isDirty = false,
   saving = false,
   deleting = false,
+  saveError = false,
   onSave,
   onDelete,
 }: Props) {
@@ -163,6 +165,11 @@ export function VersionStrip({
           >
             {deleting ? "Deleting…" : "Delete"}
           </button>
+        )}
+        {saveError && (
+          <span data-testid="save-error" className="text-xs" style={{ color: "var(--red)" }}>
+            Save failed
+          </span>
         )}
         <button
           onClick={onSave ?? (() => {})}

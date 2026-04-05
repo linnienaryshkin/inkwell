@@ -146,6 +146,7 @@ export default function StudioPage() {
   const [draftTitle, setDraftTitle] = useState<string>("");
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Snapshot of last-saved/loaded state — isDirty is derived by comparison
@@ -278,6 +279,7 @@ export default function StudioPage() {
       selectedArticle.slug === "__new__" ? titleToSlug(draftTitle) : selectedArticle.slug;
     if (!slug) return; // empty slug from all-symbols title
     setSaving(true);
+    setSaveError(false);
     try {
       let article: Article;
       if (selectedArticle.slug === "__new__") {
@@ -296,6 +298,7 @@ export default function StudioPage() {
       syncToArticle(article);
     } catch (err) {
       console.error("Save failed:", err);
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
@@ -427,18 +430,6 @@ export default function StudioPage() {
               }}
             >
               demo mode
-            </span>
-          )}
-          {!appLoading && dataSource === "live" && (
-            <span
-              className="text-xs px-1.5 py-0.5 rounded"
-              style={{
-                background: "var(--green)",
-                color: "var(--bg-primary)",
-                fontWeight: 500,
-              }}
-            >
-              live
             </span>
           )}
         </div>
@@ -601,6 +592,7 @@ export default function StudioPage() {
             isDirty={isDirty}
             saving={saving}
             deleting={deleting}
+            saveError={saveError}
             onSave={handleSave}
             onDelete={handleDelete}
           />

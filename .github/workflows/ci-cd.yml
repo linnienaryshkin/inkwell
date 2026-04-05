@@ -3,8 +3,16 @@ name: ci-cd
 on:
   push:
     branches: [main]
+    paths:
+      - "ui/**"
+      - "api/**"
+      - ".github/workflows/ci-cd.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "ui/**"
+      - "api/**"
+      - ".github/workflows/ci-cd.yml"
 
 jobs:
   ui-quality-gate:

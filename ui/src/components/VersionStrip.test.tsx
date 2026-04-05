@@ -133,5 +133,15 @@ describe("VersionStrip", () => {
       render(<VersionStrip slug="test-article" isDirty={true} />);
       expect(screen.getByTitle("Save changes")).toBeInTheDocument();
     });
+
+    it("shows 'Save failed' error when saveError is true", () => {
+      render(<VersionStrip slug="test-article" saveError={true} />);
+      expect(screen.getByTestId("save-error")).toHaveTextContent("Save failed");
+    });
+
+    it("does not show 'Save failed' when saveError is false", () => {
+      render(<VersionStrip slug="test-article" saveError={false} />);
+      expect(screen.queryByTestId("save-error")).not.toBeInTheDocument();
+    });
   });
 });

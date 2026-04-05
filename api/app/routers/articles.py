@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.article import Article, ArticlePatch
 
-router = APIRouter(prefix="/articles", tags=["articles"])
+# TODO: Add a ASCII Architecture diagram of how these resources work
+
+router = APIRouter()
 
 _store: dict[str, Article] = {
     a.slug: a

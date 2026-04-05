@@ -108,6 +108,44 @@ task api:test        # Run API tests
 task api:lint        # Lint API code
 ```
 
+### GitHub OAuth setup
+
+The API requires four environment variables for GitHub OAuth login. The server raises a `RuntimeError` at startup if any are absent.
+
+| Variable | Description | Where to get it |
+|---|---|---|
+| `OAUTH_CLIENT_ID` | OAuth App client ID | From GitHub OAuth App settings (Client ID field) |
+| `OAUTH_CLIENT_SECRET` | OAuth App client secret | From GitHub OAuth App settings (generate a new client secret) |
+| `OAUTH_CALLBACK_URL` | Must exactly match the "Authorization callback URL" registered in the OAuth App | Set by you when creating the OAuth App |
+| `SESSION_SECRET` | Random secret for signing session cookies | Generate locally: `python -c "import secrets; print(secrets.token_hex(32))"` |
+
+**Create a GitHub OAuth App:**
+
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App** | <https://github.com/settings/developers>
+2. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (dev) or your production URL
+3. Copy the **Client ID** and generate a **Client Secret**
+
+**Local development** — create `api/.env` (never commit):
+
+```bash
+OAUTH_CLIENT_ID=your_client_id_here
+OAUTH_CLIENT_SECRET=your_client_secret_here
+OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback
+SESSION_SECRET=your_random_secret_here
+ENVIRONMENT=development
+```
+
+Start the API with: `cd api && uv run uvicorn app.main:app --reload --env-file .env`
+
+**CI/CD (GitHub Actions)** — add secrets via the `gh` CLI (each prompts for the value securely):
+
+```bash
+gh secret set OAUTH_CLIENT_ID     --repo linnienaryshkin/inkwell
+gh secret set OAUTH_CLIENT_SECRET --repo linnienaryshkin/inkwell
+gh secret set OAUTH_CALLBACK_URL  --repo linnienaryshkin/inkwell
+gh secret set SESSION_SECRET      --repo linnienaryshkin/inkwell
+```
+
 ### Development guide
 
 See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.

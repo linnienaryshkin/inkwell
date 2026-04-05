@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+# TODO: Add documentation to the models and their fields
+
 
 class Article(BaseModel):
     slug: str

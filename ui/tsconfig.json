@@ -21,6 +21,7 @@
     "eslint.config.ts",
     "index.html",
     "jest.config.ts",
-    "jest.setup.ts"
+    "jest.setup.ts",
+    "jest.setup.env.ts"
   ]
 }

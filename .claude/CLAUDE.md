@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend (in-memory, phase 1). Articles will eventually be stored as GitHub repo files. Deployed at <https://linnienaryshkin.github.io/inkwell/>.
 
-**What's currently mock (not wired up):** lint results in SidePanel, publish platform calls, VersionStrip restore/diff buttons, GitHub OAuth, SQLite/Postgres persistence.
+**What's currently mock (not wired up):** lint results in SidePanel, publish platform calls, VersionStrip restore/diff buttons, SQLite/Postgres persistence.
 
 ## Repository Structure
 
@@ -42,7 +42,7 @@ npm run test src/components/EditorPane.test.tsx --no-coverage
 ```bash
 cd api
 uv sync --extra dev              # Install deps (creates .venv automatically)
-uv run uvicorn app.main:app --reload   # Dev server at localhost:8000
+uv run uvicorn app.main:app --reload --env-file .env   # Dev server at localhost:8000 (requires api/.env)
 uv run pytest tests/ -v          # Run tests
 uv run ruff check app/ tests/    # Lint
 uv run ruff format app/ tests/   # Auto-format
@@ -60,7 +60,7 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 - **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar. `EditorPane` receives `key={selectedSlug}` — this intentionally forces a full remount when the article changes, resetting Monaco's internal state. `VersionStrip` renders below it (version timeline, mock data; "Restore" and "View diff" buttons are not yet wired up)
 - **Right** – `SidePanel`: lint / publish / TOC tabs. Lint results are mock (hardcoded readability score + two example issues). Publish tab lists five hardcoded platforms (dev.to, Hashnode, Medium, Substack, LinkedIn) — no real API calls yet
 
-**API integration:** `StudioPage` calls `fetchArticles()` on mount via `src/services/api.ts`. On failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`.
+**API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. On articles failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link or the user's avatar/login.
 
 **State ownership rules** (enforced by `ui-engineer` skill):
 
@@ -84,16 +84,22 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 
 **Endpoints:**
 
-| Method | Path              | Description                                |
-| ------ | ----------------- | ------------------------------------------ |
-| `GET`  | `/articles`       | List all articles                          |
-| `GET`  | `/articles/{slug}` | Get article by slug                        |
-| `POST` | `/articles`       | Create article (409 on slug conflict)      |
-| `PATCH` | `/articles/{slug}` | Partial update (404 on unknown slug)       |
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET`  | `/articles` | List all articles |
+| `GET`  | `/articles/{slug}` | Get article by slug |
+| `POST` | `/articles` | Create article (409 on slug conflict) |
+| `PATCH` | `/articles/{slug}` | Partial update (404 on unknown slug) |
+| `GET`  | `/auth/login` | Redirect to GitHub OAuth authorize |
+| `GET`  | `/auth/callback` | GitHub OAuth callback — issues signed session cookie |
+| `GET`  | `/auth/me` | Returns current user profile (401 if not authenticated) |
+| `GET`  | `/auth/refresh` | Re-issues session cookie (401 if not authenticated) |
 
-**Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/models/article.py`, `app/ai/` (reserved for LangChain).
+**Auth:** `itsdangerous` signed session cookies (`inkwell_session`). Access token stored server-side in `_session_store` (in-memory), never in the cookie. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `SESSION_SECRET` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
-**CORS:** Allows `http://localhost:5173` in dev.
+**Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/ai/` (reserved for LangChain).
+
+**CORS:** Allows `http://localhost:5173` and `https://linnienaryshkin.github.io` with `allow_credentials=True`.
 
 ## Testing
 
@@ -126,5 +132,5 @@ source .dev-env
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs. **Only agent with git permissions.**
 - **ui-engineer skill** — invoked automatically for UI changes; enforces state ownership and styling rules
 - **api-engineer skill** — invoked automatically for API changes; enforces API conventions, schema sync, and testing
-- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config. Live GitHub settings (branch protection, environments, Pages, secrets, re-running jobs) are documented in `.github/workflows/README.md`
+- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config. Live GitHub settings (branch protection, environments, Pages, secrets, re-running jobs) are documented in `.claude/rules/workflow.md`
 - **code-review skill** — `/code-review <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

@@ -1,6 +1,10 @@
-# GitHub Configuration
+---
+description: GitHub CI/CD workflows, branch protection, deployment environments, Pages configuration, and secrets for this repository. Read this before editing any workflow file or GitHub settings.
+paths:
+  - ".github/workflows/**"
+---
 
-This file documents the live GitHub settings for this repository — branch protection, deployment environments, Pages configuration, secrets, and workflows — along with the GitHub MCP API calls and website URLs to manage them.
+# GitHub Configuration
 
 > **Keep this file current.** Whenever a setting is changed (via API or website), update the "Current state" for the relevant section below.
 
@@ -33,6 +37,24 @@ api-check (parallel, does NOT block ui-deploy)
 
 ---
 
+## Before Editing a Workflow
+
+1. Read this file and the current workflow file — never edit from memory
+2. If adding a new job: add it to branch protection required checks (section 1 below)
+3. If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
+4. After any workflow change: open a PR, watch the CI run, confirm all jobs pass
+5. If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge
+6. Update the "Current state" tables below if any settings were changed
+
+## Common Pitfalls
+
+- **Deploy fails with 404** — GitHub Pages not enabled; use GitHub MCP to set source to "GitHub Actions" in repo settings
+- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use GitHub MCP to set `null` policy instead of a named branch
+- **New CI job doesn't gate merges** — added to workflow but not to branch protection required checks
+- **Re-run fails instantly** — environment branch policy still restricts the ref; check with GitHub MCP API
+
+---
+
 ## 1. Branch Protection (`main`)
 
 **Website:** <https://github.com/linnienaryshkin/inkwell/settings/branches>
@@ -49,11 +71,11 @@ api-check (parallel, does NOT block ui-deploy)
 
 ### View
 
-Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/branches/main/protection`
+Use GitHub MCP: `mcp__github__list_branches` or `GET /repos/linnienaryshkin/inkwell/branches/main/protection`
 
 ### Update required status checks
 
-Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` and body:
+Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` and body:
 ```json
 {
   "required_status_checks": {
@@ -78,7 +100,7 @@ When adding a new CI job that should gate merges, add it to both the workflow fi
 
 ### Remove branch protection entirely
 
-Use GitHub MCP: `mcp__github__api_call` with DELETE `/repos/linnienaryshkin/inkwell/branches/main/protection`
+Use GitHub MCP: DELETE `/repos/linnienaryshkin/inkwell/branches/main/protection`
 
 ---
 
@@ -96,12 +118,10 @@ Use GitHub MCP: `mcp__github__api_call` with DELETE `/repos/linnienaryshkin/inkw
 ### View
 
 Use GitHub MCP:
-- `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/environments/github-pages`
-- `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
+- GET `/repos/linnienaryshkin/inkwell/environments/github-pages`
+- GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
 
 ### Restrict deployments to `main` only (production state)
-
-Use GitHub MCP:
 
 1. Enable custom branch policies with PUT `/repos/linnienaryshkin/inkwell/environments/github-pages`:
 ```json
@@ -115,7 +135,7 @@ Use GitHub MCP:
 
 ### Temporarily allow all branches (to validate a fix)
 
-Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` with body:
+PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` with body:
 ```json
 { "deployment_branch_policy": null }
 ```
@@ -124,14 +144,12 @@ Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` w
 
 ### Allow a specific branch temporarily
 
-Use GitHub MCP: POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies` with body:
+POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies` with body:
 ```json
 { "name": "fix/my-branch", "type": "branch" }
 ```
 
 ### Remove a specific branch policy
-
-Use GitHub MCP:
 
 1. Get the policy ID with GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
 2. Delete with DELETE `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID>`
@@ -151,18 +169,18 @@ Use GitHub MCP:
 
 ### View
 
-Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/pages` and extract `build_type`, `status`, and `html_url`
+Use GitHub MCP: GET `/repos/linnienaryshkin/inkwell/pages` and extract `build_type`, `status`, and `html_url`
 
 ### Enable (first-time setup)
 
-Use GitHub MCP: `mcp__github__api_call` with POST `/repos/linnienaryshkin/inkwell/pages` and body:
+POST `/repos/linnienaryshkin/inkwell/pages` with body:
 ```json
 { "build_type": "workflow" }
 ```
 
 ### Update source to GitHub Actions (if previously set to a branch)
 
-Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/pages` and body:
+PUT `/repos/linnienaryshkin/inkwell/pages` with body:
 ```json
 { "build_type": "workflow" }
 ```
@@ -173,25 +191,46 @@ Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell
 
 **Website:** <https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>
 
+### Source of truth: `.env.example`
+
+`.env.example` is the canonical list of every secret/env var this project needs. It lives at `api/.env.example` (API secrets) and `ui/.env.example` (Vite vars) and contains placeholder values so CI and tests can run without real credentials.
+
+**Three-layer contract:**
+
+| Layer | Who manages it | Purpose |
+|-------|---------------|---------|
+| `api/.env.example`, `ui/.env.example` | Committed to repo (devops skill keeps them up to date) | Documents every required var with a placeholder value; `api/.env.example` used by `api/tests/conftest.py` to seed test env |
+| `api/.env`, `ui/.env` | **Manual — each developer** copies the example and fills in real values; never committed | Local dev with real credentials |
+| GitHub Actions secrets (<https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>) | **Manual — repo owner** adds real values via the UI; devops skill creates the secret slot if missing | CI/CD with real credentials |
+
+**Rules:**
+- Whenever a new secret is added to `api/.env.example` or `ui/.env.example`, the devops skill must also create the corresponding GitHub Actions secret slot (with a placeholder). The **user must then fill in the real value** in both the local `.env` and the GitHub Actions secret (via the website above).
+- `api/.env` and `ui/.env` must never be committed — they are gitignored.
+- `.env.example` files must never contain real secret values — only placeholders like `ci-placeholder` or empty strings.
+
 ### Current state
 
-| Secret | Used by | Last updated |
-|--------|---------|--------------|
-| `ANTHROPIC_API_KEY` | `claude.yml` | 2026-03-24 |
+| Secret | Used by | Origin in `.env.example` | Last updated |
+|--------|---------|--------------------------|--------------|
+| `ANTHROPIC_API_KEY` | `claude.yml` | `ANTHROPIC_API_KEY=` | 2026-03-24 |
+| `OAUTH_CLIENT_ID` | `api/` OAuth | `OAUTH_CLIENT_ID=ci-placeholder` | 2026-04-04 |
+| `OAUTH_CLIENT_SECRET` | `api/` OAuth | `OAUTH_CLIENT_SECRET=ci-placeholder` | 2026-04-04 |
+| `OAUTH_CALLBACK_URL` | `api/` OAuth | `OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback` | 2026-04-04 |
+| `SESSION_SECRET` | `api/` OAuth | `SESSION_SECRET=ci-placeholder-secret` | 2026-04-04 |
 
 ### List secrets (names only — values are never shown)
 
-Use GitHub MCP: `mcp__github__api_call` with GET `/repos/linnienaryshkin/inkwell/actions/secrets`
+Use GitHub MCP: GET `/repos/linnienaryshkin/inkwell/actions/secrets`
 
 ### Add or update a secret
 
-Use GitHub MCP: `mcp__github__api_call` with PUT `/repos/linnienaryshkin/inkwell/actions/secrets/ANTHROPIC_API_KEY` with encrypted secret value (base64-encoded)
+Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/actions/secrets/<SECRET_NAME>` with encrypted secret value (base64-encoded)
 
 ---
 
 ## 5. Re-running Failed Workflow Jobs
 
-Use GitHub MCP: `mcp__github__api_call` for workflow operations:
+Use GitHub MCP for workflow operations:
 
 - **List recent runs on a branch**: GET `/repos/linnienaryshkin/inkwell/actions/runs?branch=<branch>&per_page=5`
 - **View failure summary**: GET `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>`

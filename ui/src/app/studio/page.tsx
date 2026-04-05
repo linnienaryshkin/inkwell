@@ -4,7 +4,8 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles } from "@/services/api";
+import { fetchArticles, fetchCurrentUser, getLoginUrl } from "@/services/api";
+import type { AuthUser } from "@/services/api";
 
 export type Article = {
   slug: string;
@@ -173,6 +174,7 @@ export default function StudioPage() {
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -185,6 +187,21 @@ export default function StudioPage() {
       })
       .catch(() => {
         // API unavailable — keep mock data
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    fetchCurrentUser()
+      .then((user) => {
+        if (ignore) return;
+        setCurrentUser(user);
+      })
+      .catch(() => {
+        // Not authenticated — leave null, demo mode continues
       });
     return () => {
       ignore = true;
@@ -288,12 +305,26 @@ export default function StudioPage() {
           >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-            style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
-          >
-            IN
-          </div>
+          {currentUser === null ? (
+            <a
+              href={getLoginUrl()}
+              aria-label="Sign in with GitHub"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm"
+              style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
+            >
+              <FaGithub size={16} />
+              Sign in with GitHub
+            </a>
+          ) : (
+            <>
+              <img
+                src={currentUser.avatar_url}
+                alt={currentUser.login}
+                className="w-8 h-8 rounded-full"
+              />
+              <span style={{ color: "var(--text-secondary)" }}>{currentUser.login}</span>
+            </>
+          )}
         </div>
       </header>
 

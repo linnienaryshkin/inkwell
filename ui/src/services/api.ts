@@ -1,6 +1,6 @@
 import type { Article } from "@/app/studio/page";
 
-const API_BASE = "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const TIMEOUT_MS = 3000;
 
 async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
@@ -13,8 +13,29 @@ async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Res
   }
 }
 
+export type AuthUser = {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+};
+
+export async function fetchCurrentUser(): Promise<AuthUser> {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/me`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Not authenticated");
+  return response.json() as Promise<AuthUser>;
+}
+
+export function getLoginUrl(): string {
+  const redirectUrl = window.location.origin + import.meta.env.BASE_URL;
+  return `${API_BASE}/auth/login?redirect_url=${encodeURIComponent(redirectUrl)}`;
+}
+
 export async function fetchArticles(): Promise<Article[]> {
-  const response = await fetchWithTimeout(`${API_BASE}/articles`);
+  const response = await fetchWithTimeout(`${API_BASE}/articles`, {
+    credentials: "include",
+  });
   if (!response.ok) throw new Error(`Failed to fetch articles: ${response.status}`);
   return response.json() as Promise<Article[]>;
 }
@@ -24,6 +45,7 @@ export async function patchArticle(slug: string, patch: Partial<Article>): Promi
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+    credentials: "include",
   });
   if (!response.ok) throw new Error(`Failed to patch article: ${response.status}`);
   return response.json() as Promise<Article>;

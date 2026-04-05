@@ -5,13 +5,28 @@ FastAPI backend for the Inkwell writing studio.
 ## Quick Start
 
 ```bash
+cp .env.example .env             # fill in OAuth credentials + secrets
 uv sync --extra dev              # install deps + create .venv
-uv run uvicorn app.main:app --reload   # http://localhost:8000
+uv run uvicorn app.main:app --reload --env-file .env   # http://localhost:8000
 uv run pytest tests/ -v          # run tests
 uv run ruff check app/ tests/    # lint
 ```
 
 Once running, open http://localhost:8000/docs for the auto-generated Swagger UI (provided by FastAPI for free).
+
+## Environment Variables
+
+The server reads its config from a `.env` file (passed via `--env-file .env` to uvicorn). Copy `.env.example` and fill in the values:
+
+| Variable | Description |
+| -------- | ----------- |
+| `OAUTH_CLIENT_ID` | GitHub OAuth app client ID |
+| `OAUTH_CLIENT_SECRET` | GitHub OAuth app client secret |
+| `OAUTH_CALLBACK_URL` | Must match the callback URL registered in your GitHub OAuth app |
+| `SESSION_SECRET` | Random secret used to sign session cookies (use `openssl rand -hex 32`) |
+| `FRONTEND_URL` | URL of the frontend (e.g. `http://localhost:5173`) |
+
+The server raises `RuntimeError` at startup if any of these are missing, so failures are caught immediately rather than at request time.
 
 ## How This App Is Organized
 
@@ -36,6 +51,15 @@ GET    /articles          --> list_articles()    --> returns all articles
 GET    /articles/{slug}   --> get_article(slug)  --> returns one article or 404
 POST   /articles          --> create_article()   --> creates an article or 409 if slug exists
 PATCH  /articles/{slug}   --> patch_article()    --> partial update or 404
+```
+
+**`auth.py`** defines all `/auth` endpoints:
+
+```
+GET    /auth/login        --> login()            --> redirects to GitHub OAuth authorize
+GET    /auth/callback     --> callback()         --> handles GitHub callback, issues session cookie
+GET    /auth/me           --> me()               --> returns current user profile (401 if not authenticated)
+GET    /auth/refresh      --> refresh()          --> re-issues session cookie (401 if not authenticated)
 ```
 
 Key concepts:
@@ -64,6 +88,12 @@ Pydantic models define the shape of request/response data. FastAPI uses them for
 
 The `model_copy(update={...})` method on a Pydantic model creates a new instance with some fields overridden -- this is how partial updates work without mutating the original.
 
+**`auth.py`** defines three models used by the auth router:
+
+- `SessionData` -- internal struct holding `access_token`, `login`, `name`, and `avatar_url`. Only used server-side when creating a session; the access token never leaves the server.
+- `CookiePayload` -- what's actually signed and stored in the `inkwell_session` cookie: `session_id`, `login`, `name`, `avatar_url`. The `session_id` is a random token that maps to the real access token in the in-memory `_session_store` dict.
+- `UserProfile` -- the public shape returned by `GET /auth/me` and `GET /auth/refresh`. Contains `login`, `name`, and `avatar_url`.
+
 ### The `app/ai/` Directory
 
 Reserved for future LangChain integration (linting articles with AI, etc.). Currently just an empty `__init__.py`. Install AI deps separately with `uv sync --extra ai`.
@@ -85,6 +115,8 @@ Key patterns:
 - **`pytest.fixture`** -- pytest's dependency injection. When a test function has a parameter named `client`, pytest finds the `client` fixture and passes its return value.
 
 ## How the Pieces Connect
+
+**Article request:**
 
 ```
 Browser (localhost:5173)
@@ -110,6 +142,31 @@ FastAPI serializes Article models to JSON
 Browser receives JSON response
 ```
 
+**GitHub OAuth flow:**
+
+```
+Browser clicks "Sign in with GitHub"
+    |
+    |  GET /auth/login
+    v
+auth.py generates CSRF state token, stores it in gh_oauth_state cookie
+Redirects browser to GitHub authorize URL
+    |
+    v
+User approves on GitHub
+GitHub redirects to GET /auth/callback?code=...&state=...
+    |
+    v
+auth.py validates state cookie, exchanges code for access_token via GitHub API
+Fetches user profile (login, name, avatar_url) from api.github.com/user
+Creates signed inkwell_session cookie (session_id only — access_token stays server-side)
+Redirects browser to FRONTEND_URL
+    |
+    v
+Browser now has inkwell_session cookie
+GET /auth/me returns UserProfile (login, name, avatar_url)
+```
+
 ## Dependency Management
 
 Dependencies are declared in `pyproject.toml` and managed by **uv** (a fast Python package manager):
@@ -131,9 +188,11 @@ Run: `uv run ruff check app/ tests/`
 
 ## Adding a New Endpoint
 
-1. If it's a new resource (not articles), create a new router file in `app/routers/`
+1. If it's a new resource (not articles or auth), create a new router file in `app/routers/`
 2. Define Pydantic models in `app/models/`
 3. Add the route function with decorators (`@router.get`, `@router.post`, etc.)
 4. Register the router in `app/main.py` with `app.include_router()`
 5. Write tests in `tests/`
 6. If the UI needs this endpoint, update `ui/src/services/api.ts`
+
+To require authentication on an endpoint, read the `inkwell_session` cookie (e.g. `inkwell_session: str | None = Cookie(default=None)`) and call `_unsign_session()` from `auth.py`. If the cookie is absent or invalid, raise `HTTPException(status_code=401)`.

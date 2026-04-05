@@ -17,36 +17,14 @@ Monorepo with two packages:
 
 ## Commands
 
-### UI (from `ui/`)
-
 ```bash
-cd ui
-npm run dev          # Vite dev server at localhost:5173/inkwell/ (production: https://linnienaryshkin.github.io/inkwell/)
-npm run build        # Vite production build → dist/
-npm run preview      # Serve the dist/ build locally to test before deploy
-npm run lint         # ESLint auto-fix
-npm run lint:check   # ESLint read-only check (used in CI)
-npm run format       # Prettier auto-format
-npm run format:check # Prettier read-only check (used in CI)
-npm run test             # Jest (no coverage threshold)
-npm run test:coverage  # Jest with 90% coverage threshold (enforced in CI)
-npm run types:check  # TypeScript type-check without emitting (tsc --noEmit)
-npm run security     # npm audit --audit-level=high
-
-# Run a single test file
-npm run test src/components/EditorPane.test.tsx --no-coverage
+task install       # Install all deps (ui + api)
+task dev           # Start both dev servers concurrently
+task test          # Run all tests (ui + api)
+task quality-gate  # Run all quality checks in sequence (ui then api)
 ```
 
-### API (from `api/`)
-
-```bash
-cd api
-uv sync --extra dev              # Install deps (creates .venv automatically)
-uv run uvicorn app.main:app --reload --env-file .env   # Dev server at localhost:8000 (requires api/.env)
-uv run pytest tests/ -v          # Run tests
-uv run ruff check app/ tests/    # Lint
-uv run ruff format app/ tests/   # Auto-format
-```
+Package-specific commands are in `.claude/rules/ui.md` and `.claude/rules/api.md`.
 
 ## Architecture
 
@@ -58,13 +36,13 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 - **Left** – `ArticleList`: selects the active article
 - **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar. `EditorPane` receives `key={selectedSlug}` — this intentionally forces a full remount when the article changes, resetting Monaco's internal state. `VersionStrip` renders below it (version timeline, mock data; "Restore" and "View diff" buttons are not yet wired up)
-- **Right** – `SidePanel`: lint / publish / TOC tabs. Lint results are mock (hardcoded readability score + two example issues). Publish tab lists five hardcoded platforms (dev.to, Hashnode, Medium, Substack, LinkedIn) — no real API calls yet
+- **Right** – `SidePanel`: lint / publish / TOC tabs. Lint results are mock (hardcoded readability score + two example issues). Publish tab lists five hardcoded platforms (dev.to, Hashnode, Medium, Substack, LinkedIn) — no real API calls yet. TOC tab is rendered via `TocTab` component powered by `useHeadingExtraction`
 
-**API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. On articles failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link or the user's avatar/login.
+**API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. `patchArticle(slug, patch)` is called on article edits. On articles failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link (unauthenticated) or a profile dropdown (authenticated) showing the user's avatar and login, with a "Sign out" button that calls `logout()` → `POST /auth/logout` and clears `currentUser`.
 
-**State ownership rules** (enforced by `ui-engineer` rule):
+**State ownership rules** (enforced by `.claude/rules/ui.md`):
 
-- Global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`) lives in `StudioPage` and flows down as props
+- Global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`, `currentUser`, `profileMenuOpen`) lives in `StudioPage` and flows down as props
 - Component-local state (e.g., `previewMode` in `EditorPane`, `lintResults` in `SidePanel`) stays in the component that owns it
 - The `Article` type is defined in `studio/page.tsx` — import it from there, don't redefine
 
@@ -76,7 +54,7 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 **Source layout:** `src/components/` holds all React components (colocated with their test files). `src/hooks/` and `src/services/` sit directly under `src/`, not under `components/`.
 
-**Custom hook:** `src/hooks/useHeadingExtraction.ts` — parses markdown into a nested heading tree for the TOC tab.
+**Custom hook:** `src/hooks/useHeadingExtraction.ts` — parses markdown into a nested heading tree; used by `TocTab`.
 
 ### API (`api/`)
 
@@ -93,8 +71,9 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 | `GET`  | `/auth/login` | Redirect to GitHub OAuth authorize |
 | `GET`  | `/auth/callback` | GitHub OAuth callback — issues signed session cookie |
 | `GET`  | `/auth/me` | Returns current user profile (401 if not authenticated) |
+| `POST` | `/auth/logout` | Clears session cookie (403 if Origin not in allowlist) |
 
-**Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `FRONTEND_URL` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
+**Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h max age) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. `POST /auth/logout` deletes both cookies and validates the request `Origin` header against the allowlist (403 if not allowed). Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `FRONTEND_URL` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
 **Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/ai/` (reserved for LangChain).
 
@@ -131,7 +110,7 @@ source .dev-env
 - **documentarian-agent** — documentation owner and synchronizer; knows where every doc file lives, cross-checks docs against actual code, and updates stale entries. Run via `/init` at session start or after code changes. Also answers "where is X?" questions about the codebase
 - **qa-agent** — manual-only QA agent; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs found, and delegates fixes to the appropriate engineer
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs. **Only agent with git permissions.**
-- **ui-engineer rule** — applied automatically for UI changes; enforces state ownership and styling rules
-- **api-engineer rule** — applied automatically for API changes; enforces API conventions, schema sync, and testing
+- **ui rule** (`.claude/rules/ui.md`) — applied automatically for UI changes; enforces state ownership and styling rules
+- **api rule** (`.claude/rules/api.md`) — applied automatically for API changes; enforces API conventions, schema sync, and testing
 - **github rule** — applied automatically for CI/CD changes; `.claude/rules/github.md` is the single source of truth for workflow files, branch protection, deployment environment, Pages config, secrets, and re-running jobs
 - **code-review skill** — `/code-review <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

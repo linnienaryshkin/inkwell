@@ -4,6 +4,26 @@ paths:
   - "ui/**"
 ---
 
+## Development Commands
+
+```bash
+cd ui
+npm run dev          # Vite dev server at localhost:5173/inkwell/
+npm run build        # Vite production build → dist/
+npm run preview      # Serve the dist/ build locally
+npm run lint         # ESLint auto-fix
+npm run lint:check   # ESLint read-only check (used in CI)
+npm run format       # Prettier auto-format
+npm run format:check # Prettier read-only check (used in CI)
+npm run test             # Jest (no coverage threshold)
+npm run test:coverage    # Jest with 90% coverage threshold (enforced in CI)
+npm run types:check  # TypeScript type-check without emitting (tsc --noEmit)
+npm run security     # npm audit --audit-level=high
+
+# Run a single test file
+npm run test src/components/EditorPane.test.tsx --no-coverage
+```
+
 ## State Management
 
 - Global layout state (zenMode, theme) lives in `studio/page.tsx` — pass down as props/callbacks

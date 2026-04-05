@@ -4,18 +4,18 @@ import json
 
 import httpx
 
-from app.models.article import Article, ArticleMeta, ArticleSummary, ArticleVersion
+from app.models.article import Article, ArticleMeta, ArticleVersion
 
 ARTICLES_REPO = "linnienaryshkin/inkwell"
 GITHUB_API_BASE = "https://api.github.com"
 
 
-async def list_article_summaries(access_token: str) -> list[ArticleSummary]:
+async def list_article_metas(access_token: str) -> list[ArticleMeta]:
     """
-    Fetch all article summaries from GitHub.
+    Fetch all article metadata from GitHub.
     1. GET /repos/{ARTICLES_REPO}/contents/articles → list of dir entries
     2. For each entry where type == "dir", fetch meta.json in parallel
-    Returns list[ArticleSummary]; raises httpx.HTTPStatusError on GitHub errors,
+    Returns list[ArticleMeta]; raises httpx.HTTPStatusError on GitHub errors,
     ValueError on malformed meta.json.
     """
     headers = {
@@ -31,7 +31,7 @@ async def list_article_summaries(access_token: str) -> list[ArticleSummary]:
         entries = resp.json()
         dirs = [e for e in entries if e["type"] == "dir"]
 
-        async def fetch_summary(entry: dict) -> ArticleSummary:
+        async def fetch_meta(entry: dict) -> ArticleMeta:
             slug = entry["name"]
             meta_resp = await client.get(
                 f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/contents/articles/{slug}/meta.json",
@@ -45,11 +45,10 @@ async def list_article_summaries(access_token: str) -> list[ArticleSummary]:
                 meta_data = json.loads(raw)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid meta.json for {slug}: {e}") from e
-            meta = ArticleMeta(**meta_data)
-            return ArticleSummary(slug=slug, title=meta.title, status=meta.status, tags=meta.tags)
+            return ArticleMeta(slug=slug, **meta_data)
 
-        summaries = await asyncio.gather(*[fetch_summary(d) for d in dirs])
-        return list(summaries)
+        metas = await asyncio.gather(*[fetch_meta(d) for d in dirs])
+        return list(metas)
 
 
 async def get_article(access_token: str, slug: str) -> Article:
@@ -105,12 +104,5 @@ async def get_article(access_token: str, slug: str) -> Article:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid meta.json for {slug}: {e}") from e
 
-        meta = ArticleMeta(**meta_data)
-        return Article(
-            slug=slug,
-            title=meta.title,
-            status=meta.status,
-            tags=meta.tags,
-            content=content_raw,
-            versions=versions,
-        )
+        meta = ArticleMeta(slug=slug, **meta_data)
+        return Article(slug=slug, content=content_raw, meta=meta, versions=versions)

@@ -2,7 +2,7 @@
 Tests for app/github_articles.py
 
 Strategy: patch httpx.AsyncClient at the module level so both
-list_article_summaries and get_article use a controlled mock client.
+list_article_metas and get_article use a controlled mock client.
 The mock supports the async-context-manager protocol (aenter/aexit)
 and exposes an AsyncMock .get() whose side_effect maps request URLs
 to pre-built httpx.Response objects.
@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.github_articles import get_article, list_article_summaries
-from app.models.article import Article, ArticleSummary, ArticleVersion
+from app.github_articles import get_article, list_article_metas
+from app.models.article import Article, ArticleMeta, ArticleVersion
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -86,7 +86,7 @@ def _make_client_mock(url_map: dict[str, httpx.Response]) -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
-class TestListArticleSummaries:
+class TestListArticleMetas:
     def _articles_url(self) -> str:
         return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles"
 
@@ -94,7 +94,7 @@ class TestListArticleSummaries:
         return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
 
     @pytest.mark.asyncio
-    async def test_two_valid_folders_returns_two_summaries(self):
+    async def test_two_valid_folders_returns_two_metas(self):
         """
         GitHub returns 2 dir entries + 2 valid meta.json files.
         Exercises the asyncio.gather parallel path.
@@ -114,14 +114,14 @@ class TestListArticleSummaries:
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
-            result = await list_article_summaries(TOKEN)
+            result = await list_article_metas(TOKEN)
 
         assert len(result) == 2
-        by_slug = {s.slug: s for s in result}
+        by_slug = {m.slug: m for m in result}
 
         assert "hello-world" in by_slug
         hw = by_slug["hello-world"]
-        assert isinstance(hw, ArticleSummary)
+        assert isinstance(hw, ArticleMeta)
         assert hw.title == "Hello World"
         assert hw.status == "published"
         assert hw.tags == ["intro"]
@@ -154,7 +154,7 @@ class TestListArticleSummaries:
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
-            result = await list_article_summaries(TOKEN)
+            result = await list_article_metas(TOKEN)
 
         assert len(result) == 1
         assert result[0].slug == "my-article"
@@ -178,7 +178,7 @@ class TestListArticleSummaries:
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
             with pytest.raises(ValueError, match="bad-article"):
-                await list_article_summaries(TOKEN)
+                await list_article_metas(TOKEN)
 
     @pytest.mark.asyncio
     async def test_github_401_on_dir_listing_raises_http_status_error(self):
@@ -195,7 +195,7 @@ class TestListArticleSummaries:
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await list_article_summaries(TOKEN)
+                await list_article_metas(TOKEN)
 
         assert exc_info.value.response.status_code == 401
 
@@ -222,7 +222,7 @@ class TestListArticleSummaries:
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await list_article_summaries(TOKEN)
+                await list_article_metas(TOKEN)
 
         assert exc_info.value.response.status_code == 404
 
@@ -286,9 +286,9 @@ class TestGetArticle:
 
         assert isinstance(result, Article)
         assert result.slug == slug
-        assert result.title == "Hello World"
-        assert result.status == "published"
-        assert result.tags == ["python", "intro"]
+        assert result.meta.title == "Hello World"
+        assert result.meta.status == "published"
+        assert result.meta.tags == ["python", "intro"]
         assert result.content == content_md
         assert len(result.versions) == 1
         assert isinstance(result.versions[0], ArticleVersion)
@@ -375,7 +375,7 @@ class TestGetArticle:
             result = await get_article(TOKEN, slug)
 
         assert result.content == long_content
-        assert result.title == "Wrapped"
+        assert result.meta.title == "Wrapped"
 
     @pytest.mark.asyncio
     async def test_missing_versions_is_non_fatal(self):
@@ -403,7 +403,7 @@ class TestGetArticle:
 
         assert isinstance(result, Article)
         assert result.slug == slug
-        assert result.title == "No Versions"
+        assert result.meta.title == "No Versions"
         assert result.content == content_md
         assert result.versions == []
 

@@ -1,9 +1,9 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ArticleList } from "./ArticleList";
-import type { ArticleSummary } from "@/app/studio/page";
+import type { ArticleMeta } from "@/app/studio/page";
 
 describe("ArticleList", () => {
-  const mockArticles: ArticleSummary[] = [
+  const mockArticles: ArticleMeta[] = [
     {
       slug: "article-1",
       title: "Getting Started with TypeScript",

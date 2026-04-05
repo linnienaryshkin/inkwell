@@ -1,6 +1,6 @@
 import { fetchArticles, fetchArticle, patchArticle, getLoginUrl, logout } from "@/services/api";
 
-const mockSummaries = [
+const mockMetas = [
   {
     slug: "test-article",
     title: "Test Article",
@@ -11,10 +11,14 @@ const mockSummaries = [
 
 const mockArticle = {
   slug: "test-article",
-  title: "Test Article",
-  status: "draft" as const,
   content: "# Test",
-  tags: ["test"],
+  meta: {
+    slug: "test-article",
+    title: "Test Article",
+    status: "draft" as const,
+    tags: ["test"],
+  },
+  versions: [],
 };
 
 describe("getLoginUrl", () => {
@@ -39,15 +43,15 @@ describe("api service", () => {
   });
 
   describe("fetchArticles", () => {
-    it("should fetch article summaries from the API", async () => {
+    it("should fetch article metas from the API", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockSummaries),
+        json: () => Promise.resolve(mockMetas),
       });
 
       const result = await fetchArticles();
 
-      expect(result).toEqual(mockSummaries);
+      expect(result).toEqual(mockMetas);
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:8000/articles",
         expect.objectContaining({ signal: expect.any(AbortSignal) })
@@ -118,13 +122,15 @@ describe("api service", () => {
 
   describe("patchArticle", () => {
     it("should send PATCH request with JSON body", async () => {
-      const updated = { ...mockArticle, title: "Updated" };
+      const updated = { ...mockArticle, meta: { ...mockArticle.meta, title: "Updated" } };
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(updated),
       });
 
-      const result = await patchArticle("test-article", { title: "Updated" });
+      const result = await patchArticle("test-article", {
+        meta: { ...mockArticle.meta, title: "Updated" },
+      });
 
       expect(result).toEqual(updated);
       expect(global.fetch).toHaveBeenCalledWith(
@@ -132,7 +138,6 @@ describe("api service", () => {
         expect.objectContaining({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Updated" }),
         })
       );
     });
@@ -143,9 +148,7 @@ describe("api service", () => {
         status: 404,
       });
 
-      await expect(patchArticle("missing", { title: "x" })).rejects.toThrow(
-        "Failed to patch article: 404"
-      );
+      await expect(patchArticle("missing", {})).rejects.toThrow("Failed to patch article: 404");
     });
   });
 

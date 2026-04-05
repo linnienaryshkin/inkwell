@@ -62,10 +62,8 @@ describe("StudioPage", () => {
       ]);
       mockFetchArticle.mockResolvedValue({
         slug: "test",
-        title: "Test",
-        status: "draft",
         content: "# Test",
-        tags: [],
+        meta: { slug: "test", title: "Test", status: "draft", tags: [] },
         versions: [],
       });
       render(<StudioPage />);
@@ -94,10 +92,8 @@ describe("StudioPage", () => {
       ]);
       mockFetchArticle.mockResolvedValue({
         slug: "test",
-        title: "Test",
-        status: "draft",
         content: "# Test",
-        tags: [],
+        meta: { slug: "test", title: "Test", status: "draft", tags: [] },
         versions: [],
       });
       render(<StudioPage />);

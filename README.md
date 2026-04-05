@@ -43,10 +43,51 @@ Give developer-writers a distraction-free, code-quality writing environment that
 | [GIT](https://git-scm.com)             | latest  | Version control, branching, commit history                  |
 | [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
 | [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
-| [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
 | [Task](https://taskfile.dev)           | latest  | Task runner for unified commands across UI and API          |
+| [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
 
 ### Environment Setup
+
+### Run locally
+
+```bash
+task install         # Install all dependencies (ui + api)
+task dev             # Start both servers concurrently
+task test            # Run all tests (ui + api)
+task quality-gate    # Run all quality checks (ui then api)
+```
+
+### GitHub OAuth setup
+
+The API requires four environment variables for GitHub OAuth login. The server raises a `RuntimeError` at startup if any are absent.
+
+| Variable | Description | Where to get it |
+|---|---|---|
+| `OAUTH_CLIENT_ID` | OAuth App client ID | From GitHub OAuth App settings (Client ID field) |
+| `OAUTH_CLIENT_SECRET` | OAuth App client secret | From GitHub OAuth App settings (generate a new client secret) |
+| `OAUTH_CALLBACK_URL` | Must exactly match the "Authorization callback URL" registered in the OAuth App | Set by you when creating the OAuth App |
+
+**Create a GitHub OAuth App:**
+
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App** | <https://github.com/settings/developers>
+2. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (dev) or your production URL
+3. Copy the **Client ID** and generate a **Client Secret**
+
+**Local development** — create `api/.env` (never commit):
+
+```bash
+OAUTH_CLIENT_ID=your_client_id_here
+OAUTH_CLIENT_SECRET=your_client_secret_here
+OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback
+SESSION_SECRET=your_random_secret_here
+ENVIRONMENT=development
+```
+
+### Development guide
+
+See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.
+
+### AI-Native SDLC flow
 
 **GitHub MCP Integration:**
 
@@ -89,74 +130,4 @@ echo 'export GITHUB_TOKEN=<your-token>' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Run locally
-
-Use these from the repo root to avoid `cd` commands:
-
-```bash
-task install         # Install all dependencies (ui + api)
-task dev             # Start both servers concurrently
-task test            # Run all tests (ui + api)
-task quality-gate    # Run all quality checks (ui then api)
-task ui:install      # npm install
-task ui:dev          # Start Vite dev server
-task ui:test         # Run UI tests
-task ui:lint         # ESLint auto-fix
-task api:install     # uv sync --extra dev
-task api:dev         # Start FastAPI dev server
-task api:test        # Run API tests
-task api:lint        # Lint API code
-```
-
-### GitHub OAuth setup
-
-The API requires four environment variables for GitHub OAuth login. The server raises a `RuntimeError` at startup if any are absent.
-
-| Variable | Description | Where to get it |
-|---|---|---|
-| `OAUTH_CLIENT_ID` | OAuth App client ID | From GitHub OAuth App settings (Client ID field) |
-| `OAUTH_CLIENT_SECRET` | OAuth App client secret | From GitHub OAuth App settings (generate a new client secret) |
-| `OAUTH_CALLBACK_URL` | Must exactly match the "Authorization callback URL" registered in the OAuth App | Set by you when creating the OAuth App |
-| `SESSION_SECRET` | Random secret for signing session cookies | Generate locally: `python -c "import secrets; print(secrets.token_hex(32))"` |
-
-**Create a GitHub OAuth App:**
-
-1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App** | <https://github.com/settings/developers>
-2. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (dev) or your production URL
-3. Copy the **Client ID** and generate a **Client Secret**
-
-**Local development** — create `api/.env` (never commit):
-
-```bash
-OAUTH_CLIENT_ID=your_client_id_here
-OAUTH_CLIENT_SECRET=your_client_secret_here
-OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback
-SESSION_SECRET=your_random_secret_here
-ENVIRONMENT=development
-```
-
-Start the API with: `cd api && uv run uvicorn app.main:app --reload --env-file .env`
-
-**CI/CD (GitHub Actions)** — add secrets via the `gh` CLI (each prompts for the value securely):
-
-```bash
-gh secret set OAUTH_CLIENT_ID     --repo linnienaryshkin/inkwell
-gh secret set OAUTH_CLIENT_SECRET --repo linnienaryshkin/inkwell
-gh secret set OAUTH_CALLBACK_URL  --repo linnienaryshkin/inkwell
-gh secret set SESSION_SECRET      --repo linnienaryshkin/inkwell
-```
-
-### Development guide
-
-See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.
-
-### Spec-Driven Development
-
-Inkwell uses an SDD flow powered by Claude Code and GitHub Issues.
-
-1. **Architect** — Paste the GitHub issue URL into Claude Code. The `architect-agent` reads the issue, explores the codebase, asks clarifying questions, and writes a detailed spec as a comment on the issue.
-2. **Implement** — Comment on the issue with `@claude develop task`. Claude Code picks up the spec and opens a PR.
-3. **Review** — Inspect the PR. Add review comments if needed; Claude iterates.
-4. **Merge** — Merge when satisfied.
-
-This keeps design decisions traceable to issues and implementation traceable to specs.
+<!-- TODO: Explain how to work with agents and skill, provide an examples -->

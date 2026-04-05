@@ -13,44 +13,38 @@ export type ArticleVersion = {
   committed_at: string;
 };
 
-export type Article = {
+export type ArticleMeta = {
   slug: string;
   title: string;
   status: "draft" | "published";
-  content: string;
   tags: string[];
+};
+
+export type Article = {
+  slug: string;
+  content: string;
+  meta: ArticleMeta;
   versions: ArticleVersion[];
 };
 
-export type ArticleSummary = {
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  tags: string[];
-};
-
-const MOCK_ARTICLES: Article[] = [
-  {
-    slug: "welcome",
-    title: "Welcome to Inkwell",
-    status: "draft",
-    tags: [],
-    versions: [],
-    content: `# Welcome to Inkwell
+const MOCK_ARTICLE: Article = {
+  slug: "welcome",
+  content: `# Welcome to Inkwell
 
 Sign in with GitHub to unlock the full potential of the application.
 
 Your articles are stored as files in your GitHub repository — version-controlled, diff-able, and always yours.
 `,
+  meta: {
+    slug: "welcome",
+    title: "Welcome to Inkwell",
+    status: "draft",
+    tags: [],
   },
-];
+  versions: [],
+};
 
-const MOCK_SUMMARIES: ArticleSummary[] = MOCK_ARTICLES.map(({ slug, title, status, tags }) => ({
-  slug,
-  title,
-  status,
-  tags,
-}));
+const MOCK_METAS: ArticleMeta[] = [MOCK_ARTICLE.meta];
 
 function ProfileMenu({
   anchorRef,
@@ -98,9 +92,9 @@ function ProfileMenu({
 }
 
 export default function StudioPage() {
-  const [summaries, setSummaries] = useState<ArticleSummary[]>(MOCK_SUMMARIES);
-  const [selectedSlug, setSelectedSlug] = useState(MOCK_SUMMARIES[0].slug);
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(MOCK_ARTICLES[0]);
+  const [summaries, setSummaries] = useState<ArticleMeta[]>(MOCK_METAS);
+  const [selectedSlug, setSelectedSlug] = useState(MOCK_METAS[0].slug);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(MOCK_ARTICLE);
   const [articleLoading, setArticleLoading] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
@@ -129,7 +123,7 @@ export default function StudioPage() {
             })
             .catch(() => {
               if (ignore) return;
-              const mock = MOCK_ARTICLES.find((a) => a.slug === firstSlug);
+              const mock = MOCK_ARTICLE.slug === firstSlug ? MOCK_ARTICLE : undefined;
               setSelectedArticle(mock ?? null);
             })
             .finally(() => {
@@ -139,7 +133,7 @@ export default function StudioPage() {
       })
       .catch(() => {
         // API unavailable — keep mock summaries and mock article
-        if (!ignore) setSelectedArticle(MOCK_ARTICLES[0]);
+        if (!ignore) setSelectedArticle(MOCK_ARTICLE);
       });
     return () => {
       ignore = true;
@@ -171,7 +165,7 @@ export default function StudioPage() {
     fetchArticle(slug)
       .then(setSelectedArticle)
       .catch(() => {
-        const mock = MOCK_ARTICLES.find((a) => a.slug === slug);
+        const mock = MOCK_ARTICLE.slug === slug ? MOCK_ARTICLE : undefined;
         setSelectedArticle(mock ?? null);
       })
       .finally(() => setArticleLoading(false));

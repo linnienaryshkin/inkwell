@@ -1,4 +1,4 @@
-# Building a Writing Studiofdfsdf
+# Building a Writing Studio
 
 What if your writing environment felt as powerful as your IDE?
 

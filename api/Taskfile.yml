@@ -36,9 +36,15 @@ tasks:
     cmds:
       - uv run ruff format --check app/ tests/
 
+  security:
+    desc: Audit Python dependencies for known vulnerabilities
+    cmds:
+      - uv run pip-audit
+
   quality-gate:
     desc: Run all API quality checks in sequence
     cmds:
       - task: lint-check
       - task: format-check
       - task: test
+      - task: security

@@ -62,7 +62,7 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 **API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. On articles failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link or the user's avatar/login.
 
-**State ownership rules** (enforced by `ui-engineer` skill):
+**State ownership rules** (enforced by `ui-engineer` rule):
 
 - Global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`) lives in `StudioPage` and flows down as props
 - Component-local state (e.g., `previewMode` in `EditorPane`, `lintResults` in `SidePanel`) stays in the component that owns it
@@ -93,9 +93,8 @@ FastAPI REST API with in-memory article store seeded from mock data. Mirrors the
 | `GET`  | `/auth/login` | Redirect to GitHub OAuth authorize |
 | `GET`  | `/auth/callback` | GitHub OAuth callback — issues signed session cookie |
 | `GET`  | `/auth/me` | Returns current user profile (401 if not authenticated) |
-| `GET`  | `/auth/refresh` | Re-issues session cookie (401 if not authenticated) |
 
-**Auth:** `itsdangerous` signed session cookies (`inkwell_session`). Access token stored server-side in `_session_store` (in-memory), never in the cookie. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `SESSION_SECRET` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
+**Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `FRONTEND_URL` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
 **Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/ai/` (reserved for LangChain).
 
@@ -126,11 +125,13 @@ source .dev-env
 
 ## Skills & Agents
 
-- **architect-agent** — fetches a GitHub issue, asks clarifying questions, writes a technical spec, posts it as a GitHub comment, and labels the issue `refined`
+- **architect skill** — fetches a GitHub issue, asks clarifying questions, writes a technical spec with a Team Execution Plan, posts it as a GitHub comment, and labels the issue `refined`
+- **captain skill** — coordinates sub-agents; decomposes tasks, assigns agents, runs parallel batches, tracks progress, and reports results. Never implements anything directly
 - **dev-agent** — primary implementation agent; handles feature development from GitHub issues, bug fixes, code reviews, and architectural questions following all CLAUDE.md conventions
+- **documentarian-agent** — documentation owner and synchronizer; knows where every doc file lives, cross-checks docs against actual code, and updates stale entries. Run via `/init` at session start or after code changes. Also answers "where is X?" questions about the codebase
 - **qa-agent** — manual-only QA agent; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs found, and delegates fixes to the appropriate engineer
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs. **Only agent with git permissions.**
-- **ui-engineer skill** — invoked automatically for UI changes; enforces state ownership and styling rules
-- **api-engineer skill** — invoked automatically for API changes; enforces API conventions, schema sync, and testing
-- **devops skill** — invoked automatically for CI/CD changes; manages workflow files, branch protection, deployment environment, and GitHub Pages config. Live GitHub settings (branch protection, environments, Pages, secrets, re-running jobs) are documented in `.claude/rules/workflow.md`
+- **ui-engineer rule** — applied automatically for UI changes; enforces state ownership and styling rules
+- **api-engineer rule** — applied automatically for API changes; enforces API conventions, schema sync, and testing
+- **github rule** — applied automatically for CI/CD changes; `.claude/rules/github.md` is the single source of truth for workflow files, branch protection, deployment environment, Pages config, secrets, and re-running jobs
 - **code-review skill** — `/code-review <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

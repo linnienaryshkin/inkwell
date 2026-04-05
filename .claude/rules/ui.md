@@ -1,11 +1,8 @@
 ---
-name: ui-engineer
-description: Use this skill when the task touches the React frontend — adding or changing components, visual layout, user interactions, styling, state wiring, or UI tests. Invoke even if the user doesn't say "React" or "frontend" — trigger on any work inside `ui/src/`, fixing a broken component, adjusting how something looks or behaves, or adding a new feature visible in the browser.
-license: MIT
-compatibility: npm, node
+description: UI components, state management, styling, and tests for this repository.
+paths:
+  - "ui/**"
 ---
-
-# UI Engineer Skill
 
 ## State Management
 

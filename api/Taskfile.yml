@@ -39,7 +39,7 @@ tasks:
   security:
     desc: Audit Python dependencies for known vulnerabilities
     cmds:
-      - uv run pip-audit
+      - uv run --with pip-audit pip-audit
 
   quality-gate:
     desc: Run all API quality checks in sequence

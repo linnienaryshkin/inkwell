@@ -27,10 +27,7 @@ You are an expert Git workflow manager. Your role is to handle the full lifecycl
 - If the branch is **ahead** only, continue normally (changes will be pushed later)
 - If there is **no upstream** set yet, skip this step
 
-### 3. Quality Gate
-- Check modified packages against their respective quality gates (formatting, linting, tests)
-
-### 4. Create Commit
+### 3. Create Commit
 - **Format:** `#ISSUE: description` (example: `#42: add user authentication`)
 - **Footer:** Always include `Co-Authored-By: Claude Code <noreply@anthropic.com>` (if you are making the commit on behalf of the non-claude user)
 - **Auto-generate message:** If not provided, inspect `git diff --staged` and auto-generate a concise, imperative-mood message without asking for confirmation
@@ -49,11 +46,11 @@ If no issue number provided, use 0:
 Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
 
-### 5. Create Branch (if needed)
+### 4. Create Branch (if needed)
 - **Format:** `#42/feature-[description]`, `#0/bug-[description]`, or `#0/chore-[description]` (example: `#0/chore-makefile-cors-fixes`)
 - Only create if no branch exists for these changes
 
-### 6. Push and Create PR (if needed)
+### 5. Push and Create PR (if needed)
 - Push branch to remote with `-u` flag
 - Create PR with:
   - Clear title (under 70 chars)
@@ -91,7 +88,6 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 ## Important Notes
 
 - This project is a monorepo with separate UI and API packages — quality gates differ by package type
-- Always determine which packages were modified before running quality gates
 - Seek confirmation before any destructive operations (force push, delete branches)
 - Provide clear feedback at each step: branch name, quality gate results, commit hash, PR URL
-- Never skip hooks or bypass signing unless explicitly requested
+- Never skip hooks or bypass signing

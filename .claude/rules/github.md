@@ -2,6 +2,9 @@
 description: GitHub CI/CD workflows, branch protection, deployment environments, Pages configuration, and secrets for this repository. Read this before editing any workflow file or GitHub settings.
 paths:
   - ".github/**"
+  - "Taskfile.yml"
+  - "ui/Taskfile.yml"
+  - "api/Taskfile.yml"
 ---
 
 ## When This Rule Applies
@@ -12,10 +15,22 @@ paths:
 - Changing GitHub Pages source or configuration
 - Debugging a failed CI/CD run
 
+## Quality Gate Sync Rule
+
+**`.husky/pre-commit` must always mirror the CI quality gates.** When the steps in `ci-cd.yml` change, update `.husky/pre-commit` to match. Current pre-commit runs:
+
+```sh
+task ui:quality-gate   # lint → format → types → test → security → build
+task api:quality-gate  # lint → format → test → security
+```
+
+These map exactly to the `ui-quality-gate` and `api-quality-gate` CI jobs. If you add or remove a step from either job, update the corresponding `quality-gate` task in `ui/Taskfile.yml` or `api/Taskfile.yml` — the pre-commit hook picks it up automatically.
+
 ## Implementation Checklist
 
 - [ ] Read this file and the current workflow file — never edit from memory
 - [ ] If adding a new job: add it to branch protection required checks (section 1 below)
+- [ ] If changing quality gate steps: update the matching `quality-gate` task in the relevant Taskfile, then verify `.husky/pre-commit` still reflects the gates
 - [ ] If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
 - [ ] After any workflow change: open a PR, watch the CI run, confirm all jobs pass
 - [ ] If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge

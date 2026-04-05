@@ -1,5 +1,5 @@
 ---
-name: architect-agent
+name: architect
 description: Use this skill when the user wants to create a technical specification from a GitHub issue — pass an issue URL as the argument. Invoke for requests like "write spec for issue #42", "create spec for this issue", or "analyze issue #42", even if the user doesn't say "technical specification". Produces a detailed, actionable spec for development.
 argument-hint: <GitHub issue URL>
 compatibility: GitHub MCP, internet access
@@ -93,7 +93,6 @@ When given a GitHub issue URL, you will:
    - If a new shared type is introduced (e.g., change to `Article`), type definition must be sequential first, then API and UI can parallelize
    - Tests should run after the implementation they cover exists
    - git-agent is always the final sequential step
-   - QA (qa-agent) runs after git-agent opens the PR, if QA is required
    - Reference agents/skills by their exact names: `dev-agent`, `git-agent`, `qa-agent`, `architect skill`, `captain skill`, `ui-engineer rule`, `api-engineer rule`, `devops rule`, `code-review skill`, `documentarian-agent`
 
 5. **Decide Whether QA Is Required**
@@ -122,13 +121,23 @@ When given a GitHub issue URL, you will:
    - Specific edge cases and error conditions to verify manually
    - What a passing QA verdict looks like (no console errors, correct visual state, etc.)
 
-6. **Post as GitHub Comment & Label**
-   - Post the spec using GitHub MCP `mcp__github__add_issue_comment` with the spec content (including the Team Execution Plan)
+6. **Save Draft & Request Confirmation**
+   - Determine the issue number from the URL (e.g., issue #13 → `13`)
+   - Write the full spec (including Team Execution Plan and any QA section) to `.claude/plans/issue-<number>.md`
+   - Output to the user: "Spec saved to `.claude/plans/issue-<number>.md`. Reply **publish** to post it as a GitHub comment and label the issue `refined`, or edit the file first and then reply **publish**."
+   - **Stop and wait.** Do not post to GitHub until the user replies with **publish** (or equivalent confirmation).
+
+7. **Post as GitHub Comment & Label** *(only after user confirms)*
+   - Post the spec using GitHub MCP `mcp__github__add_issue_comment` with the full contents of `.claude/plans/issue-<number>.md`
    - Add the `refined` label using `mcp__github__issue_write` with `method: "update"` and `labels: ["refined"]`
    - If QA was requested, also add the `qa` label in the same update
    - Use markdown formatting (headers, code blocks, tables)
 
-7. **Project Context**
+8. **Remove plan from `.claude/plans/issue-<number>.md`**
+   - Delete the file `.claude/plans/issue-<number>.md` after posting the spec and labeling the issue
+   - This ensures the plan is not reused or accidentally posted again
+
+9. **Project Context**
    - **Structure**: `ui/` (Vite+React, TypeScript, entry `src/main.tsx` → `StudioPage`), `api/` (FastAPI, Python with uv, Pydantic models)
    - **State ownership**: global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`) lives in `StudioPage`; component-local state stays in the component
    - **Styling**: CSS variables (`--bg-primary`, `--text-primary`, `--accent`, etc.) + Tailwind for layout/spacing; never hardcode colors
@@ -137,7 +146,7 @@ When given a GitHub issue URL, you will:
    - **Type ownership**: `Article` type defined in `studio/page.tsx` — import from there, never redefine
    - **Path alias**: `@/` resolves to `src/`
 
-8. **Handle Errors Gracefully**
+10. **Handle Errors Gracefully**
    - If the GitHub URL is invalid or cannot be fetched, explain the error and ask for a valid URL
    - If required context is ambiguous, ask follow-up questions before writing the spec
    - If the issue is already labeled `refined`, confirm with the user before proceeding

@@ -20,34 +20,69 @@ describe("ArticleList", () => {
 
   describe("Display", () => {
     it("should render all article titles", () => {
-      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
 
       expect(screen.getByText("Getting Started with TypeScript")).toBeInTheDocument();
       expect(screen.getByText("Advanced React Patterns")).toBeInTheDocument();
     });
 
     it("should display publication status for each article", () => {
-      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
 
       expect(screen.getByText("published")).toBeInTheDocument();
       expect(screen.getByText("draft")).toBeInTheDocument();
     });
 
     it("should display article slugs", () => {
-      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
 
       expect(screen.getByText("article-1")).toBeInTheDocument();
       expect(screen.getByText("article-2")).toBeInTheDocument();
     });
 
     it("should render the Articles header", () => {
-      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
 
       expect(screen.getByText("Articles")).toBeInTheDocument();
     });
 
     it("should render the New Article button", () => {
-      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
 
       expect(screen.getByText("+ New Article")).toBeInTheDocument();
     });
@@ -57,7 +92,12 @@ describe("ArticleList", () => {
     it("should call onSelect when an article is clicked", () => {
       const handleSelect = jest.fn();
       render(
-        <ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={handleSelect} />
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={handleSelect}
+          onNewArticle={() => {}}
+        />
       );
 
       const articleButton = screen.getByText("Advanced React Patterns").closest("button");
@@ -68,7 +108,12 @@ describe("ArticleList", () => {
 
     it("should highlight the selected article", () => {
       const { container } = render(
-        <ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
       );
 
       const buttons = container.querySelectorAll("button");
@@ -81,7 +126,12 @@ describe("ArticleList", () => {
 
     it("should not highlight unselected articles", () => {
       const { container } = render(
-        <ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
       );
 
       const buttons = container.querySelectorAll("button");
@@ -94,7 +144,12 @@ describe("ArticleList", () => {
     it("should allow switching between articles", () => {
       const handleSelect = jest.fn();
       render(
-        <ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={handleSelect} />
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={handleSelect}
+          onNewArticle={() => {}}
+        />
       );
 
       const article1Button = screen.getByText("Getting Started with TypeScript").closest("button");
@@ -110,10 +165,66 @@ describe("ArticleList", () => {
 
   describe("Empty state", () => {
     it("should render without articles", () => {
-      render(<ArticleList articles={[]} selectedSlug="" onSelect={() => {}} />);
+      render(
+        <ArticleList articles={[]} selectedSlug="" onSelect={() => {}} onNewArticle={() => {}} />
+      );
 
       expect(screen.getByText("Articles")).toBeInTheDocument();
       expect(screen.getByText("+ New Article")).toBeInTheDocument();
+    });
+  });
+
+  describe("New article", () => {
+    it("calls onNewArticle when + New Article button is clicked", () => {
+      const handleNewArticle = jest.fn();
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={handleNewArticle}
+        />
+      );
+
+      const newArticleBtn = screen.getByRole("button", { name: "+ New Article" });
+      fireEvent.click(newArticleBtn);
+
+      expect(handleNewArticle).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows placeholder item when selectedSlug is __new__", () => {
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="__new__"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
+
+      expect(screen.getByText("New article…")).toBeInTheDocument();
+    });
+
+    it("does not show placeholder item when selectedSlug is not __new__", () => {
+      render(
+        <ArticleList
+          articles={mockArticles}
+          selectedSlug="article-1"
+          onSelect={() => {}}
+          onNewArticle={() => {}}
+        />
+      );
+
+      expect(screen.queryByText("New article…")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("onNewArticle not provided", () => {
+    it("does not throw when + New Article is clicked without onNewArticle prop", () => {
+      render(<ArticleList articles={mockArticles} selectedSlug="article-1" onSelect={() => {}} />);
+
+      const newArticleBtn = screen.getByRole("button", { name: "+ New Article" });
+      expect(() => fireEvent.click(newArticleBtn)).not.toThrow();
     });
   });
 });

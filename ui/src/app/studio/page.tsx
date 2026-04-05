@@ -4,7 +4,16 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchArticle, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
+import {
+  fetchArticles,
+  fetchArticle,
+  fetchCurrentUser,
+  getLoginUrl,
+  logout,
+  createArticle,
+  saveArticle,
+  deleteArticle,
+} from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type ArticleVersion = {
@@ -45,6 +54,22 @@ Your articles are stored as files in your GitHub repository — version-controll
 };
 
 const MOCK_METAS: ArticleMeta[] = [MOCK_ARTICLE.meta];
+
+const EMPTY_ARTICLE: Article = {
+  slug: "__new__",
+  content: "",
+  meta: { slug: "__new__", title: "", status: "draft", tags: [] },
+  versions: [],
+};
+
+function titleToSlug(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
+}
 
 function ProfileMenu({
   anchorRef,
@@ -91,82 +116,235 @@ function ProfileMenu({
   );
 }
 
+const BASE = "/inkwell/";
+
+function slugFromUrl(): string | null {
+  const path = window.location.pathname;
+  if (path.startsWith(BASE)) {
+    const rest = path.slice(BASE.length).replace(/\/$/, "");
+    if (rest) return rest;
+  }
+  return null;
+}
+
 export default function StudioPage() {
-  const [summaries, setSummaries] = useState<ArticleMeta[]>(MOCK_METAS);
-  const [selectedSlug, setSelectedSlug] = useState(MOCK_METAS[0].slug);
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(MOCK_ARTICLE);
+  const [summaries, setSummaries] = useState<ArticleMeta[]>([]);
+  const [selectedSlug, setSelectedSlug] = useState(() => slugFromUrl() ?? "");
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [articleLoading, setArticleLoading] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [appLoading, setAppLoading] = useState(true);
   const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Draft state for title/tags (decoupled from selectedArticle)
+  const [draftTitle, setDraftTitle] = useState<string>("");
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Snapshot of last-saved/loaded state — isDirty is derived by comparison
+  const savedSnapshot = useRef({ content: "", title: "", tags: "" });
+
+  // Sync drafts and snapshot to a freshly loaded/saved article
+  const syncToArticle = useCallback((article: Article | null) => {
+    const title = article?.meta.title ?? "";
+    const tags = article?.meta.tags ?? [];
+    const content = article?.content ?? "";
+    setDraftTitle(title);
+    setDraftTags(tags);
+    savedSnapshot.current = { content, title, tags: tags.join(",") };
+  }, []);
+
   useEffect(() => {
     let ignore = false;
-    fetchArticles()
-      .then((data) => {
+    (async () => {
+      // 1. Auth check first — eliminates sign-in flash and auth/article race
+      try {
+        const user = await fetchCurrentUser();
+        if (!ignore) setCurrentUser(user);
+      } catch {
+        // Not authenticated — leave null, demo mode continues
+      }
+
+      // 2. Load articles after auth settles
+      try {
+        const data = await fetchArticles();
         if (ignore) return;
         setSummaries(data);
         setDataSource("live");
-        const firstSlug = data[0]?.slug;
-        if (firstSlug) {
-          setSelectedSlug(firstSlug);
+        // Preserve the URL slug if it exists in the live list; otherwise fall back to first
+        const urlSlug = slugFromUrl();
+        const targetSlug =
+          urlSlug && data.some((a) => a.slug === urlSlug) ? urlSlug : data[0]?.slug;
+        if (targetSlug) {
+          setSelectedSlug(targetSlug);
           setArticleLoading(true);
-          fetchArticle(firstSlug)
-            .then((article) => {
-              if (ignore) return;
+          try {
+            const article = await fetchArticle(targetSlug);
+            if (!ignore) {
               setSelectedArticle(article);
-            })
-            .catch(() => {
-              if (ignore) return;
-              const mock = MOCK_ARTICLE.slug === firstSlug ? MOCK_ARTICLE : undefined;
-              setSelectedArticle(mock ?? null);
-            })
-            .finally(() => {
-              if (!ignore) setArticleLoading(false);
-            });
+              syncToArticle(article);
+            }
+          } catch {
+            if (!ignore) {
+              setSelectedArticle(null);
+              syncToArticle(null);
+            }
+          } finally {
+            if (!ignore) setArticleLoading(false);
+          }
         }
-      })
-      .catch(() => {
-        // API unavailable — keep mock summaries and mock article
-        if (!ignore) setSelectedArticle(MOCK_ARTICLE);
-      });
+      } catch {
+        // API unavailable — fall back to demo mock data
+        if (!ignore) {
+          setSummaries(MOCK_METAS);
+          setSelectedSlug(MOCK_METAS[0].slug);
+          setSelectedArticle(MOCK_ARTICLE);
+          syncToArticle(MOCK_ARTICLE);
+          setDataSource("demo");
+        }
+      } finally {
+        if (!ignore) setAppLoading(false);
+      }
+    })();
     return () => {
       ignore = true;
     };
   }, []);
 
+  // Keep URL in sync with selected article
   useEffect(() => {
-    let ignore = false;
-    fetchCurrentUser()
-      .then((user) => {
-        if (ignore) return;
-        setCurrentUser(user);
-      })
-      .catch(() => {
-        // Not authenticated — leave null, demo mode continues
-      });
-    return () => {
-      ignore = true;
+    const url = selectedSlug ? `${BASE}${selectedSlug}` : BASE;
+    if (window.location.pathname !== url) {
+      window.history.pushState(null, "", url);
+    }
+  }, [selectedSlug]);
+
+  // Derive isDirty by comparing current drafts + content against the saved snapshot
+  const isDirty =
+    (selectedArticle?.content ?? "") !== savedSnapshot.current.content ||
+    draftTitle !== savedSnapshot.current.title ||
+    draftTags.join(",") !== savedSnapshot.current.tags;
+
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ""; // required for Chrome
+      }
     };
-  }, []);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const handleContentChange = (newContent: string) => {
     setSelectedArticle((prev) => (prev ? { ...prev, content: newContent } : prev));
   };
 
+  const handleTitleChange = (title: string) => {
+    setDraftTitle(title);
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setDraftTags(tags);
+  };
+
+  const handleNewArticle = () => {
+    if (isDirty) {
+      const ok = window.confirm("You have unsaved changes. Leave without saving?");
+      if (!ok) return;
+    }
+    setSelectedSlug("__new__");
+    setSelectedArticle(EMPTY_ARTICLE);
+    setDraftTitle("");
+    setDraftTags([]);
+    savedSnapshot.current = { content: "", title: "", tags: "" };
+  };
+
+  const handleSave = async () => {
+    if (!selectedArticle || saving) return;
+    if (!draftTitle.trim()) {
+      // Empty title — do nothing (tests verify no API call is made)
+      return;
+    }
+    const slug =
+      selectedArticle.slug === "__new__" ? titleToSlug(draftTitle) : selectedArticle.slug;
+    if (!slug) return; // empty slug from all-symbols title
+    setSaving(true);
+    setSaveError(false);
+    try {
+      let article: Article;
+      if (selectedArticle.slug === "__new__") {
+        article = await createArticle(draftTitle, slug, draftTags, selectedArticle.content);
+        setSummaries((prev) => [...prev, article.meta]);
+      } else {
+        article = await saveArticle(selectedArticle.slug, {
+          title: draftTitle,
+          tags: draftTags,
+          content: selectedArticle.content,
+        });
+        setSummaries((prev) => prev.map((m) => (m.slug === article.slug ? article.meta : m)));
+      }
+      setSelectedSlug(article.slug);
+      setSelectedArticle(article);
+      syncToArticle(article);
+    } catch (err) {
+      console.error("Save failed:", err);
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedArticle || selectedArticle.slug === "__new__" || deleting || saving) return;
+    const confirmed = window.confirm(
+      `Delete "${selectedArticle.meta.title || selectedArticle.slug}"? This cannot be undone.`
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await deleteArticle(selectedArticle.slug);
+      setSummaries((prev) => prev.filter((m) => m.slug !== selectedArticle.slug));
+      const remaining = summaries.filter((m) => m.slug !== selectedArticle.slug);
+      if (remaining.length > 0) {
+        handleSelect(remaining[0].slug);
+      } else {
+        setSelectedSlug("__new__");
+        setSelectedArticle(EMPTY_ARTICLE);
+        syncToArticle(null);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSelect = (slug: string) => {
+    if (isDirty) {
+      const ok = window.confirm("You have unsaved changes. Leave without saving?");
+      if (!ok) return;
+    }
     setSelectedSlug(slug);
     setArticleLoading(true);
     fetchArticle(slug)
-      .then(setSelectedArticle)
+      .then((article) => {
+        setSelectedArticle(article);
+        syncToArticle(article);
+      })
       .catch(() => {
         const mock = MOCK_ARTICLE.slug === slug ? MOCK_ARTICLE : undefined;
         setSelectedArticle(mock ?? null);
+        syncToArticle(mock ?? null);
       })
       .finally(() => setArticleLoading(false));
   };
@@ -242,16 +420,18 @@ export default function StudioPage() {
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             Personal Writing Studio
           </span>
-          <span
-            className="text-xs px-1.5 py-0.5 rounded"
-            style={{
-              background: dataSource === "live" ? "var(--green)" : "var(--yellow)",
-              color: "var(--bg-primary)",
-              fontWeight: 500,
-            }}
-          >
-            {dataSource === "live" ? "live" : "demo mode"}
-          </span>
+          {!appLoading && dataSource === "demo" && (
+            <span
+              className="text-xs px-1.5 py-0.5 rounded"
+              style={{
+                background: "var(--yellow)",
+                color: "var(--bg-primary)",
+                fontWeight: 500,
+              }}
+            >
+              demo mode
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <a
@@ -285,7 +465,18 @@ export default function StudioPage() {
           >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
-          {currentUser === null ? (
+          {appLoading ? (
+            <div
+              className="inline-flex items-center justify-center text-xs rounded"
+              style={{
+                height: "40px",
+                width: "180px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              Loading…
+            </div>
+          ) : currentUser === null ? (
             <a
               href={getLoginUrl()}
               aria-label="Sign in with GitHub"
@@ -363,13 +554,19 @@ export default function StudioPage() {
             flexShrink: 0,
           }}
         >
-          <ArticleList articles={summaries} selectedSlug={selectedSlug} onSelect={handleSelect} />
+          <ArticleList
+            articles={summaries}
+            selectedSlug={selectedSlug}
+            onSelect={handleSelect}
+            onNewArticle={handleNewArticle}
+          />
         </div>
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
           {articleLoading || !selectedArticle ? (
             <div
+              data-testid="article-loading"
               className="flex-1 flex items-center justify-center"
               style={{ color: "var(--text-secondary)" }}
             >
@@ -379,13 +576,26 @@ export default function StudioPage() {
             <EditorPane
               key={selectedSlug}
               article={selectedArticle}
+              draftTitle={draftTitle}
+              draftTags={draftTags}
               onChange={handleContentChange}
+              onTitleChange={handleTitleChange}
+              onTagsChange={handleTagsChange}
               theme={theme}
               zenMode={zenMode}
               onToggleZen={toggleZen}
             />
           )}
-          <VersionStrip slug={selectedSlug} />
+          <VersionStrip
+            slug={selectedSlug}
+            versions={selectedArticle?.versions ?? []}
+            isDirty={isDirty}
+            saving={saving}
+            deleting={deleting}
+            saveError={saveError}
+            onSave={handleSave}
+            onDelete={handleDelete}
+          />
         </div>
 
         {/* Side panel */}

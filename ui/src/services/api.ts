@@ -66,3 +66,50 @@ export async function patchArticle(slug: string, patch: Partial<Article>): Promi
   if (!response.ok) throw new Error(`Failed to patch article: ${response.status}`);
   return response.json() as Promise<Article>;
 }
+
+export async function createArticle(
+  title: string,
+  slug: string,
+  tags: string[],
+  content: string
+): Promise<Article> {
+  const response = await fetchWithTimeout(`${API_BASE}/articles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, slug, tags, content }),
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? "Failed to create article");
+  }
+  return response.json() as Promise<Article>;
+}
+
+export async function deleteArticle(slug: string): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/articles/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? "Failed to delete article");
+  }
+}
+
+export async function saveArticle(
+  slug: string,
+  patch: { title: string; tags: string[]; content: string; message?: string }
+): Promise<Article> {
+  const response = await fetchWithTimeout(`${API_BASE}/articles/${encodeURIComponent(slug)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? "Failed to save article");
+  }
+  return response.json() as Promise<Article>;
+}

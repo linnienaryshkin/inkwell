@@ -28,3 +28,17 @@ class ArticlePatch(BaseModel):
     status: Literal["draft", "published"] | None = None
     content: str | None = None
     tags: list[str] | None = None
+
+
+class ArticleCreate(BaseModel):
+    title: str
+    slug: str
+    tags: list[str] = []
+    content: str = ""
+
+
+class ArticleSave(BaseModel):
+    title: str
+    tags: list[str]
+    content: str
+    message: str | None = None

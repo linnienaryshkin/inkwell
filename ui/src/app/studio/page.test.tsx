@@ -1,13 +1,31 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Mock the heavy components that use ESM modules
 jest.mock("@/components/EditorPane", () => ({
-  EditorPane: () => <div data-testid="editor-pane">Editor Pane</div>,
+  EditorPane: ({
+    onChange,
+    onTitleChange,
+    onTagsChange,
+  }: {
+    onChange: (v: string) => void;
+    onTitleChange?: (v: string) => void;
+    onTagsChange?: (v: string[]) => void;
+  }) => (
+    <div data-testid="editor-pane">
+      <button onClick={() => onChange("new content")}>Change Content</button>
+      <button onClick={() => onTitleChange?.("New Title")}>Change Title</button>
+      <button onClick={() => onTagsChange?.(["newtag"])}>Change Tags</button>
+    </div>
+  ),
 }));
 
 jest.mock("@/components/ArticleList", () => ({
-  ArticleList: () => <div data-testid="article-list">Article List</div>,
+  ArticleList: ({ onNewArticle }: { onNewArticle?: () => void }) => (
+    <div data-testid="article-list">
+      <button onClick={onNewArticle}>New Article</button>
+    </div>
+  ),
 }));
 
 jest.mock("@/components/SidePanel", () => ({
@@ -15,7 +33,24 @@ jest.mock("@/components/SidePanel", () => ({
 }));
 
 jest.mock("@/components/VersionStrip", () => ({
-  VersionStrip: () => <div data-testid="version-strip">Version Strip</div>,
+  VersionStrip: ({
+    isDirty,
+    saving,
+    saveError,
+    onSave,
+  }: {
+    isDirty?: boolean;
+    saving?: boolean;
+    saveError?: boolean;
+    onSave?: () => void;
+  }) => (
+    <div data-testid="version-strip">
+      <span data-testid="is-dirty">{isDirty ? "dirty" : "clean"}</span>
+      <span data-testid="is-saving">{saving ? "saving" : "idle"}</span>
+      {saveError && <span data-testid="save-error">Save failed</span>}
+      <button onClick={onSave}>Save</button>
+    </div>
+  ),
 }));
 
 jest.mock("@/services/api", () => ({
@@ -26,21 +61,35 @@ jest.mock("@/services/api", () => ({
     () => "http://localhost:8000/auth/login?redirect_url=http%3A%2F%2Flocalhost%3A5173%2F"
   ),
   logout: jest.fn(),
+  createArticle: jest.fn(),
+  saveArticle: jest.fn(),
 }));
 
 import StudioPage from "./page";
-import { fetchArticles, fetchArticle, fetchCurrentUser, logout } from "@/services/api";
+import {
+  fetchArticles,
+  fetchArticle,
+  fetchCurrentUser,
+  logout,
+  createArticle,
+  saveArticle,
+} from "@/services/api";
 
 const mockFetchArticles = fetchArticles as jest.MockedFunction<typeof fetchArticles>;
 const mockFetchArticle = fetchArticle as jest.MockedFunction<typeof fetchArticle>;
 const mockFetchCurrentUser = fetchCurrentUser as jest.MockedFunction<typeof fetchCurrentUser>;
 const mockLogout = logout as jest.MockedFunction<typeof logout>;
+const mockCreateArticle = createArticle as jest.MockedFunction<typeof createArticle>;
+const mockSaveArticle = saveArticle as jest.MockedFunction<typeof saveArticle>;
 
 describe("StudioPage", () => {
   beforeEach(() => {
     mockFetchArticles.mockRejectedValue(new Error("API unavailable"));
     mockFetchArticle.mockRejectedValue(new Error("API unavailable"));
     mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
+    mockCreateArticle.mockReset();
+    mockSaveArticle.mockReset();
+    mockLogout.mockReset();
   });
 
   describe("Data Source Indicator", () => {
@@ -51,7 +100,7 @@ describe("StudioPage", () => {
       });
     });
 
-    it("should show live badge when API responds", async () => {
+    it("should not show live badge when API responds", async () => {
       mockFetchArticles.mockResolvedValue([
         {
           slug: "test",
@@ -68,7 +117,7 @@ describe("StudioPage", () => {
       });
       render(<StudioPage />);
       await waitFor(() => {
-        expect(screen.getByText("live")).toBeInTheDocument();
+        expect(screen.queryByText("live")).not.toBeInTheDocument();
       });
     });
   });
@@ -82,7 +131,7 @@ describe("StudioPage", () => {
       mockFetchArticle.mockImplementation(() => new Promise(() => {}));
       render(<StudioPage />);
       await waitFor(() => {
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByTestId("article-loading")).toBeInTheDocument();
       });
     });
 
@@ -288,6 +337,323 @@ describe("StudioPage", () => {
       await waitFor(() => {
         expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("isDirty state", () => {
+    it("isDirty becomes true when content changes", async () => {
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+    });
+
+    it("isDirty becomes true when title changes", async () => {
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Title" }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+    });
+
+    it("isDirty becomes true when tags change", async () => {
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Tags" }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+    });
+
+    it("isDirty resets to false after successful save", async () => {
+      const savedArticle = {
+        slug: "welcome",
+        content: "new content",
+        meta: { slug: "welcome", title: "Welcome to Inkwell", status: "draft" as const, tags: [] },
+        versions: [],
+      };
+      mockSaveArticle.mockResolvedValue(savedArticle);
+
+      render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      // Make it dirty first
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+
+      // Trigger save
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+      });
+    });
+  });
+
+  describe("handleNewArticle", () => {
+    it("handleNewArticle sets selectedSlug to __new__ and selectedArticle to EMPTY_ARTICLE", async () => {
+      render(<StudioPage />);
+
+      // Click the New Article button in the mocked ArticleList
+      fireEvent.click(screen.getByRole("button", { name: "New Article" }));
+
+      // After calling handleNewArticle the editor pane should still be visible
+      // (selectedArticle is set to EMPTY_ARTICLE, not null)
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      // isDirty should be false
+      expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+    });
+  });
+
+  describe("handleSave", () => {
+    it("handleSave calls createArticle for __new__ slug", async () => {
+      const newArticle = {
+        slug: "my-new-article",
+        content: "",
+        meta: {
+          slug: "my-new-article",
+          title: "My New Article",
+          status: "draft" as const,
+          tags: [],
+        },
+        versions: [],
+      };
+      mockCreateArticle.mockResolvedValue(newArticle);
+
+      render(<StudioPage />);
+
+      // Navigate to new article
+      fireEvent.click(screen.getByRole("button", { name: "New Article" }));
+
+      // Set the title via the Change Title button (sets "New Title")
+      fireEvent.click(screen.getByRole("button", { name: "Change Title" }));
+
+      // Trigger save
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateArticle).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("handleSave calls saveArticle for existing slug", async () => {
+      const savedArticle = {
+        slug: "welcome",
+        content: "new content",
+        meta: { slug: "welcome", title: "Welcome to Inkwell", status: "draft" as const, tags: [] },
+        versions: [],
+      };
+      mockSaveArticle.mockResolvedValue(savedArticle);
+
+      render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      // Make dirty on existing article
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(mockSaveArticle).toHaveBeenCalledWith(
+          "welcome",
+          expect.objectContaining({ content: "new content" })
+        );
+      });
+    });
+
+    it("handleSave derives slug from title", async () => {
+      const newArticle = {
+        slug: "my-new-title",
+        content: "",
+        meta: {
+          slug: "my-new-title",
+          title: "My New Title",
+          status: "draft" as const,
+          tags: [],
+        },
+        versions: [],
+      };
+      mockCreateArticle.mockResolvedValue(newArticle);
+
+      render(<StudioPage />);
+
+      // Navigate to new article mode
+      fireEvent.click(screen.getByRole("button", { name: "New Article" }));
+
+      // Set title to "New Title" via mock button
+      fireEvent.click(screen.getByRole("button", { name: "Change Title" }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        // slug derived from "New Title" → "new-title"
+        expect(mockCreateArticle).toHaveBeenCalledWith(
+          "New Title",
+          "new-title",
+          expect.anything(),
+          expect.anything()
+        );
+      });
+    });
+
+    it("handleSave on success appends meta to summaries", async () => {
+      const newArticle = {
+        slug: "new-article",
+        content: "",
+        meta: { slug: "new-article", title: "New Title", status: "draft" as const, tags: [] },
+        versions: [],
+      };
+      mockCreateArticle.mockResolvedValue(newArticle);
+
+      render(<StudioPage />);
+
+      fireEvent.click(screen.getByRole("button", { name: "New Article" }));
+      fireEvent.click(screen.getByRole("button", { name: "Change Title" }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateArticle).toHaveBeenCalledTimes(1);
+      });
+
+      // After save, isDirty should be false (meta was appended + isDirty cleared)
+      expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+    });
+
+    it("handleSave on success clears isDirty", async () => {
+      const savedArticle = {
+        slug: "welcome",
+        content: "new content",
+        meta: { slug: "welcome", title: "Welcome to Inkwell", status: "draft" as const, tags: [] },
+        versions: [],
+      };
+      mockSaveArticle.mockResolvedValue(savedArticle);
+
+      render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+      });
+    });
+
+    it("handleSave shows save error when API rejects", async () => {
+      mockSaveArticle.mockRejectedValue(new Error("network error"));
+
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("save-error")).toHaveTextContent("Save failed");
+      });
+    });
+  });
+
+  describe("beforeunload", () => {
+    it("beforeunload fires when isDirty is true", async () => {
+      render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
+      // Make it dirty
+      fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
+      });
+
+      const event = new Event("beforeunload") as BeforeUnloadEvent;
+      Object.defineProperty(event, "returnValue", { writable: true, value: "" });
+      const prevented = jest.fn();
+      event.preventDefault = prevented;
+      window.dispatchEvent(event);
+      expect(prevented).toHaveBeenCalled();
+    });
+
+    it("beforeunload does not fire when isDirty is false", async () => {
+      render(<StudioPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+      });
+
+      const event = new Event("beforeunload") as BeforeUnloadEvent;
+      Object.defineProperty(event, "returnValue", { writable: true, value: "" });
+      const prevented = jest.fn();
+      event.preventDefault = prevented;
+      window.dispatchEvent(event);
+      expect(prevented).not.toHaveBeenCalled();
     });
   });
 });

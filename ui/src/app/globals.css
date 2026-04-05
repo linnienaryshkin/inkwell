@@ -39,6 +39,104 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+/* ── Reusable hover classes ───────────────────────────────────────────────── */
+
+/* Toolbar icon buttons: bg-tertiary → bg-primary on hover (unless active) */
+.btn-icon {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.btn-icon:not([data-active="true"]):hover {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+/* Secondary border buttons (Add tag, New Article) */
+.btn-secondary {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.btn-secondary:hover {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+/* Destructive button (Delete): transparent → filled red on hover */
+.btn-danger {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.btn-danger:not(:disabled):hover {
+  background: var(--red) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--red) !important;
+}
+
+/* Save button: dim when disabled, pointer when enabled, dim on hover */
+.btn-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-save:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}
+.btn-save:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+/* Article list rows */
+.article-row {
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+.article-row:not([data-selected="true"]):hover {
+  background: var(--bg-tertiary) !important;
+}
+
+/* Versions trigger label */
+.btn-versions {
+  transition: color 0.15s ease;
+}
+.btn-versions:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Version menu links */
+.version-link {
+  transition: background 0.15s ease;
+}
+.version-link:hover {
+  background: var(--bg-tertiary) !important;
+}
+
+/* Tag × remove button */
+.btn-tag-remove {
+  transition: color 0.15s ease;
+}
+.btn-tag-remove:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Title input: show border/bg on hover when not focused */
+.title-input {
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.title-input:hover:not(:focus) {
+  border-color: var(--border) !important;
+  background: var(--bg-tertiary) !important;
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);

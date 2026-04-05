@@ -5,6 +5,12 @@ from pydantic import BaseModel
 # TODO: Add documentation to the models and their fields
 
 
+class ArticleVersion(BaseModel):
+    sha: str
+    message: str
+    committed_at: str  # ISO 8601 timestamp
+
+
 class ArticleSummary(BaseModel):
     slug: str
     title: str
@@ -24,6 +30,7 @@ class Article(BaseModel):
     status: Literal["draft", "published"]
     content: str
     tags: list[str]
+    versions: list[ArticleVersion] = []
 
 
 class ArticlePatch(BaseModel):

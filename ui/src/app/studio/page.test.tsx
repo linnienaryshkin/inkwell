@@ -66,6 +66,7 @@ describe("StudioPage", () => {
         status: "draft",
         content: "# Test",
         tags: [],
+        versions: [],
       });
       render(<StudioPage />);
       await waitFor(() => {
@@ -97,6 +98,7 @@ describe("StudioPage", () => {
         status: "draft",
         content: "# Test",
         tags: [],
+        versions: [],
       });
       render(<StudioPage />);
       await waitFor(() => {

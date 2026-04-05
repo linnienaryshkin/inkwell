@@ -69,6 +69,7 @@ describe("EditorPane", () => {
     status: "draft",
     content: "# Introduction\n\nMarkdown is a lightweight markup language.",
     tags: ["markdown", "documentation"],
+    versions: [],
   };
 
   describe("Display", () => {

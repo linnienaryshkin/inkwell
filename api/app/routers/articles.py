@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter, Cookie, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException
 
 from app.github_articles import (
     get_article as gh_get_article,
@@ -12,6 +12,14 @@ from app.models.article import Article, ArticlePatch, ArticleSummary
 # TODO: Add a ASCII Architecture diagram of how these resources work
 
 router = APIRouter()
+
+
+def require_auth(gh_access_token: str | None = Cookie(default=None)) -> str:
+    """Dependency that enforces authentication via the gh_access_token cookie."""
+    if not gh_access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return gh_access_token
+
 
 _store: dict[str, Article] = {
     a.slug: a
@@ -143,13 +151,13 @@ Diagrams live next to the prose that describes them. No more stale architecture 
 
 @router.get("", response_model=list[ArticleSummary])
 async def list_articles(
-    gh_access_token: str | None = Cookie(default=None),
+    access_token: str = Depends(require_auth),
 ) -> list[ArticleSummary]:
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        return await list_article_summaries(gh_access_token)
+        return await list_article_summaries(access_token)
     except httpx.HTTPStatusError as e:
+        if e.response.status_code == 401:
+            raise HTTPException(status_code=401, detail="GitHub token expired or invalid")
         raise HTTPException(status_code=502, detail=f"GitHub API error: {e.response.status_code}")
     except Exception:
         raise HTTPException(status_code=502, detail="Failed to fetch articles from GitHub")
@@ -158,12 +166,10 @@ async def list_articles(
 @router.get("/{slug}", response_model=Article)
 async def get_article_by_slug(
     slug: str,
-    gh_access_token: str | None = Cookie(default=None),
+    access_token: str = Depends(require_auth),
 ) -> Article:
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        return await gh_get_article(gh_access_token, slug)
+        return await gh_get_article(access_token, slug)
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="Article not found")

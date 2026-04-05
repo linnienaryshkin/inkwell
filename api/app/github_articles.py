@@ -4,7 +4,7 @@ import json
 
 import httpx
 
-from app.models.article import Article, ArticleMeta, ArticleSummary
+from app.models.article import Article, ArticleMeta, ArticleSummary, ArticleVersion
 
 ARTICLES_REPO = "linnienaryshkin/inkwell"
 GITHUB_API_BASE = "https://api.github.com"
@@ -54,9 +54,9 @@ async def list_article_summaries(access_token: str) -> list[ArticleSummary]:
 
 async def get_article(access_token: str, slug: str) -> Article:
     """
-    Fetch a full article (meta + content + publish-log) for a single slug.
-    publish-log.json is fetched but not included in the returned Article.
-    Missing publish-log.json is non-fatal (returns empty dict).
+    Fetch a full article (meta + content + commit history) for a single slug.
+    Versions are fetched from the Git commit log for articles/{slug}/.
+    Missing commit history is non-fatal (returns empty list).
     Raises httpx.HTTPStatusError if meta.json or content.md is missing.
     Raises ValueError if meta.json is malformed.
     """
@@ -74,17 +74,30 @@ async def get_article(access_token: str, slug: str) -> Article:
             content_b64 = resp.json()["content"]
             return base64.b64decode(content_b64.replace("\n", "")).decode("utf-8")
 
-        async def fetch_publish_log() -> dict:
+        async def fetch_versions() -> list[ArticleVersion]:
             try:
-                raw = await fetch_file("publish-log.json")
-                return json.loads(raw)
+                resp = await client.get(
+                    f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/commits",
+                    headers=headers,
+                    params={"path": f"articles/{slug}", "per_page": 10},
+                )
+                resp.raise_for_status()
+                commits = resp.json()
+                return [
+                    ArticleVersion(
+                        sha=c["sha"],
+                        message=c["commit"]["message"],
+                        committed_at=c["commit"]["committer"]["date"],
+                    )
+                    for c in commits
+                ]
             except Exception:
-                return {}
+                return []
 
-        content_raw, meta_raw, _ = await asyncio.gather(
+        content_raw, meta_raw, versions = await asyncio.gather(
             fetch_file("content.md"),
             fetch_file("meta.json"),
-            fetch_publish_log(),
+            fetch_versions(),
         )
 
         try:
@@ -99,4 +112,5 @@ async def get_article(access_token: str, slug: str) -> Article:
             status=meta.status,
             tags=meta.tags,
             content=content_raw,
+            versions=versions,
         )

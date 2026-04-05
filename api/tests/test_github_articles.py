@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 from app.github_articles import get_article, list_article_summaries
-from app.models.article import Article, ArticleSummary
+from app.models.article import Article, ArticleSummary, ArticleVersion
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -232,6 +232,29 @@ class TestListArticleSummaries:
 # ---------------------------------------------------------------------------
 
 
+def _commits_url() -> str:
+    return f"{GITHUB_API_BASE}/repos/{REPO}/commits"
+
+
+def _commits_response(slug: str, commits: list[dict] | None = None) -> httpx.Response:
+    """Build a mock GitHub commits API response for a given article slug."""
+    if commits is None:
+        commits = [
+            {
+                "sha": "abc123",
+                "commit": {
+                    "message": "initial commit",
+                    "committer": {"date": "2026-01-01T00:00:00Z"},
+                },
+            }
+        ]
+    return httpx.Response(
+        200,
+        json=commits,
+        request=httpx.Request("GET", _commits_url()),
+    )
+
+
 class TestGetArticle:
     def _content_url(self, slug: str) -> str:
         return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/content.md"
@@ -239,24 +262,23 @@ class TestGetArticle:
     def _meta_url(self, slug: str) -> str:
         return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
 
-    def _publish_log_url(self, slug: str) -> str:
-        return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/publish-log.json"
+    def _versions_url(self) -> str:
+        return _commits_url()
 
     @pytest.mark.asyncio
     async def test_valid_slug_returns_article_with_correct_fields(self):
         """
         All three concurrent fetches succeed → Article returned with correct fields.
-        Exercises the full asyncio.gather path (content.md + meta.json + publish-log.json).
+        Exercises the full asyncio.gather path (content.md + meta.json + versions).
         """
         slug = "hello-world"
         content_md = "# Hello World\n\nThis is the content."
         meta = _meta_json("Hello World", "published", ["python", "intro"])
-        publish_log = json.dumps({"dev.to": "published"})
 
         url_map = {
             self._content_url(slug): _github_content_response(content_md),
             self._meta_url(slug): _github_content_response(meta),
-            self._publish_log_url(slug): _github_content_response(publish_log),
+            self._versions_url(): _commits_response(slug),
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
@@ -268,6 +290,9 @@ class TestGetArticle:
         assert result.status == "published"
         assert result.tags == ["python", "intro"]
         assert result.content == content_md
+        assert len(result.versions) == 1
+        assert isinstance(result.versions[0], ArticleVersion)
+        assert result.versions[0].sha == "abc123"
 
     @pytest.mark.asyncio
     async def test_content_md_404_raises_http_status_error(self):
@@ -285,7 +310,7 @@ class TestGetArticle:
         url_map = {
             self._content_url(slug): not_found,
             self._meta_url(slug): _github_content_response(_meta_json("Title")),
-            self._publish_log_url(slug): _github_content_response("{}"),
+            self._versions_url(): _commits_response(slug),
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
@@ -304,7 +329,7 @@ class TestGetArticle:
         url_map = {
             self._content_url(slug): _github_content_response("# Content"),
             self._meta_url(slug): _github_content_response("not { valid json"),
-            self._publish_log_url(slug): _github_content_response("{}"),
+            self._versions_url(): _commits_response(slug),
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
@@ -343,7 +368,7 @@ class TestGetArticle:
         url_map = {
             self._content_url(slug): content_response,
             self._meta_url(slug): meta_response,
-            self._publish_log_url(slug): _github_content_response("{}"),
+            self._versions_url(): _commits_response(slug),
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
@@ -353,24 +378,24 @@ class TestGetArticle:
         assert result.title == "Wrapped"
 
     @pytest.mark.asyncio
-    async def test_missing_publish_log_is_non_fatal(self):
+    async def test_missing_versions_is_non_fatal(self):
         """
-        publish-log.json returns 404 → error is swallowed; Article is still returned.
+        Commits API returns 404 → error is swallowed; Article is still returned with empty versions.
         """
-        slug = "no-publish-log"
-        content_md = "# No Publish Log\n\nContent."
-        meta = _meta_json("No Publish Log", "draft", ["test"])
+        slug = "no-versions"
+        content_md = "# No Versions\n\nContent."
+        meta = _meta_json("No Versions", "draft", ["test"])
 
         not_found = httpx.Response(
             404,
             json={"message": "Not Found"},
-            request=httpx.Request("GET", self._publish_log_url(slug)),
+            request=httpx.Request("GET", self._versions_url()),
         )
 
         url_map = {
             self._content_url(slug): _github_content_response(content_md),
             self._meta_url(slug): _github_content_response(meta),
-            self._publish_log_url(slug): not_found,
+            self._versions_url(): not_found,
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
@@ -378,32 +403,50 @@ class TestGetArticle:
 
         assert isinstance(result, Article)
         assert result.slug == slug
-        assert result.title == "No Publish Log"
+        assert result.title == "No Versions"
         assert result.content == content_md
+        assert result.versions == []
 
     @pytest.mark.asyncio
-    async def test_valid_publish_log_is_silently_fetched(self):
+    async def test_versions_are_returned_in_article(self):
         """
-        publish-log.json is valid and fetched successfully — it is not included
-        in the returned Article shape but must not cause any errors.
+        Commits API returns multiple commits → versions list included in Article.
         """
-        slug = "with-publish-log"
-        content_md = "# With Publish Log"
-        meta = _meta_json("With Publish Log", "published", ["devto"])
-        publish_log = json.dumps({"dev.to": "published", "hashnode": "pending"})
+        slug = "with-versions"
+        content_md = "# With Versions"
+        meta = _meta_json("With Versions", "published", ["devto"])
+        commits = [
+            {
+                "sha": "sha1",
+                "commit": {
+                    "message": "second commit",
+                    "committer": {"date": "2026-02-01T00:00:00Z"},
+                },
+            },
+            {
+                "sha": "sha0",
+                "commit": {
+                    "message": "initial commit",
+                    "committer": {"date": "2026-01-01T00:00:00Z"},
+                },
+            },
+        ]
 
         url_map = {
             self._content_url(slug): _github_content_response(content_md),
             self._meta_url(slug): _github_content_response(meta),
-            self._publish_log_url(slug): _github_content_response(publish_log),
+            self._versions_url(): httpx.Response(
+                200,
+                json=commits,
+                request=httpx.Request("GET", self._versions_url()),
+            ),
         }
 
         with patch("app.github_articles.httpx.AsyncClient", _make_client_mock(url_map)):
             result = await get_article(TOKEN, slug)
 
         assert isinstance(result, Article)
-        assert result.slug == slug
-        assert result.title == "With Publish Log"
-        assert result.status == "published"
-        # publish-log is not in the Article model — confirm the field is absent
-        assert not hasattr(result, "publish_log")
+        assert len(result.versions) == 2
+        assert result.versions[0].sha == "sha1"
+        assert result.versions[0].message == "second commit"
+        assert result.versions[1].sha == "sha0"

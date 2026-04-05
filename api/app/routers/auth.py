@@ -75,7 +75,7 @@ def login(redirect_url: str | None = None) -> RedirectResponse:
         {
             "client_id": config.oauth_client_id,
             "redirect_uri": config.oauth_callback_url,  # must match the registered OAuth app URL
-            "scope": "read:user",  # minimum scope to read the user profile
+            "scope": "read:user repo",  # read:user for profile; repo for GitHub Contents API access
             "state": state,  # CSRF protection token (GitHub echoes this back)
         }
     )

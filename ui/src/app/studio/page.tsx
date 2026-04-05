@@ -7,12 +7,19 @@ import { VersionStrip } from "@/components/VersionStrip";
 import { fetchArticles, fetchArticle, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
+export type ArticleVersion = {
+  sha: string;
+  message: string;
+  committed_at: string;
+};
+
 export type Article = {
   slug: string;
   title: string;
   status: "draft" | "published";
   content: string;
   tags: string[];
+  versions: ArticleVersion[];
 };
 
 export type ArticleSummary = {
@@ -24,152 +31,16 @@ export type ArticleSummary = {
 
 const MOCK_ARTICLES: Article[] = [
   {
-    slug: "getting-started-with-typescript",
-    title: "Getting Started with TypeScript",
-    status: "published",
-    tags: ["typescript", "beginner"],
-    content: `# Getting Started with TypeScript
-
-TypeScript adds static type checking to JavaScript, catching errors before they reach production.
-
-## Why TypeScript?
-
-- **Catch bugs early** — type errors surface at compile time, not runtime
-- **Better IDE support** — autocomplete, refactoring, and inline docs
-- **Self-documenting** — types serve as living documentation
-
-## Quick Setup
-
-\`\`\`bash
-npm init -y
-npm install typescript --save-dev
-npx tsc --init
-\`\`\`
-
-## Your First Type
-
-\`\`\`typescript
-interface Article {
-  title: string;
-  slug: string;
-  tags: string[];
-  publishedAt?: Date;
-}
-
-function formatArticle(article: Article): string {
-  return \`# \${article.title}\\nTags: \${article.tags.join(", ")}\`;
-}
-\`\`\`
-
-Types make your intent explicit. Your future self will thank you.
-`,
-  },
-  {
-    slug: "git-workflow-for-writers",
-    title: "Git Workflow for Writers",
+    slug: "welcome",
+    title: "Welcome to Inkwell",
     status: "draft",
-    tags: ["git", "workflow", "writing"],
-    content: `# Git Workflow for Writers
+    tags: [],
+    versions: [],
+    content: `# Welcome to Inkwell
 
-Treat your articles like code. Every draft is a branch, every revision is a commit.
+Sign in with GitHub to unlock the full potential of the application.
 
-## The Branch Strategy
-
-\`\`\`
-main              ← published truth
-  └── drafts/     ← work in progress
-\`\`\`
-
-## Why This Works
-
-1. **Full history** — see every revision, compare any two versions
-2. **Safe experimentation** — branches are cheap, try bold edits
-3. **Clean publishing** — squash-merge to main for a tidy log
-
-> Write fearlessly. Git remembers everything.
-`,
-  },
-  {
-    slug: "building-a-writing-studio",
-    title: "Building a Writing Studio",
-    status: "draft",
-    tags: ["project", "next.js", "architecture"],
-    content: `# Building a Writing Studio
-
-What if your writing environment felt as powerful as your IDE?
-
-## The Stack
-
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 15 |
-| Editor | Monaco |
-| Storage | GitHub repo |
-| Deploy | Vercel |
-
-## Key Insight
-
-Your GitHub repo already **is** a CMS. It has:
-- Version control (commits)
-- Branching (drafts vs published)
-- Access control (collaborators)
-- An API (Octokit)
-
-We just need a UI on top.
-`,
-  },
-  {
-    slug: "visualizing-systems-with-mermaid",
-    title: "Visualizing Systems with Mermaid",
-    status: "draft",
-    tags: ["mermaid", "diagrams", "documentation"],
-    content: `# Visualizing Systems with Mermaid
-
-Mermaid lets you write diagrams as code — version-controlled, diff-able, and always in sync with your docs.
-
-## Request Flow
-
-\`\`\`mermaid
-sequenceDiagram
-    participant Browser
-    participant Next.js
-    participant GitHub API
-
-    Browser->>Next.js: GET /studio
-    Next.js->>GitHub API: fetchArticles(repo)
-    GitHub API-->>Next.js: articles[]
-    Next.js-->>Browser: rendered page
-    Browser->>GitHub API: saveCommit(content)
-    GitHub API-->>Browser: commit SHA
-\`\`\`
-
-## Component Architecture
-
-\`\`\`mermaid
-graph TD
-    StudioPage --> ArticleList
-    StudioPage --> EditorPane
-    StudioPage --> SidePanel
-    StudioPage --> VersionStrip
-    EditorPane --> Monaco["Monaco Editor"]
-    SidePanel --> LintTab["Lint Results"]
-    SidePanel --> PublishTab["Publish Controls"]
-    SidePanel --> TocTab["Table of Contents"]
-\`\`\`
-
-## Publish State Machine
-
-\`\`\`mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Review: submit for review
-    Review --> Draft: request changes
-    Review --> Published: approve
-    Published --> Draft: unpublish
-    Published --> [*]
-\`\`\`
-
-Diagrams live next to the prose that describes them. No more stale architecture docs.
+Your articles are stored as files in your GitHub repository — version-controlled, diff-able, and always yours.
 `,
   },
 ];

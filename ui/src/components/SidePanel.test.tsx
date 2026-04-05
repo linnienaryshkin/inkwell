@@ -9,6 +9,7 @@ describe("SidePanel", () => {
     status: "draft",
     content: "Test content",
     tags: ["test"],
+    versions: [],
   };
 
   describe("Tab Navigation", () => {

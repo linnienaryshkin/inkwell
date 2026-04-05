@@ -42,7 +42,7 @@
   "model": "haiku",
   "statusLine": {
     "type": "command",
-    "command": "sh .claude/statusline-command.sh"
+    "command": "sh \"$(git rev-parse --show-toplevel)/.claude/statusline-command.sh\""
   },
   "enabledMcpjsonServers": [
     "playwright",

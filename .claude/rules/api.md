@@ -37,11 +37,11 @@ api/
 
 ```bash
 cd api
-uv sync --extra dev                    # Install deps
-uv run uvicorn app.main:app --reload   # Dev server at localhost:8000
-uv run pytest tests/ -v                # Run tests
-uv run ruff check app/ tests/          # Lint
-uv run ruff format app/ tests/         # Auto-format
+uv sync --extra dev                                      # Install deps (creates .venv automatically)
+uv run uvicorn app.main:app --reload --env-file .env     # Dev server at localhost:8000 (requires api/.env)
+uv run --env-file .env.example pytest tests/ -v          # Run tests (uses .env.example for required env vars)
+uv run ruff check app/ tests/                            # Lint
+uv run ruff format app/ tests/                           # Auto-format
 ```
 
 ## API Design Conventions
@@ -73,7 +73,7 @@ Keep these two types in sync when either changes.
 - Use `httpx` + FastAPI `TestClient` for endpoint tests
 - Reset in-memory store state between tests with an `autouse` fixture
 - Test happy paths, 404s, 409 conflicts, and partial updates
-- All tests must pass before committing: `uv run pytest tests/ -v`
+- All tests must pass before committing: `uv run --env-file .env.example pytest tests/ -v`
 
 ## Linting
 
@@ -87,7 +87,7 @@ Keep these two types in sync when either changes.
 - [ ] If adding a new endpoint: define Pydantic model, add route, return correct status code
 - [ ] If changing the Article schema: update both `api/app/models/article.py` and `ui/src/app/studio/page.tsx`
 - [ ] Write or update tests in `api/tests/`
-- [ ] Run `uv run pytest tests/ -v` — all tests pass
+- [ ] Run `uv run --env-file .env.example pytest tests/ -v` — all tests pass
 - [ ] Run `uv run ruff check app/ tests/` — zero errors
 - [ ] If adding a new router: register it in `app/main.py`
 - [ ] If the UI consumes the new endpoint: update `ui/src/services/api.ts`

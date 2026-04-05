@@ -40,6 +40,14 @@ export async function fetchArticles(): Promise<Article[]> {
   return response.json() as Promise<Article[]>;
 }
 
+export async function logout(): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error(`Logout failed: ${response.status}`);
+}
+
 export async function patchArticle(slug: string, patch: Partial<Article>): Promise<Article> {
   const response = await fetchWithTimeout(`${API_BASE}/articles/${slug}`, {
     method: "PATCH",

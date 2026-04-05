@@ -3,6 +3,8 @@ name: documentarian-agent
 description: "Use this agent to (1) audit and synchronize all project documentation files, (2) answer 'where does X live?' questions about the codebase, or (3) update docs after code changes. The documentarian owns every documentation file in the project — CLAUDE.md, all rules/*.md, github.md, agent and skill files — and knows how to keep them accurate. Trigger when: code changes affect documented facts (new endpoint, renamed job, new agent/rule), session starts via /init, or you need to know where something lives. Examples: (1) A new API endpoint was added → documentarian updates the endpoint map in CLAUDE.md and the documentarian's own knowledge base. (2) A CI job was renamed → documentarian updates github.md and all files that reference the old job name. (3) /init runs → documentarian reads all doc files and reports any stale entries."
 tools: Glob, Grep, Read, Write, Edit
 model: haiku
+effort: low
+memory: project
 color: cyan
 ---
 

@@ -1,4 +1,4 @@
-import { fetchArticles, patchArticle, getLoginUrl } from "@/services/api";
+import { fetchArticles, patchArticle, getLoginUrl, logout } from "@/services/api";
 
 const mockArticles = [
   {
@@ -93,6 +93,41 @@ describe("api service", () => {
       await expect(patchArticle("missing", { title: "x" })).rejects.toThrow(
         "Failed to patch article: 404"
       );
+    });
+  });
+
+  describe("logout", () => {
+    it("sends POST to /auth/logout with credentials: include", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+      await logout();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8000/auth/logout",
+        expect.objectContaining({
+          method: "POST",
+          credentials: "include",
+          signal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    it("resolves on 204", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+      await expect(logout()).resolves.toBeUndefined();
+    });
+
+    it("throws on non-ok response", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 403 });
+
+      await expect(logout()).rejects.toThrow("Logout failed: 403");
+    });
+
+    it("throws on network error", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+
+      await expect(logout()).rejects.toThrow("Network error");
     });
   });
 });

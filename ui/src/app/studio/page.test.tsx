@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock the heavy components that use ESM modules
 jest.mock("@/components/EditorPane", () => ({
@@ -23,13 +24,15 @@ jest.mock("@/services/api", () => ({
   getLoginUrl: jest.fn(
     () => "http://localhost:8000/auth/login?redirect_url=http%3A%2F%2Flocalhost%3A5173%2F"
   ),
+  logout: jest.fn(),
 }));
 
 import StudioPage from "./page";
-import { fetchArticles, fetchCurrentUser } from "@/services/api";
+import { fetchArticles, fetchCurrentUser, logout } from "@/services/api";
 
 const mockFetchArticles = fetchArticles as jest.MockedFunction<typeof fetchArticles>;
 const mockFetchCurrentUser = fetchCurrentUser as jest.MockedFunction<typeof fetchCurrentUser>;
+const mockLogout = logout as jest.MockedFunction<typeof logout>;
 
 describe("StudioPage", () => {
   beforeEach(() => {
@@ -173,6 +176,79 @@ describe("StudioPage", () => {
       render(<StudioPage />);
       await waitFor(() => {
         expect(screen.getByText("demo mode")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Logout", () => {
+    const authenticatedUser = {
+      login: "testuser",
+      name: "Test",
+      avatar_url: "https://example.com/a.png",
+    };
+
+    it("renders profile menu trigger when authenticated", async () => {
+      mockFetchCurrentUser.mockResolvedValue(authenticatedUser);
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /open profile menu/i })).toBeInTheDocument();
+      });
+    });
+
+    it("does not render profile menu trigger when unauthenticated", async () => {
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("button", { name: /open profile menu/i })
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("clicking profile trigger opens dropdown", async () => {
+      mockFetchCurrentUser.mockResolvedValue(authenticatedUser);
+      render(<StudioPage />);
+      const trigger = await screen.findByRole("button", { name: /open profile menu/i });
+      await userEvent.click(trigger);
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+
+    it("clicking outside closes dropdown", async () => {
+      mockFetchCurrentUser.mockResolvedValue(authenticatedUser);
+      render(<StudioPage />);
+      const trigger = await screen.findByRole("button", { name: /open profile menu/i });
+      await userEvent.click(trigger);
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+      fireEvent.mouseDown(document.body);
+      await waitFor(() => {
+        expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      });
+    });
+
+    it("clicking Sign out calls logout and clears user", async () => {
+      mockFetchCurrentUser.mockResolvedValue(authenticatedUser);
+      mockLogout.mockResolvedValue(undefined);
+      render(<StudioPage />);
+      const trigger = await screen.findByRole("button", { name: /open profile menu/i });
+      await userEvent.click(trigger);
+      const signOutItem = screen.getByRole("menuitem", { name: /sign out/i });
+      await userEvent.click(signOutItem);
+      expect(mockLogout).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(screen.queryByRole("img")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
+      });
+    });
+
+    it("sign out clears user even if logout throws", async () => {
+      mockFetchCurrentUser.mockResolvedValue(authenticatedUser);
+      mockLogout.mockRejectedValue(new Error("Network error"));
+      render(<StudioPage />);
+      const trigger = await screen.findByRole("button", { name: /open profile menu/i });
+      await userEvent.click(trigger);
+      const signOutItem = screen.getByRole("menuitem", { name: /sign out/i });
+      await userEvent.click(signOutItem);
+      await waitFor(() => {
+        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
       });
     });
   });

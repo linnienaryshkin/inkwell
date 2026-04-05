@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FaGithub } from "react-icons/fa";
 import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchCurrentUser, getLoginUrl } from "@/services/api";
+import { fetchArticles, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type Article = {
@@ -167,6 +167,51 @@ Diagrams live next to the prose that describes them. No more stale architecture 
   },
 ];
 
+function ProfileMenu({
+  anchorRef,
+  onLogout,
+}: {
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onLogout: () => void;
+}) {
+  const rect = anchorRef.current?.getBoundingClientRect();
+  return (
+    <div
+      role="menu"
+      style={{
+        position: "fixed",
+        right: rect ? window.innerWidth - rect.right : 0,
+        top: rect ? rect.bottom + 6 : 0,
+        width: rect ? rect.width : "auto",
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border)",
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+        zIndex: 50,
+      }}
+    >
+      <button
+        role="menuitem"
+        onClick={onLogout}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "8px 12px",
+          background: "transparent",
+          border: "none",
+          color: "var(--text-primary)",
+          cursor: "pointer",
+          fontSize: "0.875rem",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 export default function StudioPage() {
   const [selectedSlug, setSelectedSlug] = useState(MOCK_ARTICLES[0].slug);
   const [articles, setArticles] = useState(MOCK_ARTICLES);
@@ -175,6 +220,9 @@ export default function StudioPage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -218,6 +266,16 @@ export default function StudioPage() {
 
   const toggleZen = useCallback(() => setZenMode((z) => !z), []);
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+    setCurrentUser(null);
+    setProfileMenuOpen(false);
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -230,10 +288,25 @@ export default function StudioPage() {
         e.preventDefault();
         toggleZen();
       }
+      if (e.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [toggleZen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [profileMenuOpen]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -309,21 +382,64 @@ export default function StudioPage() {
             <a
               href={getLoginUrl()}
               aria-label="Sign in with GitHub"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm"
-              style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
+              className="inline-flex items-center gap-1 px-2 rounded text-sm"
+              style={{
+                background: "var(--accent)",
+                color: "var(--bg-primary)",
+                height: "40px",
+                width: "180px",
+                justifyContent: "center",
+              }}
             >
               <FaGithub size={16} />
               Sign in with GitHub
             </a>
           ) : (
-            <>
-              <img
-                src={currentUser.avatar_url}
-                alt={currentUser.login}
-                className="w-8 h-8 rounded-full"
-              />
-              <span style={{ color: "var(--text-secondary)" }}>{currentUser.login}</span>
-            </>
+            <div ref={profileMenuRef} style={{ position: "relative" }}>
+              <button
+                ref={profileButtonRef}
+                onClick={() => setProfileMenuOpen((o) => !o)}
+                aria-label="Open profile menu"
+                aria-haspopup="true"
+                aria-expanded={profileMenuOpen}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "opacity 0.2s ease",
+                  width: "180px",
+                  height: "40px",
+                  overflow: "hidden",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                <img
+                  src={currentUser.avatar_url}
+                  alt={currentUser.login}
+                  className="w-8 h-8 rounded-full"
+                />
+                <span
+                  style={{
+                    color: "var(--text-secondary)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {currentUser.login}
+                </span>
+              </button>
+
+              {profileMenuOpen && (
+                <ProfileMenu anchorRef={profileButtonRef} onLogout={handleLogout} />
+              )}
+            </div>
           )}
         </div>
       </header>

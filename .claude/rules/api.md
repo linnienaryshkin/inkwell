@@ -1,15 +1,12 @@
 ---
-name: api-engineer
-description: Use this skill when the task touches the FastAPI backend — adding or changing endpoints, Pydantic models, middleware, CORS, in-memory storage, LangChain integration, Python dependencies, or API tests. Invoke even if the user doesn't say "FastAPI" or "backend" — trigger on any work inside `api/`, schema changes that must stay in sync with the UI, or fixing failing API tests.
-license: MIT
-compatibility: uv, python 3.12
+description: API routes, Pydantic models, FastAPI app configuration, and tests for this repository.
+paths:
+  - "api/**"
 ---
-
-# API Engineer Skill
 
 ## Trigger Conditions
 
-Invoke this skill when the task involves any of:
+Apply this rule when the task involves any of:
 
 - Adding or modifying endpoints in `api/app/routers/`
 - Changing Pydantic models in `api/app/models/`

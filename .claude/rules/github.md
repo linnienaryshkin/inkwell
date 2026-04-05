@@ -1,8 +1,40 @@
 ---
 description: GitHub CI/CD workflows, branch protection, deployment environments, Pages configuration, and secrets for this repository. Read this before editing any workflow file or GitHub settings.
 paths:
-  - ".github/workflows/**"
+  - ".github/**"
+  - "Taskfile.yml"
+  - "ui/Taskfile.yml"
+  - "api/Taskfile.yml"
 ---
+
+## When This Rule Applies
+
+- Editing `.github/workflows/*.yml`
+- Changing branch protection rules on `main`
+- Modifying the `github-pages` deployment environment
+- Changing GitHub Pages source or configuration
+- Debugging a failed CI/CD run
+
+## Quality Gate Sync Rule
+
+**`.husky/pre-commit` must always mirror the CI quality gates.** When the steps in `ci-cd.yml` change, update `.husky/pre-commit` to match. Current pre-commit runs:
+
+```sh
+task ui:quality-gate   # lint → format → types → test → security → build
+task api:quality-gate  # lint → format → test → security
+```
+
+These map exactly to the `ui-quality-gate` and `api-quality-gate` CI jobs. If you add or remove a step from either job, update the corresponding `quality-gate` task in `ui/Taskfile.yml` or `api/Taskfile.yml` — the pre-commit hook picks it up automatically.
+
+## Implementation Checklist
+
+- [ ] Read this file and the current workflow file — never edit from memory
+- [ ] If adding a new job: add it to branch protection required checks (section 1 below)
+- [ ] If changing quality gate steps: update the matching `quality-gate` task in the relevant Taskfile, then verify `.husky/pre-commit` still reflects the gates
+- [ ] If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
+- [ ] After any workflow change: open a PR, watch the CI run, confirm all jobs pass
+- [ ] If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge
+- [ ] Update the "Current state" tables below if any settings were changed
 
 # GitHub Configuration
 
@@ -20,31 +52,23 @@ paths:
 `ci-cd.yml` job dependency graph:
 
 ```
-ui-install
-  ├── ui-lint
-  ├── ui-format
-  ├── ui-types
-  ├── ui-test
-  ├── ui-security
-  └── ui-build ──→ upload artifact (ui/dist)
-                        │
-                     ui-deploy  (needs all 6 ui-* jobs; targets github-pages environment)
+ui-quality-gate
+  ├── npm ci
+  ├── ESLint check
+  ├── Prettier check
+  ├── tsc --noEmit
+  ├── Jest (90% coverage)
+  ├── npm audit
+  └── Vite build ──→ upload artifact (ui/dist)
+                          │
+                       ui-deploy  (needs ui-quality-gate; targets github-pages environment)
 
-api-check (parallel, does NOT block ui-deploy)
+api-quality-gate (parallel, does NOT block ui-deploy)
   ├── ruff lint
-  └── pytest
+  ├── ruff format --check
+  ├── pytest
+  └── pip-audit
 ```
-
----
-
-## Before Editing a Workflow
-
-1. Read this file and the current workflow file — never edit from memory
-2. If adding a new job: add it to branch protection required checks (section 1 below)
-3. If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
-4. After any workflow change: open a PR, watch the CI run, confirm all jobs pass
-5. If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge
-6. Update the "Current state" tables below if any settings were changed
 
 ## Common Pitfalls
 
@@ -63,7 +87,7 @@ api-check (parallel, does NOT block ui-deploy)
 
 | Setting | Value |
 |---------|-------|
-| Required status checks | `api-check`, `ui-build`, `ui-format`, `ui-lint`, `ui-security`, `ui-test`, `ui-types` |
+| Required status checks | `ui-quality-gate`, `api-quality-gate` |
 | Require branch up to date | `true` (strict) |
 | Enforce admins | `false` |
 | Allow force pushes | `false` |
@@ -81,13 +105,8 @@ Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` an
   "required_status_checks": {
     "strict": true,
     "checks": [
-      { "context": "api-check" },
-      { "context": "ui-build" },
-      { "context": "ui-format" },
-      { "context": "ui-lint" },
-      { "context": "ui-security" },
-      { "context": "ui-test" },
-      { "context": "ui-types" }
+      { "context": "ui-quality-gate" },
+      { "context": "api-quality-gate" }
     ]
   },
   "enforce_admins": false,

@@ -84,6 +84,10 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 | Merge conflicts | Ask user for clarification on resolution approach |
 | Remote unreachable | Advise checking network connection and remote configuration |
 
+## Shell Discipline
+
+- `cd` to the repo root **once** at the start of your session, then use other `git` commands for all subsequent operations — never prefix each command with `cd /path && git ...`
+
 ## Important Notes
 
 - This project is a monorepo with separate UI and API packages — quality gates differ by package type

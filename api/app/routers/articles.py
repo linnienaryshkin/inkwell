@@ -7,6 +7,9 @@ from app.github_articles import (
     create_article as gh_create_article,
 )
 from app.github_articles import (
+    delete_article as gh_delete_article,
+)
+from app.github_articles import (
     get_article as gh_get_article,
 )
 from app.github_articles import (
@@ -100,3 +103,22 @@ async def save_article_endpoint(
         raise HTTPException(status_code=502, detail=f"GitHub API error: {e.response.status_code}")
     except Exception:
         raise HTTPException(status_code=502, detail="Failed to save article on GitHub")
+
+
+@router.delete("/{slug}", status_code=204)
+async def delete_article_endpoint(
+    slug: str,
+    access_token: str = Depends(require_auth),
+) -> None:
+    if not re.match(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$", slug):
+        raise HTTPException(
+            status_code=422, detail="Slug must be lowercase alphanumeric with hyphens"
+        )
+    try:
+        await gh_delete_article(access_token, slug)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Article not found")
+        raise HTTPException(status_code=502, detail=f"GitHub API error: {e.response.status_code}")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to delete article on GitHub")

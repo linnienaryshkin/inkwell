@@ -86,6 +86,17 @@ export async function createArticle(
   return response.json() as Promise<Article>;
 }
 
+export async function deleteArticle(slug: string): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/articles/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? "Failed to delete article");
+  }
+}
+
 export async function saveArticle(
   slug: string,
   patch: { title: string; tags: string[]; content: string; message?: string }

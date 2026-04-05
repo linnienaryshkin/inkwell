@@ -108,6 +108,45 @@ async def get_article(access_token: str, slug: str) -> Article:
         return Article(slug=slug, content=content_raw, meta=meta, versions=versions)
 
 
+async def delete_article(access_token: str, slug: str) -> None:
+    """
+    Deletes articles/<slug>/meta.json and articles/<slug>/content.md from main.
+    Steps:
+      1. GET meta.json and content.md to fetch their SHAs (in parallel)
+      2. DELETE meta.json, then DELETE content.md (sequentially to avoid tree conflicts)
+    Raises httpx.HTTPStatusError if either file is not found or a GitHub error occurs.
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/vnd.github+json",
+    }
+    base_url = f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/contents/articles/{slug}"
+
+    async with httpx.AsyncClient() as client:
+
+        async def get_sha(path: str) -> str:
+            resp = await client.get(f"{base_url}/{path}", headers=headers)
+            resp.raise_for_status()
+            return resp.json()["sha"]
+
+        sha_meta, sha_content = await asyncio.gather(
+            get_sha("meta.json"),
+            get_sha("content.md"),
+        )
+
+        async def delete_file(path: str, sha: str) -> None:
+            resp = await client.request(
+                "DELETE",
+                f"{base_url}/{path}",
+                headers={**headers, "Content-Type": "application/json"},
+                content=json.dumps({"message": f"delete {slug}: {path}", "sha": sha}).encode(),
+            )
+            resp.raise_for_status()
+
+        await delete_file("meta.json", sha_meta)
+        await delete_file("content.md", sha_content)
+
+
 def _encode_meta(title: str, tags: list[str]) -> str:
     """Return a base64-encoded meta.json payload (status always 'draft' on create/save)."""
     raw = json.dumps({"title": title, "status": "draft", "tags": tags})
@@ -212,9 +251,7 @@ async def save_article(
             )
             resp.raise_for_status()
 
-        await asyncio.gather(
-            put_file("meta.json", _encode_meta(title, tags), sha_meta),
-            put_file("content.md", _encode_content(content), sha_content),
-        )
+        await put_file("meta.json", _encode_meta(title, tags), sha_meta)
+        await put_file("content.md", _encode_content(content), sha_content)
 
     return await get_article(access_token, slug)

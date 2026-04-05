@@ -128,7 +128,7 @@ describe("StudioPage", () => {
       mockFetchArticle.mockImplementation(() => new Promise(() => {}));
       render(<StudioPage />);
       await waitFor(() => {
-        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.getByTestId("article-loading")).toBeInTheDocument();
       });
     });
 
@@ -343,6 +343,7 @@ describe("StudioPage", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
@@ -357,6 +358,7 @@ describe("StudioPage", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole("button", { name: "Change Title" }));
@@ -371,6 +373,7 @@ describe("StudioPage", () => {
 
       await waitFor(() => {
         expect(screen.getByTestId("is-dirty")).toHaveTextContent("clean");
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole("button", { name: "Change Tags" }));
@@ -390,6 +393,11 @@ describe("StudioPage", () => {
       mockSaveArticle.mockResolvedValue(savedArticle);
 
       render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
 
       // Make it dirty first
       fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
@@ -469,6 +477,11 @@ describe("StudioPage", () => {
       mockSaveArticle.mockResolvedValue(savedArticle);
 
       render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
 
       // Make dirty on existing article
       fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
@@ -559,6 +572,11 @@ describe("StudioPage", () => {
 
       render(<StudioPage />);
 
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
+
       fireEvent.click(screen.getByRole("button", { name: "Change Content" }));
       await waitFor(() => {
         expect(screen.getByTestId("is-dirty")).toHaveTextContent("dirty");
@@ -577,6 +595,11 @@ describe("StudioPage", () => {
   describe("beforeunload", () => {
     it("beforeunload fires when isDirty is true", async () => {
       render(<StudioPage />);
+
+      // Wait for editor-pane to mount before interacting
+      await waitFor(() => {
+        expect(screen.getByTestId("editor-pane")).toBeInTheDocument();
+      });
 
       // Make it dirty
       fireEvent.click(screen.getByRole("button", { name: "Change Content" }));

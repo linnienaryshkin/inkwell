@@ -45,7 +45,8 @@ export function ArticleList({ articles, selectedSlug, onSelect, onNewArticle }: 
           <button
             key={article.slug}
             onClick={() => onSelect(article.slug)}
-            className="w-full text-left px-4 py-2.5 flex flex-col gap-0.5 transition-colors"
+            className="article-row w-full text-left px-4 py-2.5 flex flex-col gap-0.5"
+            data-selected={article.slug === selectedSlug}
             style={{
               background: article.slug === selectedSlug ? "var(--bg-tertiary)" : "transparent",
               borderLeft:
@@ -74,7 +75,7 @@ export function ArticleList({ articles, selectedSlug, onSelect, onNewArticle }: 
       <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
         <button
           onClick={onNewArticle ?? (() => {})}
-          className="w-full py-2 text-sm rounded border text-center transition-colors hover:opacity-80"
+          className="btn-secondary w-full py-2 text-sm rounded border text-center"
           style={{
             borderColor: "var(--border)",
             color: "var(--text-secondary)",

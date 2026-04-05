@@ -84,12 +84,6 @@ describe("EditorPane", () => {
       expect(titleInput).toHaveValue("Markdown Guide");
     });
 
-    it("should display content.md filename", () => {
-      render(<EditorPane article={mockArticle} onChange={() => {}} />);
-
-      expect(screen.getByText("content.md")).toBeInTheDocument();
-    });
-
     it("should display all article tags", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 

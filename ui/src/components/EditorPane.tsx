@@ -89,18 +89,16 @@ export function EditorPane({
         className="flex items-center justify-between px-4 py-2 border-b"
         style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <input
             aria-label="Article title"
             value={resolvedTitle}
             onChange={(e) => onTitleChange?.(e.target.value)}
-            className="text-sm font-medium bg-transparent outline-none rounded px-1"
+            className="title-input text-sm font-medium bg-transparent outline-none rounded px-1 w-full"
             style={{
               color: "var(--text-primary)",
               border: "1px solid transparent",
               minWidth: "60px",
-              maxWidth: "280px",
-              transition: "border-color 0.15s ease, background 0.15s ease",
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = "var(--border)";
@@ -111,9 +109,6 @@ export function EditorPane({
               e.currentTarget.style.background = "transparent";
             }}
           />
-          <span className="text-xs flex-shrink-0" style={{ color: "var(--text-secondary)" }}>
-            content.md
-          </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Tag chips */}
@@ -127,7 +122,7 @@ export function EditorPane({
               <button
                 aria-label={`Remove tag ${tag}`}
                 onClick={() => removeTag(tag)}
-                className="leading-none"
+                className="btn-tag-remove leading-none"
                 style={{
                   background: "transparent",
                   border: "none",
@@ -169,7 +164,7 @@ export function EditorPane({
             <button
               aria-label="Add tag"
               onClick={openTagInput}
-              className="text-xs px-2 py-0.5 rounded border"
+              className="btn-secondary text-xs px-2 py-0.5 rounded border"
               style={{
                 background: "var(--bg-tertiary)",
                 borderColor: "var(--border)",
@@ -187,7 +182,8 @@ export function EditorPane({
           <button
             onClick={() => setPreviewMode((p) => !p)}
             title={previewMode ? "Switch to editor" : "Switch to preview"}
-            className="rounded border flex items-center justify-center"
+            className="btn-icon rounded border flex items-center justify-center"
+            data-active={previewMode}
             style={{
               width: "32px",
               height: "24px",
@@ -195,7 +191,6 @@ export function EditorPane({
               color: previewMode ? "var(--bg-primary)" : "var(--text-secondary)",
               borderColor: previewMode ? "var(--accent)" : "var(--border)",
               cursor: "pointer",
-              transition: "background 0.15s ease, color 0.15s ease",
               fontSize: "14px",
             }}
           >
@@ -207,7 +202,8 @@ export function EditorPane({
             <button
               onClick={onToggleZen}
               title={zenMode ? "Exit expand mode" : "Enter expand mode"}
-              className="rounded border flex items-center justify-center"
+              className="btn-icon rounded border flex items-center justify-center"
+              data-active={zenMode}
               style={{
                 width: "32px",
                 height: "24px",
@@ -215,7 +211,6 @@ export function EditorPane({
                 color: zenMode ? "var(--bg-primary)" : "var(--text-secondary)",
                 borderColor: zenMode ? "var(--accent)" : "var(--border)",
                 cursor: "pointer",
-                transition: "background 0.15s ease, color 0.15s ease",
                 fontSize: "14px",
               }}
             >

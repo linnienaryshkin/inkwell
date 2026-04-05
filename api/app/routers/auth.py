@@ -1,15 +1,18 @@
-import json
 import os
 import secrets
+import time
 import urllib.parse
 
 import httpx
+import jwt
 from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
-from itsdangerous import BadSignature, SignatureExpired, TimestampSigner
 
-from app.models.auth import CookiePayload, SessionData, UserProfile
+from app.models.auth import JWTPayload, UserProfile
 
+# TODO: Add a ASCII Architecture diagram of how these resources work
+
+# TODO: Create a separate ENV/Config module where all environment variables are loaded and validated. This way we can reuse the config in tests and have a single source of truth for required env vars. For now, we just load them at module level and fail fast if any are missing.
 _REQUIRED_ENV = [
     "OAUTH_CLIENT_ID",
     "OAUTH_CLIENT_SECRET",
@@ -18,8 +21,13 @@ _REQUIRED_ENV = [
     "FRONTEND_URL",
 ]
 
+# TODO: Reuse these cookie names in tests, I see duplications there...
 SESSION_COOKIE = "inkwell_session"
 STATE_COOKIE = "gh_oauth_state"
+
+# TODO: Document why these values
+_JWT_ALGORITHM = "HS256"
+_SESSION_TTL = 86400  # 24 hours
 
 
 # Read config once at module load — fail fast if env vars are missing
@@ -31,56 +39,52 @@ def _load_config() -> tuple[str, str, str, str, str]:
         os.environ["OAUTH_CLIENT_ID"],
         os.environ["OAUTH_CLIENT_SECRET"],
         os.environ["OAUTH_CALLBACK_URL"],
+        # TODO: Since we're using JWTs, we don't actually need a session secret — we just need a signing key. Maybe rename this to JWT_SIGNING_KEY or something? Or even better, switch to asymmetric keys and call it JWT_PRIVATE_KEY or something like that.
         os.environ["SESSION_SECRET"],
         os.environ["FRONTEND_URL"],
     )
 
 
-_CLIENT_ID, _CLIENT_SECRET, _CALLBACK_URL, _SESSION_SECRET, _FRONTEND_URL = _load_config()
-
-# Maps session_id → access_token (server-side, never exposed in the cookie)
-_session_store: dict[str, str] = {}
+_OAUTH_CLIENT_ID, _OAUTH_CLIENT_SECRET, _OAUTH_CALLBACK_URL, _SESSION_SECRET, _FRONTEND_URL = _load_config()
 
 router = APIRouter(tags=["auth"])
 
 
-def _sign_session(data: SessionData) -> str:
-    """Sign a CookiePayload derived from SessionData. The access_token is stored
-    server-side in _session_store and never placed in the cookie."""
-    session_id = secrets.token_urlsafe(32)
-    _session_store[session_id] = data.access_token
-    payload = CookiePayload(
-        session_id=session_id,
-        login=data.login,
-        name=data.name,
-        avatar_url=data.avatar_url,
-    )
-    signer = TimestampSigner(_SESSION_SECRET)
-    return signer.sign(json.dumps(payload.model_dump())).decode()
+def _encode_jwt(login: str, name: str | None, avatar_url: str) -> str:
+    """Encode a signed JWT containing the user profile. The GitHub access token
+    is never included — it is discarded after fetching the profile in /callback."""
+    payload = {
+        "login": login,
+        "name": name,
+        "avatar_url": avatar_url,
+        "exp": int(time.time()) + _SESSION_TTL,
+    }
+    return jwt.encode(payload, _SESSION_SECRET, algorithm=_JWT_ALGORITHM)
 
 
-def _unsign_session(token: str, max_age: int = 86400) -> CookiePayload:
-    signer = TimestampSigner(_SESSION_SECRET)
+def _decode_jwt(token: str) -> JWTPayload:
     try:
-        raw = signer.unsign(token.encode(), max_age=max_age).decode()
-    except SignatureExpired as exc:
+        data = jwt.decode(token, _SESSION_SECRET, algorithms=[_JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError as exc:
         raise HTTPException(status_code=401, detail="Session expired") from exc
-    except BadSignature as exc:
+    except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=401, detail="Invalid session") from exc
-    return CookiePayload.model_validate(json.loads(raw))
+    return JWTPayload.model_validate(data)
 
 
 @router.get("/login")
 def login() -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     params = urllib.parse.urlencode(
+        # TODO: Document each parameter and why it's needed. Also, figure out if we can pass the UI url to GitHub in some way so we don't have to set it in env vars on the backend.
         {
-            "client_id": _CLIENT_ID,
-            "redirect_uri": _CALLBACK_URL,
+            "client_id": _OAUTH_CLIENT_ID,
+            "redirect_uri": _OAUTH_CALLBACK_URL,
             "scope": "read:user",
             "state": state,
         }
     )
+    # TODO: What is this redirect eventually?
     redirect = RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
     redirect.set_cookie(
         key=STATE_COOKIE,
@@ -93,6 +97,7 @@ def login() -> RedirectResponse:
     return redirect
 
 
+# Document each param and overall flow in this callback. It's a bit complex and it's not clear at first glance why we need each part.
 @router.get("/callback")
 async def callback(
     code: str,
@@ -106,20 +111,25 @@ async def callback(
         token_resp = await http.post(
             "https://github.com/login/oauth/access_token",
             json={
-                "client_id": _CLIENT_ID,
-                "client_secret": _CLIENT_SECRET,
+                "client_id": _OAUTH_CLIENT_ID,
+                "client_secret": _OAUTH_CLIENT_SECRET,
                 "code": code,
-                "redirect_uri": _CALLBACK_URL,
+                "redirect_uri": _OAUTH_CALLBACK_URL,
             },
             headers={"Accept": "application/json"},
         )
         token_resp.raise_for_status()
         token_data = token_resp.json()
 
+        # TODO: What is inside token_data?
         access_token = token_data.get("access_token")
         if not access_token:
             raise HTTPException(status_code=400, detail="Failed to obtain access token")
 
+        # TODO: I think overall picture, we don't need to put any user data into JWT...
+        # ... we have /me route already
+        # Just settle access_token as a cookie HTTP-only and that's it.
+        # That way we don't need about JWT or session at all
         user_resp = await http.get(
             "https://api.github.com/user",
             headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
@@ -127,13 +137,12 @@ async def callback(
         user_resp.raise_for_status()
         user_data = user_resp.json()
 
-    session = SessionData(
-        access_token=access_token,
+    # access_token is discarded here — only the profile goes into the JWT
+    session_token = _encode_jwt(
         login=user_data["login"],
         name=user_data.get("name"),
         avatar_url=user_data["avatar_url"],
     )
-    session_token = _sign_session(session)
 
     redirect = RedirectResponse(url=_FRONTEND_URL)
     redirect.set_cookie(
@@ -142,7 +151,7 @@ async def callback(
         httponly=True,
         samesite="none",
         secure=True,
-        max_age=86400,
+        max_age=_SESSION_TTL,
     )
     redirect.delete_cookie(STATE_COOKIE)
     return redirect
@@ -152,10 +161,11 @@ async def callback(
 def me(inkwell_session: str | None = Cookie(default=None)) -> UserProfile:
     if not inkwell_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    session = _unsign_session(inkwell_session)
-    return UserProfile(login=session.login, name=session.name, avatar_url=session.avatar_url)
+    payload = _decode_jwt(inkwell_session)
+    return UserProfile(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)
 
 
+# TODO: Not sure how refresh will work if we switch to just storing access_token in cookie. Is there a way to refresh GitHub access tokens?
 @router.get("/refresh", response_model=UserProfile)
 def refresh(
     response: Response,
@@ -163,22 +173,14 @@ def refresh(
 ) -> UserProfile:
     if not inkwell_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = _unsign_session(inkwell_session)
-    # Re-sign: look up the stored access_token so _sign_session can store it under the new session_id
-    access_token = _session_store.get(payload.session_id, "")
-    new_session = SessionData(
-        access_token=access_token,
-        login=payload.login,
-        name=payload.name,
-        avatar_url=payload.avatar_url,
-    )
-    new_token = _sign_session(new_session)
+    payload = _decode_jwt(inkwell_session)
+    new_token = _encode_jwt(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)
     response.set_cookie(
         key=SESSION_COOKIE,
         value=new_token,
         httponly=True,
         samesite="none",
         secure=True,
-        max_age=86400,
+        max_age=_SESSION_TTL,
     )
     return UserProfile(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)

@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
-    "itsdangerous>=2.2",
+    "PyJWT>=2.9",
     "httpx>=0.28",
 ]
 

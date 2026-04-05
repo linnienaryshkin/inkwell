@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+# TODO: Add documentation to the models and their fields
 
 class UserProfile(BaseModel):
     login: str
@@ -7,15 +8,8 @@ class UserProfile(BaseModel):
     avatar_url: str
 
 
-class SessionData(BaseModel):
-    access_token: str
+class JWTPayload(BaseModel):
     login: str
     name: str | None
     avatar_url: str
-
-
-class CookiePayload(BaseModel):
-    session_id: str
-    login: str
-    name: str | None
-    avatar_url: str
+    exp: int

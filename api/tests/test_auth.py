@@ -6,8 +6,7 @@ from fastapi.testclient import TestClient
 STATE_COOKIE = "gh_oauth_state"
 SESSION_COOKIE = "inkwell_session"
 
-from app.models.auth import SessionData  # noqa: E402
-from app.routers.auth import _sign_session  # noqa: E402
+from app.routers.auth import _encode_jwt  # noqa: E402
 
 
 @pytest.fixture()
@@ -21,15 +20,8 @@ def _make_session(
     login: str = "octocat",
     name: str | None = "The Octocat",
     avatar_url: str = "https://github.com/images/error/octocat_happy.gif",
-    access_token: str = "gho_test_token",
 ) -> str:
-    session = SessionData(
-        access_token=access_token,
-        login=login,
-        name=name,
-        avatar_url=avatar_url,
-    )
-    return _sign_session(session)
+    return _encode_jwt(login=login, name=name, avatar_url=avatar_url)
 
 
 def _mock_httpx_client(access_token: str = "gho_test_token", user_data: dict | None = None):

@@ -548,9 +548,7 @@ def _commit_get_response(head_sha: str, tree_sha: str) -> httpx.Response:
     return httpx.Response(
         200,
         json={"tree": {"sha": tree_sha}},
-        request=httpx.Request(
-            "GET", f"{GITHUB_API_BASE}/repos/{REPO}/git/commits/{head_sha}"
-        ),
+        request=httpx.Request("GET", f"{GITHUB_API_BASE}/repos/{REPO}/git/commits/{head_sha}"),
     )
 
 
@@ -574,16 +572,12 @@ def _ref_patch_response() -> httpx.Response:
     return httpx.Response(
         200,
         json={"object": {"sha": "updated"}},
-        request=httpx.Request(
-            "PATCH", f"{GITHUB_API_BASE}/repos/{REPO}/git/refs/heads/main"
-        ),
+        request=httpx.Request("PATCH", f"{GITHUB_API_BASE}/repos/{REPO}/git/refs/heads/main"),
     )
 
 
 def _error_response(status: int, method: str, url: str) -> httpx.Response:
-    return httpx.Response(
-        status, json={"message": "error"}, request=httpx.Request(method, url)
-    )
+    return httpx.Response(status, json={"message": "error"}, request=httpx.Request(method, url))
 
 
 def _default_write_maps(

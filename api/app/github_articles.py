@@ -71,8 +71,6 @@ ARTICLES_REPO = "linnienaryshkin/inkwell"
 GITHUB_API_BASE = "https://api.github.com"
 
 
-
-
 async def list_article_metas(access_token: str) -> list[ArticleMeta]:
     """
     Fetch all article metadata from GitHub.
@@ -215,7 +213,10 @@ async def _create_blob(client: httpx.AsyncClient, headers: dict, raw: str) -> st
     resp = await client.post(
         f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/git/blobs",
         headers=headers,
-        json={"content": base64.b64encode(raw.encode("utf-8")).decode("utf-8"), "encoding": "base64"},
+        json={
+            "content": base64.b64encode(raw.encode("utf-8")).decode("utf-8"),
+            "encoding": "base64",
+        },
     )
     resp.raise_for_status()
     return resp.json()["sha"]

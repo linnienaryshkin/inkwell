@@ -5,6 +5,19 @@ from pydantic import BaseModel
 # TODO: Add documentation to the models and their fields
 
 
+class ArticleSummary(BaseModel):
+    slug: str
+    title: str
+    status: Literal["draft", "published"]
+    tags: list[str]
+
+
+class ArticleMeta(BaseModel):
+    title: str
+    status: Literal["draft", "published"]
+    tags: list[str]
+
+
 class Article(BaseModel):
     slug: str
     title: str

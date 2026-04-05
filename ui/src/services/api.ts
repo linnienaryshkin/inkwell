@@ -1,4 +1,4 @@
-import type { Article } from "@/app/studio/page";
+import type { Article, ArticleSummary } from "@/app/studio/page";
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const TIMEOUT_MS = 3000;
@@ -32,12 +32,20 @@ export function getLoginUrl(): string {
   return `${API_BASE}/auth/login?redirect_url=${encodeURIComponent(redirectUrl)}`;
 }
 
-export async function fetchArticles(): Promise<Article[]> {
+export async function fetchArticles(): Promise<ArticleSummary[]> {
   const response = await fetchWithTimeout(`${API_BASE}/articles`, {
     credentials: "include",
   });
   if (!response.ok) throw new Error(`Failed to fetch articles: ${response.status}`);
-  return response.json() as Promise<Article[]>;
+  return response.json() as Promise<ArticleSummary[]>;
+}
+
+export async function fetchArticle(slug: string): Promise<Article> {
+  const res = await fetchWithTimeout(`${API_BASE}/articles/${encodeURIComponent(slug)}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`Failed to fetch article: ${res.status}`);
+  return res.json();
 }
 
 export async function logout(): Promise<void> {

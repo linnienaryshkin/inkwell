@@ -20,6 +20,7 @@ jest.mock("@/components/VersionStrip", () => ({
 
 jest.mock("@/services/api", () => ({
   fetchArticles: jest.fn(),
+  fetchArticle: jest.fn(),
   fetchCurrentUser: jest.fn(),
   getLoginUrl: jest.fn(
     () => "http://localhost:8000/auth/login?redirect_url=http%3A%2F%2Flocalhost%3A5173%2F"
@@ -28,15 +29,17 @@ jest.mock("@/services/api", () => ({
 }));
 
 import StudioPage from "./page";
-import { fetchArticles, fetchCurrentUser, logout } from "@/services/api";
+import { fetchArticles, fetchArticle, fetchCurrentUser, logout } from "@/services/api";
 
 const mockFetchArticles = fetchArticles as jest.MockedFunction<typeof fetchArticles>;
+const mockFetchArticle = fetchArticle as jest.MockedFunction<typeof fetchArticle>;
 const mockFetchCurrentUser = fetchCurrentUser as jest.MockedFunction<typeof fetchCurrentUser>;
 const mockLogout = logout as jest.MockedFunction<typeof logout>;
 
 describe("StudioPage", () => {
   beforeEach(() => {
     mockFetchArticles.mockRejectedValue(new Error("API unavailable"));
+    mockFetchArticle.mockRejectedValue(new Error("API unavailable"));
     mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
   });
 
@@ -54,13 +57,50 @@ describe("StudioPage", () => {
           slug: "test",
           title: "Test",
           status: "draft",
-          content: "# Test",
           tags: [],
         },
       ]);
+      mockFetchArticle.mockResolvedValue({
+        slug: "test",
+        title: "Test",
+        status: "draft",
+        content: "# Test",
+        tags: [],
+      });
       render(<StudioPage />);
       await waitFor(() => {
         expect(screen.getByText("live")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Article Loading", () => {
+    it("shows loading indicator while fetching an article", async () => {
+      // fetchArticle never resolves so loading state persists
+      mockFetchArticles.mockResolvedValue([
+        { slug: "test", title: "Test", status: "draft", tags: [] },
+      ]);
+      mockFetchArticle.mockImplementation(() => new Promise(() => {}));
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.getByText("Loading…")).toBeInTheDocument();
+      });
+    });
+
+    it("hides loading indicator after article fetch resolves", async () => {
+      mockFetchArticles.mockResolvedValue([
+        { slug: "test", title: "Test", status: "draft", tags: [] },
+      ]);
+      mockFetchArticle.mockResolvedValue({
+        slug: "test",
+        title: "Test",
+        status: "draft",
+        content: "# Test",
+        tags: [],
+      });
+      render(<StudioPage />);
+      await waitFor(() => {
+        expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
       });
     });
   });

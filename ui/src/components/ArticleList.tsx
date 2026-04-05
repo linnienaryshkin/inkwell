@@ -1,9 +1,9 @@
 "use client";
 
-import type { Article } from "@/app/studio/page";
+import type { ArticleSummary } from "@/app/studio/page";
 
 type Props = {
-  articles: Article[];
+  articles: ArticleSummary[];
   selectedSlug: string;
   onSelect: (slug: string) => void;
 };

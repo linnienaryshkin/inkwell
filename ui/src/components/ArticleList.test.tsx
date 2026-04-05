@@ -1,21 +1,19 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ArticleList } from "./ArticleList";
-import type { Article } from "@/app/studio/page";
+import type { ArticleSummary } from "@/app/studio/page";
 
 describe("ArticleList", () => {
-  const mockArticles: Article[] = [
+  const mockArticles: ArticleSummary[] = [
     {
       slug: "article-1",
       title: "Getting Started with TypeScript",
       status: "published",
-      content: "TypeScript basics...",
       tags: ["typescript", "beginner"],
     },
     {
       slug: "article-2",
       title: "Advanced React Patterns",
       status: "draft",
-      content: "React patterns...",
       tags: ["react", "advanced"],
     },
   ];

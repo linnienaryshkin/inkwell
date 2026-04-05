@@ -1,14 +1,21 @@
-import { fetchArticles, patchArticle, getLoginUrl, logout } from "@/services/api";
+import { fetchArticles, fetchArticle, patchArticle, getLoginUrl, logout } from "@/services/api";
 
-const mockArticles = [
+const mockSummaries = [
   {
     slug: "test-article",
     title: "Test Article",
     status: "draft" as const,
-    content: "# Test",
     tags: ["test"],
   },
 ];
+
+const mockArticle = {
+  slug: "test-article",
+  title: "Test Article",
+  status: "draft" as const,
+  content: "# Test",
+  tags: ["test"],
+};
 
 describe("getLoginUrl", () => {
   it("builds login URL with encoded redirect_url from window.location.origin + BASE_URL", () => {
@@ -32,15 +39,15 @@ describe("api service", () => {
   });
 
   describe("fetchArticles", () => {
-    it("should fetch articles from the API", async () => {
+    it("should fetch article summaries from the API", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockArticles),
+        json: () => Promise.resolve(mockSummaries),
       });
 
       const result = await fetchArticles();
 
-      expect(result).toEqual(mockArticles);
+      expect(result).toEqual(mockSummaries);
       expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:8000/articles",
         expect.objectContaining({ signal: expect.any(AbortSignal) })
@@ -63,9 +70,55 @@ describe("api service", () => {
     });
   });
 
+  describe("fetchArticle", () => {
+    it("should fetch a single article by slug", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockArticle),
+      });
+
+      const result = await fetchArticle("test-article");
+
+      expect(result).toEqual(mockArticle);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8000/articles/test-article",
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+
+    it("should URL-encode the slug", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockArticle),
+      });
+
+      await fetchArticle("hello world");
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8000/articles/hello%20world",
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
+    });
+
+    it("should throw on non-ok response", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      await expect(fetchArticle("missing")).rejects.toThrow("Failed to fetch article: 404");
+    });
+
+    it("should throw on network error", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+
+      await expect(fetchArticle("test-article")).rejects.toThrow("Network error");
+    });
+  });
+
   describe("patchArticle", () => {
     it("should send PATCH request with JSON body", async () => {
-      const updated = { ...mockArticles[0], title: "Updated" };
+      const updated = { ...mockArticle, title: "Updated" };
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(updated),

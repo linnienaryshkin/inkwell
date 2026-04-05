@@ -4,7 +4,7 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
+import { fetchArticles, fetchArticle, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type Article = {
@@ -12,6 +12,13 @@ export type Article = {
   title: string;
   status: "draft" | "published";
   content: string;
+  tags: string[];
+};
+
+export type ArticleSummary = {
+  slug: string;
+  title: string;
+  status: "draft" | "published";
   tags: string[];
 };
 
@@ -167,6 +174,13 @@ Diagrams live next to the prose that describes them. No more stale architecture 
   },
 ];
 
+const MOCK_SUMMARIES: ArticleSummary[] = MOCK_ARTICLES.map(({ slug, title, status, tags }) => ({
+  slug,
+  title,
+  status,
+  tags,
+}));
+
 function ProfileMenu({
   anchorRef,
   onLogout,
@@ -213,8 +227,10 @@ function ProfileMenu({
 }
 
 export default function StudioPage() {
-  const [selectedSlug, setSelectedSlug] = useState(MOCK_ARTICLES[0].slug);
-  const [articles, setArticles] = useState(MOCK_ARTICLES);
+  const [summaries, setSummaries] = useState<ArticleSummary[]>(MOCK_SUMMARIES);
+  const [selectedSlug, setSelectedSlug] = useState(MOCK_SUMMARIES[0].slug);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(MOCK_ARTICLES[0]);
+  const [articleLoading, setArticleLoading] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -227,14 +243,32 @@ export default function StudioPage() {
   useEffect(() => {
     let ignore = false;
     fetchArticles()
-      .then((apiArticles) => {
+      .then((data) => {
         if (ignore) return;
-        setArticles(apiArticles);
-        setSelectedSlug(apiArticles[0].slug);
+        setSummaries(data);
         setDataSource("live");
+        const firstSlug = data[0]?.slug;
+        if (firstSlug) {
+          setSelectedSlug(firstSlug);
+          setArticleLoading(true);
+          fetchArticle(firstSlug)
+            .then((article) => {
+              if (ignore) return;
+              setSelectedArticle(article);
+            })
+            .catch(() => {
+              if (ignore) return;
+              const mock = MOCK_ARTICLES.find((a) => a.slug === firstSlug);
+              setSelectedArticle(mock ?? null);
+            })
+            .finally(() => {
+              if (!ignore) setArticleLoading(false);
+            });
+        }
       })
       .catch(() => {
-        // API unavailable — keep mock data
+        // API unavailable — keep mock summaries and mock article
+        if (!ignore) setSelectedArticle(MOCK_ARTICLES[0]);
       });
     return () => {
       ignore = true;
@@ -256,12 +290,20 @@ export default function StudioPage() {
     };
   }, []);
 
-  const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;
-
   const handleContentChange = (newContent: string) => {
-    setArticles((prev) =>
-      prev.map((a) => (a.slug === selectedSlug ? { ...a, content: newContent } : a))
-    );
+    setSelectedArticle((prev) => (prev ? { ...prev, content: newContent } : prev));
+  };
+
+  const handleSelect = (slug: string) => {
+    setSelectedSlug(slug);
+    setArticleLoading(true);
+    fetchArticle(slug)
+      .then(setSelectedArticle)
+      .catch(() => {
+        const mock = MOCK_ARTICLES.find((a) => a.slug === slug);
+        setSelectedArticle(mock ?? null);
+      })
+      .finally(() => setArticleLoading(false));
   };
 
   const toggleZen = useCallback(() => setZenMode((z) => !z), []);
@@ -456,19 +498,28 @@ export default function StudioPage() {
             flexShrink: 0,
           }}
         >
-          <ArticleList articles={articles} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
+          <ArticleList articles={summaries} selectedSlug={selectedSlug} onSelect={handleSelect} />
         </div>
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
-          <EditorPane
-            key={selectedSlug}
-            article={selectedArticle}
-            onChange={handleContentChange}
-            theme={theme}
-            zenMode={zenMode}
-            onToggleZen={toggleZen}
-          />
+          {articleLoading || !selectedArticle ? (
+            <div
+              className="flex-1 flex items-center justify-center"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Loading…
+            </div>
+          ) : (
+            <EditorPane
+              key={selectedSlug}
+              article={selectedArticle}
+              onChange={handleContentChange}
+              theme={theme}
+              zenMode={zenMode}
+              onToggleZen={toggleZen}
+            />
+          )}
           <VersionStrip slug={selectedSlug} />
         </div>
 

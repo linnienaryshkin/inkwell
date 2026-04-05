@@ -5,7 +5,7 @@ import type { Article } from "@/app/studio/page";
 import { TocTab } from "./TocTab";
 
 type Props = {
-  article: Article;
+  article: Article | null;
   activeTab: "lint" | "publish" | "toc";
   onTabChange: (tab: "lint" | "publish" | "toc") => void;
 };
@@ -179,7 +179,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
         </div>
       )}
 
-      {activeTab === "toc" && <TocTab content={article.content} />}
+      {activeTab === "toc" && article && <TocTab content={article.content} />}
     </aside>
   );
 }

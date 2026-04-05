@@ -5,10 +5,14 @@ import type { Article } from "@/app/studio/page";
 describe("SidePanel", () => {
   const mockArticle: Article = {
     slug: "test-article",
-    title: "Test Article",
-    status: "draft",
     content: "Test content",
-    tags: ["test"],
+    meta: {
+      slug: "test-article",
+      title: "Test Article",
+      status: "draft",
+      tags: ["test"],
+    },
+    versions: [],
   };
 
   describe("Tab Navigation", () => {

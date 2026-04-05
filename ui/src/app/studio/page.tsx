@@ -4,168 +4,47 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
+import { fetchArticles, fetchArticle, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
-export type Article = {
+export type ArticleVersion = {
+  sha: string;
+  message: string;
+  committed_at: string;
+};
+
+export type ArticleMeta = {
   slug: string;
   title: string;
   status: "draft" | "published";
-  content: string;
   tags: string[];
 };
 
-const MOCK_ARTICLES: Article[] = [
-  {
-    slug: "getting-started-with-typescript",
-    title: "Getting Started with TypeScript",
-    status: "published",
-    tags: ["typescript", "beginner"],
-    content: `# Getting Started with TypeScript
-
-TypeScript adds static type checking to JavaScript, catching errors before they reach production.
-
-## Why TypeScript?
-
-- **Catch bugs early** — type errors surface at compile time, not runtime
-- **Better IDE support** — autocomplete, refactoring, and inline docs
-- **Self-documenting** — types serve as living documentation
-
-## Quick Setup
-
-\`\`\`bash
-npm init -y
-npm install typescript --save-dev
-npx tsc --init
-\`\`\`
-
-## Your First Type
-
-\`\`\`typescript
-interface Article {
-  title: string;
+export type Article = {
   slug: string;
-  tags: string[];
-  publishedAt?: Date;
-}
+  content: string;
+  meta: ArticleMeta;
+  versions: ArticleVersion[];
+};
 
-function formatArticle(article: Article): string {
-  return \`# \${article.title}\\nTags: \${article.tags.join(", ")}\`;
-}
-\`\`\`
+const MOCK_ARTICLE: Article = {
+  slug: "welcome",
+  content: `# Welcome to Inkwell
 
-Types make your intent explicit. Your future self will thank you.
+Sign in with GitHub to unlock the full potential of the application.
+
+Your articles are stored as files in your GitHub repository — version-controlled, diff-able, and always yours.
 `,
-  },
-  {
-    slug: "git-workflow-for-writers",
-    title: "Git Workflow for Writers",
+  meta: {
+    slug: "welcome",
+    title: "Welcome to Inkwell",
     status: "draft",
-    tags: ["git", "workflow", "writing"],
-    content: `# Git Workflow for Writers
-
-Treat your articles like code. Every draft is a branch, every revision is a commit.
-
-## The Branch Strategy
-
-\`\`\`
-main              ← published truth
-  └── drafts/     ← work in progress
-\`\`\`
-
-## Why This Works
-
-1. **Full history** — see every revision, compare any two versions
-2. **Safe experimentation** — branches are cheap, try bold edits
-3. **Clean publishing** — squash-merge to main for a tidy log
-
-> Write fearlessly. Git remembers everything.
-`,
+    tags: [],
   },
-  {
-    slug: "building-a-writing-studio",
-    title: "Building a Writing Studio",
-    status: "draft",
-    tags: ["project", "next.js", "architecture"],
-    content: `# Building a Writing Studio
+  versions: [],
+};
 
-What if your writing environment felt as powerful as your IDE?
-
-## The Stack
-
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 15 |
-| Editor | Monaco |
-| Storage | GitHub repo |
-| Deploy | Vercel |
-
-## Key Insight
-
-Your GitHub repo already **is** a CMS. It has:
-- Version control (commits)
-- Branching (drafts vs published)
-- Access control (collaborators)
-- An API (Octokit)
-
-We just need a UI on top.
-`,
-  },
-  {
-    slug: "visualizing-systems-with-mermaid",
-    title: "Visualizing Systems with Mermaid",
-    status: "draft",
-    tags: ["mermaid", "diagrams", "documentation"],
-    content: `# Visualizing Systems with Mermaid
-
-Mermaid lets you write diagrams as code — version-controlled, diff-able, and always in sync with your docs.
-
-## Request Flow
-
-\`\`\`mermaid
-sequenceDiagram
-    participant Browser
-    participant Next.js
-    participant GitHub API
-
-    Browser->>Next.js: GET /studio
-    Next.js->>GitHub API: fetchArticles(repo)
-    GitHub API-->>Next.js: articles[]
-    Next.js-->>Browser: rendered page
-    Browser->>GitHub API: saveCommit(content)
-    GitHub API-->>Browser: commit SHA
-\`\`\`
-
-## Component Architecture
-
-\`\`\`mermaid
-graph TD
-    StudioPage --> ArticleList
-    StudioPage --> EditorPane
-    StudioPage --> SidePanel
-    StudioPage --> VersionStrip
-    EditorPane --> Monaco["Monaco Editor"]
-    SidePanel --> LintTab["Lint Results"]
-    SidePanel --> PublishTab["Publish Controls"]
-    SidePanel --> TocTab["Table of Contents"]
-\`\`\`
-
-## Publish State Machine
-
-\`\`\`mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Review: submit for review
-    Review --> Draft: request changes
-    Review --> Published: approve
-    Published --> Draft: unpublish
-    Published --> [*]
-\`\`\`
-
-Diagrams live next to the prose that describes them. No more stale architecture docs.
-`,
-  },
-];
+const MOCK_METAS: ArticleMeta[] = [MOCK_ARTICLE.meta];
 
 function ProfileMenu({
   anchorRef,
@@ -213,8 +92,10 @@ function ProfileMenu({
 }
 
 export default function StudioPage() {
-  const [selectedSlug, setSelectedSlug] = useState(MOCK_ARTICLES[0].slug);
-  const [articles, setArticles] = useState(MOCK_ARTICLES);
+  const [summaries, setSummaries] = useState<ArticleMeta[]>(MOCK_METAS);
+  const [selectedSlug, setSelectedSlug] = useState(MOCK_METAS[0].slug);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(MOCK_ARTICLE);
+  const [articleLoading, setArticleLoading] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -227,14 +108,32 @@ export default function StudioPage() {
   useEffect(() => {
     let ignore = false;
     fetchArticles()
-      .then((apiArticles) => {
+      .then((data) => {
         if (ignore) return;
-        setArticles(apiArticles);
-        setSelectedSlug(apiArticles[0].slug);
+        setSummaries(data);
         setDataSource("live");
+        const firstSlug = data[0]?.slug;
+        if (firstSlug) {
+          setSelectedSlug(firstSlug);
+          setArticleLoading(true);
+          fetchArticle(firstSlug)
+            .then((article) => {
+              if (ignore) return;
+              setSelectedArticle(article);
+            })
+            .catch(() => {
+              if (ignore) return;
+              const mock = MOCK_ARTICLE.slug === firstSlug ? MOCK_ARTICLE : undefined;
+              setSelectedArticle(mock ?? null);
+            })
+            .finally(() => {
+              if (!ignore) setArticleLoading(false);
+            });
+        }
       })
       .catch(() => {
-        // API unavailable — keep mock data
+        // API unavailable — keep mock summaries and mock article
+        if (!ignore) setSelectedArticle(MOCK_ARTICLE);
       });
     return () => {
       ignore = true;
@@ -256,12 +155,20 @@ export default function StudioPage() {
     };
   }, []);
 
-  const selectedArticle = articles.find((a) => a.slug === selectedSlug)!;
-
   const handleContentChange = (newContent: string) => {
-    setArticles((prev) =>
-      prev.map((a) => (a.slug === selectedSlug ? { ...a, content: newContent } : a))
-    );
+    setSelectedArticle((prev) => (prev ? { ...prev, content: newContent } : prev));
+  };
+
+  const handleSelect = (slug: string) => {
+    setSelectedSlug(slug);
+    setArticleLoading(true);
+    fetchArticle(slug)
+      .then(setSelectedArticle)
+      .catch(() => {
+        const mock = MOCK_ARTICLE.slug === slug ? MOCK_ARTICLE : undefined;
+        setSelectedArticle(mock ?? null);
+      })
+      .finally(() => setArticleLoading(false));
   };
 
   const toggleZen = useCallback(() => setZenMode((z) => !z), []);
@@ -456,19 +363,28 @@ export default function StudioPage() {
             flexShrink: 0,
           }}
         >
-          <ArticleList articles={articles} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
+          <ArticleList articles={summaries} selectedSlug={selectedSlug} onSelect={handleSelect} />
         </div>
 
         {/* Editor */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ position: "relative" }}>
-          <EditorPane
-            key={selectedSlug}
-            article={selectedArticle}
-            onChange={handleContentChange}
-            theme={theme}
-            zenMode={zenMode}
-            onToggleZen={toggleZen}
-          />
+          {articleLoading || !selectedArticle ? (
+            <div
+              className="flex-1 flex items-center justify-center"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Loading…
+            </div>
+          ) : (
+            <EditorPane
+              key={selectedSlug}
+              article={selectedArticle}
+              onChange={handleContentChange}
+              theme={theme}
+              zenMode={zenMode}
+              onToggleZen={toggleZen}
+            />
+          )}
           <VersionStrip slug={selectedSlug} />
         </div>
 

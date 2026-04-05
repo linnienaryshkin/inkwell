@@ -46,13 +46,13 @@ export function EditorPane({
         style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{article.title}</span>
+          <span className="text-sm font-medium">{article.meta.title}</span>
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             content.md
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {article.tags.map((tag) => (
+          {article.meta.tags.map((tag) => (
             <span
               key={tag}
               className="text-xs px-2 py-0.5 rounded"

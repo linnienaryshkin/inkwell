@@ -1,11 +1,32 @@
 import urllib.parse
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routers import articles, auth
 
 app = FastAPI(title="Inkwell API", version="0.1.0")
+
+
+@app.exception_handler(httpx.HTTPStatusError)
+async def github_http_error_handler(request: Request, exc: httpx.HTTPStatusError) -> JSONResponse:
+    """Convert unhandled GitHub API HTTP errors into 502 responses."""
+    return JSONResponse(
+        status_code=502,
+        content={"detail": f"GitHub API error: {exc.response.status_code}"},
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    """Convert unhandled ValueError (e.g. malformed article data) into 502 responses."""
+    return JSONResponse(
+        status_code=502,
+        content={"detail": str(exc)},
+    )
+
 
 # Derive CORS origins from the same allowlist used for OAuth redirect validation —
 # single source of truth. Strip paths: "http://localhost:5173/inkwell/" → "http://localhost:5173"

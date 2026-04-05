@@ -2,15 +2,25 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-# TODO: Add documentation to the models and their fields
+
+class ArticleVersion(BaseModel):
+    sha: str
+    message: str
+    committed_at: str  # ISO 8601 timestamp
+
+
+class ArticleMeta(BaseModel):
+    slug: str
+    title: str
+    status: Literal["draft", "published"]
+    tags: list[str]
 
 
 class Article(BaseModel):
     slug: str
-    title: str
-    status: Literal["draft", "published"]
     content: str
-    tags: list[str]
+    meta: ArticleMeta
+    versions: list[ArticleVersion] = []
 
 
 class ArticlePatch(BaseModel):

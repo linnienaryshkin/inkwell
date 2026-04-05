@@ -65,10 +65,14 @@ jest.mock("@monaco-editor/react", () => ({
 describe("EditorPane", () => {
   const mockArticle: Article = {
     slug: "markdown-guide",
-    title: "Markdown Guide",
-    status: "draft",
     content: "# Introduction\n\nMarkdown is a lightweight markup language.",
-    tags: ["markdown", "documentation"],
+    meta: {
+      slug: "markdown-guide",
+      title: "Markdown Guide",
+      status: "draft",
+      tags: ["markdown", "documentation"],
+    },
+    versions: [],
   };
 
   describe("Display", () => {
@@ -255,7 +259,7 @@ describe("EditorPane", () => {
     it("should handle articles with multiple tags", () => {
       const articleWithMoreTags: Article = {
         ...mockArticle,
-        tags: ["typescript", "react", "testing", "jest"],
+        meta: { ...mockArticle.meta, tags: ["typescript", "react", "testing", "jest"] },
       };
 
       render(<EditorPane article={articleWithMoreTags} onChange={() => {}} />);
@@ -269,7 +273,7 @@ describe("EditorPane", () => {
     it("should handle articles with no tags", () => {
       const articleWithoutTags: Article = {
         ...mockArticle,
-        tags: [],
+        meta: { ...mockArticle.meta, tags: [] },
       };
 
       render(<EditorPane article={articleWithoutTags} onChange={() => {}} />);

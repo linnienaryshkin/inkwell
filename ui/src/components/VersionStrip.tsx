@@ -1,19 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { ArticleVersion } from "@/app/studio/page";
 
 type Props = {
   slug: string;
+  versions?: ArticleVersion[];
+  isDirty?: boolean;
+  saving?: boolean;
+  onSave?: () => void;
 };
 
-const MOCK_VERSIONS = [
-  { sha: "abc1234", message: "Update intro paragraph", date: "today 14:02", active: true },
-  { sha: "def5678", message: "Add code examples", date: "yesterday 11:30", active: false },
-  { sha: "aaa9999", message: "Initial draft", date: "3 days ago", active: false },
-];
+export function VersionStrip({
+  slug,
+  versions = [],
+  isDirty = false,
+  saving = false,
+  onSave,
+}: Props) {
+  const [selectedSha, setSelectedSha] = useState<string | null>(
+    versions.length > 0 ? versions[0].sha : null
+  );
 
-export function VersionStrip(_: Props) {
-  const [selectedSha, setSelectedSha] = useState(MOCK_VERSIONS[0].sha);
+  // Reset selected SHA whenever the article changes (slug or versions list)
+  useEffect(() => {
+    setSelectedSha(versions.length > 0 ? versions[0].sha : null);
+  }, [slug]);
 
   return (
     <div
@@ -27,7 +39,7 @@ export function VersionStrip(_: Props) {
         Versions
       </h3>
       <div className="flex items-center gap-3">
-        {MOCK_VERSIONS.map((v) => (
+        {versions.map((v) => (
           <button
             key={v.sha}
             onClick={() => setSelectedSha(v.sha)}
@@ -44,9 +56,10 @@ export function VersionStrip(_: Props) {
               }}
             />
             <span className="font-mono" style={{ color: "var(--accent)" }}>
-              {v.sha}
+              {v.sha.slice(0, 7)}
             </span>
-            <span style={{ color: "var(--text-secondary)" }}>{v.date}</span>
+            <span style={{ color: "var(--text-secondary)" }}>{v.committed_at}</span>
+            <span style={{ color: "var(--text-secondary)" }}>{v.message}</span>
           </button>
         ))}
       </div>
@@ -62,6 +75,21 @@ export function VersionStrip(_: Props) {
           style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
         >
           View diff
+        </button>
+        <button
+          onClick={onSave ?? (() => {})}
+          disabled={saving}
+          className="text-xs px-3 py-1 rounded border transition-colors"
+          style={{
+            borderColor: isDirty ? "var(--green)" : "var(--border)",
+            background: isDirty ? "var(--green)" : "transparent",
+            color: isDirty ? "var(--bg-primary)" : "var(--text-secondary)",
+            cursor: saving ? "not-allowed" : "pointer",
+            opacity: saving ? 0.7 : 1,
+            fontWeight: isDirty ? 600 : 400,
+          }}
+        >
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </div>

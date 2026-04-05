@@ -79,7 +79,9 @@ describe("EditorPane", () => {
     it("should display article title in header", () => {
       render(<EditorPane article={mockArticle} onChange={() => {}} />);
 
-      expect(screen.getByText("Markdown Guide")).toBeInTheDocument();
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      expect(titleInput).toBeInTheDocument();
+      expect(titleInput).toHaveValue("Markdown Guide");
     });
 
     it("should display content.md filename", () => {
@@ -278,7 +280,8 @@ describe("EditorPane", () => {
 
       render(<EditorPane article={articleWithoutTags} onChange={() => {}} />);
 
-      expect(screen.getByText("Markdown Guide")).toBeInTheDocument();
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      expect(titleInput).toHaveValue("Markdown Guide");
     });
   });
 
@@ -454,6 +457,135 @@ describe("EditorPane", () => {
       // Both mermaid blocks should be rendered
       const mermaidBlocks = screen.getAllByTestId("mermaid-block");
       expect(mermaidBlocks).toHaveLength(2);
+    });
+  });
+
+  describe("Title input", () => {
+    it("renders title input with article title value", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      expect(titleInput).toHaveValue("Markdown Guide");
+    });
+
+    it("uses draftTitle prop when provided instead of article title", () => {
+      render(<EditorPane article={mockArticle} draftTitle="Draft Override" onChange={() => {}} />);
+
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      expect(titleInput).toHaveValue("Draft Override");
+    });
+
+    it("calls onTitleChange when title input changes", () => {
+      const handleTitleChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTitleChange={handleTitleChange} />
+      );
+
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      fireEvent.change(titleInput, { target: { value: "New Title" } });
+
+      expect(handleTitleChange).toHaveBeenCalledWith("New Title");
+    });
+  });
+
+  describe("Tag chips", () => {
+    it("renders tag chips for each tag", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      expect(screen.getByText("markdown")).toBeInTheDocument();
+      expect(screen.getByText("documentation")).toBeInTheDocument();
+    });
+
+    it("calls onTagsChange when tag chip × is clicked", () => {
+      const handleTagsChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTagsChange={handleTagsChange} />
+      );
+
+      const removeBtn = screen.getByRole("button", { name: "Remove tag markdown" });
+      fireEvent.click(removeBtn);
+
+      expect(handleTagsChange).toHaveBeenCalledWith(["documentation"]);
+    });
+
+    it("calls onTagsChange when new tag is added via Enter", () => {
+      const handleTagsChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTagsChange={handleTagsChange} />
+      );
+
+      // Open the add-tag input by clicking the + button
+      const addBtn = screen.getByRole("button", { name: "Add tag" });
+      fireEvent.click(addBtn);
+
+      const tagInput = screen.getByRole("textbox", { name: "New tag" });
+      fireEvent.change(tagInput, { target: { value: "newtag" } });
+      fireEvent.keyDown(tagInput, { key: "Enter" });
+
+      expect(handleTagsChange).toHaveBeenCalledWith(["markdown", "documentation", "newtag"]);
+    });
+
+    it("does not add duplicate tag", () => {
+      const handleTagsChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTagsChange={handleTagsChange} />
+      );
+
+      const addBtn = screen.getByRole("button", { name: "Add tag" });
+      fireEvent.click(addBtn);
+
+      const tagInput = screen.getByRole("textbox", { name: "New tag" });
+      // "markdown" is already in the tags list
+      fireEvent.change(tagInput, { target: { value: "markdown" } });
+      fireEvent.keyDown(tagInput, { key: "Enter" });
+
+      // onTagsChange should not be called because the tag is a duplicate
+      expect(handleTagsChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Title input focus/blur styling", () => {
+    it("updates border style on title input focus", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      fireEvent.focus(titleInput);
+
+      expect(titleInput.style.borderColor).toBe("var(--border)");
+    });
+
+    it("resets border style on title input blur", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const titleInput = screen.getByRole("textbox", { name: "Article title" });
+      fireEvent.focus(titleInput);
+      fireEvent.blur(titleInput);
+
+      expect(titleInput.style.borderColor).toBe("transparent");
+    });
+  });
+
+  describe("Tag button hover styling", () => {
+    it("updates remove-tag button color on mouse enter and leave", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const removeBtn = screen.getByRole("button", { name: "Remove tag markdown" });
+      fireEvent.mouseEnter(removeBtn);
+      expect(removeBtn.style.color).toBe("var(--text-primary)");
+
+      fireEvent.mouseLeave(removeBtn);
+      expect(removeBtn.style.color).toBe("var(--text-secondary)");
+    });
+
+    it("updates add-tag button color on mouse enter and leave", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      const addBtn = screen.getByRole("button", { name: "Add tag" });
+      fireEvent.mouseEnter(addBtn);
+      expect(addBtn.style.color).toBe("var(--text-primary)");
+
+      fireEvent.mouseLeave(addBtn);
+      expect(addBtn.style.color).toBe("var(--text-secondary)");
     });
   });
 });

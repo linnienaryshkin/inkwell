@@ -1,5 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { VersionStrip } from "./VersionStrip";
+import type { ArticleVersion } from "@/app/studio/page";
+
+const MOCK_VERSIONS: ArticleVersion[] = [
+  { sha: "abc1234def5678", message: "Initial commit", committed_at: "today 14:02" },
+  { sha: "def5678abc1234", message: "Fix typo", committed_at: "yesterday 11:30" },
+  { sha: "aaa9999bbb8888", message: "Update content", committed_at: "3 days ago" },
+];
 
 describe("VersionStrip", () => {
   describe("Display", () => {
@@ -10,15 +17,16 @@ describe("VersionStrip", () => {
     });
 
     it("should display all version SHAs", () => {
-      render(<VersionStrip slug="test-article" />);
+      render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
+      // SHA is sliced to first 7 chars in the component
       expect(screen.getByText("abc1234")).toBeInTheDocument();
       expect(screen.getByText("def5678")).toBeInTheDocument();
       expect(screen.getByText("aaa9999")).toBeInTheDocument();
     });
 
     it("should display version dates", () => {
-      render(<VersionStrip slug="test-article" />);
+      render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       expect(screen.getByText("today 14:02")).toBeInTheDocument();
       expect(screen.getByText("yesterday 11:30")).toBeInTheDocument();
@@ -38,18 +46,18 @@ describe("VersionStrip", () => {
     });
 
     it("should have version buttons for each version", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
-      // Get all buttons (including Restore/View diff, so we expect more)
+      // Get all buttons (including Restore/View diff/Save, so we expect more)
       const buttons = container.querySelectorAll("button");
-      // 3 versions + Restore + View diff = 5 buttons
-      expect(buttons.length).toBe(5);
+      // 3 versions + Restore + View diff + Save = 6 buttons
+      expect(buttons.length).toBe(6);
     });
   });
 
   describe("Version Selection", () => {
     it("should select first version by default", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
@@ -60,7 +68,7 @@ describe("VersionStrip", () => {
     });
 
     it("should allow selecting a different version", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const secondVersionButton = buttons[1];
@@ -73,7 +81,7 @@ describe("VersionStrip", () => {
     });
 
     it("should deselect previous version when selecting new one", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
@@ -92,7 +100,7 @@ describe("VersionStrip", () => {
     });
 
     it("should allow switching between multiple versions", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
@@ -112,7 +120,7 @@ describe("VersionStrip", () => {
 
   describe("Version indicator styling", () => {
     it("should display status indicator dots for each version", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       // Look for the small dots in each version button
       const dots = container.querySelectorAll("button span.rounded-full");
@@ -121,7 +129,7 @@ describe("VersionStrip", () => {
     });
 
     it("should show accent color for selected version indicator", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
@@ -134,7 +142,7 @@ describe("VersionStrip", () => {
     });
 
     it("should show secondary text color for unselected version indicator", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const secondVersionButton = buttons[1];
@@ -149,7 +157,7 @@ describe("VersionStrip", () => {
 
   describe("Button styling", () => {
     it("should have borders on selected version button", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const firstVersionButton = buttons[0];
@@ -159,7 +167,7 @@ describe("VersionStrip", () => {
     });
 
     it("should have transparent border on unselected version button", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const secondVersionButton = buttons[1];
@@ -169,10 +177,10 @@ describe("VersionStrip", () => {
     });
 
     it("should display SHA in monospace font", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const monoElements = container.querySelectorAll("span.font-mono");
-      // Each version button has a SHA in monospace, plus Restore/View diff buttons
+      // Each version button has a SHA in monospace
       // So we expect at least 3 monospace elements for SHAs
       expect(monoElements.length).toBeGreaterThanOrEqual(3);
     });
@@ -203,7 +211,7 @@ describe("VersionStrip", () => {
 
   describe("Integration", () => {
     it("should maintain selection state across multiple interactions", () => {
-      const { container } = render(<VersionStrip slug="test-article" />);
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = container.querySelectorAll("button");
       const secondVersionButton = buttons[1];
@@ -221,7 +229,7 @@ describe("VersionStrip", () => {
     });
 
     it("should allow viewing versions then using action buttons", () => {
-      render(<VersionStrip slug="test-article" />);
+      render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
 
       const buttons = screen.getAllByRole("button");
       const thirdVersionButton = buttons[2];
@@ -231,6 +239,76 @@ describe("VersionStrip", () => {
       fireEvent.click(diffButton);
 
       expect(diffButton).toBeInTheDocument();
+    });
+  });
+
+  describe("versions prop", () => {
+    it("renders version dots from versions prop", () => {
+      const { container } = render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
+
+      const dots = container.querySelectorAll("button span.rounded-full");
+      expect(dots.length).toBe(MOCK_VERSIONS.length);
+    });
+
+    it("renders no version buttons when versions is empty", () => {
+      const { container } = render(<VersionStrip slug="test-article" versions={[]} />);
+
+      // Only Restore + View diff + Save buttons present, no version buttons
+      const buttons = container.querySelectorAll("button");
+      expect(buttons.length).toBe(3);
+    });
+  });
+
+  describe("Save button", () => {
+    it("Save button has green style when isDirty is true", () => {
+      render(<VersionStrip slug="test-article" isDirty={true} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Save" });
+      expect(saveBtn.style.background).toContain("var(--green)");
+    });
+
+    it("Save button has muted style when isDirty is false", () => {
+      render(<VersionStrip slug="test-article" isDirty={false} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Save" });
+      expect(saveBtn.style.background).not.toContain("var(--green)");
+    });
+
+    it("Save button is disabled when saving is true", () => {
+      render(<VersionStrip slug="test-article" saving={true} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Saving…" });
+      expect(saveBtn).toBeDisabled();
+    });
+
+    it("calls onSave when Save button is clicked", () => {
+      const handleSave = jest.fn();
+      render(<VersionStrip slug="test-article" isDirty={true} onSave={handleSave} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Save" });
+      fireEvent.click(saveBtn);
+
+      expect(handleSave).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call onSave when saving is true", () => {
+      const handleSave = jest.fn();
+      render(<VersionStrip slug="test-article" saving={true} onSave={handleSave} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Saving…" });
+      expect(saveBtn).toBeDisabled();
+      fireEvent.click(saveBtn);
+
+      expect(handleSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("onSave not provided", () => {
+    it("does not throw when Save is clicked without onSave prop", () => {
+      render(<VersionStrip slug="test-article" isDirty={true} />);
+
+      const saveBtn = screen.getByRole("button", { name: "Save" });
+      expect(() => fireEvent.click(saveBtn)).not.toThrow();
     });
   });
 });

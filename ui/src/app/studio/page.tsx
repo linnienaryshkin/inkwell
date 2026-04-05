@@ -4,7 +4,15 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchArticle, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
+import {
+  fetchArticles,
+  fetchArticle,
+  fetchCurrentUser,
+  getLoginUrl,
+  logout,
+  createArticle,
+  saveArticle,
+} from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type ArticleVersion = {
@@ -45,6 +53,22 @@ Your articles are stored as files in your GitHub repository — version-controll
 };
 
 const MOCK_METAS: ArticleMeta[] = [MOCK_ARTICLE.meta];
+
+const EMPTY_ARTICLE: Article = {
+  slug: "__new__",
+  content: "",
+  meta: { slug: "__new__", title: "", status: "draft", tags: [] },
+  versions: [],
+};
+
+function titleToSlug(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
+}
 
 function ProfileMenu({
   anchorRef,
@@ -105,6 +129,12 @@ export default function StudioPage() {
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Draft state for title/tags (decoupled from selectedArticle)
+  const [draftTitle, setDraftTitle] = useState<string>(MOCK_ARTICLE.meta.title);
+  const [draftTags, setDraftTags] = useState<string[]>(MOCK_ARTICLE.meta.tags);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     let ignore = false;
     fetchArticles()
@@ -155,8 +185,79 @@ export default function StudioPage() {
     };
   }, []);
 
+  // Reset drafts whenever the selected article changes
+  useEffect(() => {
+    setDraftTitle(selectedArticle?.meta.title ?? "");
+    setDraftTags(selectedArticle?.meta.tags ?? []);
+    setIsDirty(false);
+  }, [selectedSlug]); // keyed on slug, not article object
+
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ""; // required for Chrome
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
   const handleContentChange = (newContent: string) => {
     setSelectedArticle((prev) => (prev ? { ...prev, content: newContent } : prev));
+    setIsDirty(true);
+  };
+
+  const handleTitleChange = (title: string) => {
+    setDraftTitle(title);
+    setIsDirty(true);
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setDraftTags(tags);
+    setIsDirty(true);
+  };
+
+  const handleNewArticle = () => {
+    setSelectedSlug("__new__");
+    setSelectedArticle(EMPTY_ARTICLE);
+    setDraftTitle("");
+    setDraftTags([]);
+    setIsDirty(false);
+  };
+
+  const handleSave = async () => {
+    if (!selectedArticle || saving) return;
+    if (!draftTitle.trim()) {
+      // Empty title — do nothing (tests verify no API call is made)
+      return;
+    }
+    const slug =
+      selectedArticle.slug === "__new__" ? titleToSlug(draftTitle) : selectedArticle.slug;
+    if (!slug) return; // empty slug from all-symbols title
+    setSaving(true);
+    try {
+      let article: Article;
+      if (selectedArticle.slug === "__new__") {
+        article = await createArticle(draftTitle, slug, draftTags, selectedArticle.content);
+        setSummaries((prev) => [...prev, article.meta]);
+      } else {
+        article = await saveArticle(selectedArticle.slug, {
+          title: draftTitle,
+          tags: draftTags,
+          content: selectedArticle.content,
+        });
+        setSummaries((prev) => prev.map((m) => (m.slug === article.slug ? article.meta : m)));
+      }
+      setSelectedSlug(article.slug);
+      setSelectedArticle(article);
+      setIsDirty(false);
+    } catch (err) {
+      console.error("Save failed:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSelect = (slug: string) => {
@@ -363,7 +464,12 @@ export default function StudioPage() {
             flexShrink: 0,
           }}
         >
-          <ArticleList articles={summaries} selectedSlug={selectedSlug} onSelect={handleSelect} />
+          <ArticleList
+            articles={summaries}
+            selectedSlug={selectedSlug}
+            onSelect={handleSelect}
+            onNewArticle={handleNewArticle}
+          />
         </div>
 
         {/* Editor */}
@@ -379,13 +485,23 @@ export default function StudioPage() {
             <EditorPane
               key={selectedSlug}
               article={selectedArticle}
+              draftTitle={draftTitle}
+              draftTags={draftTags}
               onChange={handleContentChange}
+              onTitleChange={handleTitleChange}
+              onTagsChange={handleTagsChange}
               theme={theme}
               zenMode={zenMode}
               onToggleZen={toggleZen}
             />
           )}
-          <VersionStrip slug={selectedSlug} />
+          <VersionStrip
+            slug={selectedSlug}
+            versions={selectedArticle?.versions ?? []}
+            isDirty={isDirty}
+            saving={saving}
+            onSave={handleSave}
+          />
         </div>
 
         {/* Side panel */}

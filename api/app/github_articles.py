@@ -106,3 +106,115 @@ async def get_article(access_token: str, slug: str) -> Article:
 
         meta = ArticleMeta(slug=slug, **meta_data)
         return Article(slug=slug, content=content_raw, meta=meta, versions=versions)
+
+
+def _encode_meta(title: str, tags: list[str]) -> str:
+    """Return a base64-encoded meta.json payload (status always 'draft' on create/save)."""
+    raw = json.dumps({"title": title, "status": "draft", "tags": tags})
+    return base64.b64encode(raw.encode("utf-8")).decode("utf-8")
+
+
+def _encode_content(content: str) -> str:
+    """Return a base64-encoded content.md payload."""
+    return base64.b64encode(content.encode("utf-8")).decode("utf-8")
+
+
+async def create_article(
+    access_token: str,
+    title: str,
+    slug: str,
+    tags: list[str],
+    content: str,
+) -> Article:
+    """
+    Creates articles/<slug>/meta.json and articles/<slug>/content.md on main.
+    Sequential PUTs (meta first, content second).
+    GitHub returns 422 if files already exist — let it propagate.
+    After both PUTs succeed, calls get_article() and returns the result.
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/vnd.github+json",
+    }
+    base_url = f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/contents/articles/{slug}"
+
+    async with httpx.AsyncClient() as client:
+        meta_resp = await client.put(
+            f"{base_url}/meta.json",
+            headers=headers,
+            json={
+                "message": f"create {slug}: meta.json",
+                "content": _encode_meta(title, tags),
+            },
+        )
+        meta_resp.raise_for_status()
+
+        content_resp = await client.put(
+            f"{base_url}/content.md",
+            headers=headers,
+            json={
+                "message": f"create {slug}: content.md",
+                "content": _encode_content(content),
+            },
+        )
+        content_resp.raise_for_status()
+
+    return await get_article(access_token, slug)
+
+
+async def save_article(
+    access_token: str,
+    slug: str,
+    title: str,
+    tags: list[str],
+    content: str,
+    message: str,
+) -> Article:
+    """
+    Updates articles/<slug>/meta.json and articles/<slug>/content.md on main.
+    GitHub Contents API PUT requires the current file SHA to update an existing file.
+    Steps:
+      1. GET meta.json → extract sha
+      2. GET content.md → extract sha
+      (Steps 1+2 run in parallel via asyncio.gather)
+      3. PUT meta.json with new content + sha
+      4. PUT content.md with new content + sha
+      (Steps 3+4 run in parallel via asyncio.gather)
+    After all PUTs succeed, calls get_article() and returns the result.
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/vnd.github+json",
+    }
+    base_url = f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/contents/articles/{slug}"
+
+    async with httpx.AsyncClient() as client:
+
+        async def get_sha(path: str) -> str:
+            resp = await client.get(f"{base_url}/{path}", headers=headers)
+            resp.raise_for_status()
+            return resp.json()["sha"]
+
+        sha_meta, sha_content = await asyncio.gather(
+            get_sha("meta.json"),
+            get_sha("content.md"),
+        )
+
+        async def put_file(path: str, encoded_content: str, sha: str) -> None:
+            resp = await client.put(
+                f"{base_url}/{path}",
+                headers=headers,
+                json={
+                    "message": message,
+                    "content": encoded_content,
+                    "sha": sha,
+                },
+            )
+            resp.raise_for_status()
+
+        await asyncio.gather(
+            put_file("meta.json", _encode_meta(title, tags), sha_meta),
+            put_file("content.md", _encode_content(content), sha_content),
+        )
+
+    return await get_article(access_token, slug)

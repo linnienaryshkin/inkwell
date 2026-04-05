@@ -6,9 +6,10 @@ type Props = {
   articles: ArticleMeta[];
   selectedSlug: string;
   onSelect: (slug: string) => void;
+  onNewArticle?: () => void;
 };
 
-export function ArticleList({ articles, selectedSlug, onSelect }: Props) {
+export function ArticleList({ articles, selectedSlug, onSelect, onNewArticle }: Props) {
   return (
     <aside
       className="w-60 flex-shrink-0 border-r overflow-y-auto flex flex-col"
@@ -23,6 +24,23 @@ export function ArticleList({ articles, selectedSlug, onSelect }: Props) {
         </h2>
       </div>
       <div className="flex-1 py-1">
+        {/* Placeholder item for a new unsaved article */}
+        {selectedSlug === "__new__" && (
+          <div
+            className="w-full text-left px-4 py-2.5 flex flex-col gap-0.5"
+            style={{
+              background: "var(--bg-tertiary)",
+              borderLeft: "2px solid var(--accent)",
+            }}
+          >
+            <span
+              className="text-sm truncate"
+              style={{ color: "var(--text-secondary)", fontStyle: "italic" }}
+            >
+              New article…
+            </span>
+          </div>
+        )}
         {articles.map((article) => (
           <button
             key={article.slug}
@@ -55,6 +73,7 @@ export function ArticleList({ articles, selectedSlug, onSelect }: Props) {
       </div>
       <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
         <button
+          onClick={onNewArticle ?? (() => {})}
           className="w-full py-2 text-sm rounded border text-center transition-colors hover:opacity-80"
           style={{
             borderColor: "var(--border)",

@@ -136,7 +136,6 @@ export default function StudioPage() {
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [appLoading, setAppLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -178,7 +177,6 @@ export default function StudioPage() {
         const data = await fetchArticles();
         if (ignore) return;
         setSummaries(data);
-        setDataSource("live");
         // Preserve the URL slug if it exists in the live list; otherwise fall back to first
         const urlSlug = slugFromUrl();
         const targetSlug =
@@ -208,7 +206,6 @@ export default function StudioPage() {
           setSelectedSlug(MOCK_METAS[0].slug);
           setSelectedArticle(MOCK_ARTICLE);
           syncToArticle(MOCK_ARTICLE);
-          setDataSource("demo");
         }
       } finally {
         if (!ignore) setAppLoading(false);
@@ -420,18 +417,6 @@ export default function StudioPage() {
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             Personal Writing Studio
           </span>
-          {!appLoading && dataSource === "demo" && (
-            <span
-              className="text-xs px-1.5 py-0.5 rounded"
-              style={{
-                background: "var(--yellow)",
-                color: "var(--bg-primary)",
-                fontWeight: 500,
-              }}
-            >
-              demo mode
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <a

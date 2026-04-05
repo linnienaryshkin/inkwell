@@ -4,11 +4,6 @@ tasks:
   install:
     desc: Install UI dependencies
     cmds:
-      - npm install
-
-  install-ci:
-    desc: Install UI dependencies (CI, clean install)
-    cmds:
       - npm ci
 
   dev:
@@ -69,8 +64,8 @@ tasks:
   quality-gate:
     desc: Run all UI quality checks in sequence
     cmds:
-      - task: lint-check
       - task: format-check
+      - task: lint-check
       - task: types-check
       - task: test-coverage
       - task: security

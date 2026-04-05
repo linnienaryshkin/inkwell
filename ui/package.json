@@ -8,14 +8,13 @@
     "dev": "vite",
     "build": "vite build --logLevel silent",
     "preview": "vite preview",
-    "format": "prettier --write .",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "test": "jest",
-    "format:check": "prettier --check .",
     "types:check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
-    "test:coverage": "jest --coverage --silent",
-    "security": "npm audit --audit-level=high"
+    "test": "jest",
+    "test:coverage": "jest --coverage --silent"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

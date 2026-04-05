@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Inkwell
 
-A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend (in-memory, phase 1). Articles will eventually be stored as GitHub repo files. Deployed at <https://linnienaryshkin.github.io/inkwell/>.
+A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend backed by GitHub repo file storage. Articles are stored as files in `linnienaryshkin/inkwell` at `articles/{slug}/meta.json` and `articles/{slug}/content.md`. Deployed at <https://linnienaryshkin.github.io/inkwell/>.
 
-**What's currently mock (not wired up):** lint results in SidePanel, publish platform calls, VersionStrip restore/diff buttons, SQLite/Postgres persistence.
+**What's currently mock (not wired up):** lint results in SidePanel, publish platform calls.
 
 ## Repository Structure
 
@@ -34,17 +34,17 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 **Three-panel layout:**
 
-- **Left** – `ArticleList`: selects the active article
-- **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar. `EditorPane` receives `key={selectedSlug}` — this intentionally forces a full remount when the article changes, resetting Monaco's internal state. `VersionStrip` renders below it (version timeline, mock data; "Restore" and "View diff" buttons are not yet wired up)
+- **Left** – `ArticleList`: selects the active article; also renders a "+ New Article" button via `onNewArticle` callback
+- **Center** – `EditorPane`: Monaco editor + ReactMarkdown preview (toggled), Mermaid diagram rendering via `MermaidBlock`, status bar. `EditorPane` receives `key={selectedSlug}` — this intentionally forces a full remount when the article changes, resetting Monaco's internal state. `VersionStrip` renders below it — shows real GitHub commit history; each version entry links to the GitHub commit URL
 - **Right** – `SidePanel`: lint / publish / TOC tabs. Lint results are mock (hardcoded readability score + two example issues). Publish tab lists five hardcoded platforms (dev.to, Hashnode, Medium, Substack, LinkedIn) — no real API calls yet. TOC tab is rendered via `TocTab` component powered by `useHeadingExtraction`
 
-**API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. `patchArticle(slug, patch)` is called on article edits. On articles failure/timeout (3s), falls back to `MOCK_ARTICLES`. A badge in the header shows `"live"` or `"demo mode"`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link (unauthenticated) or a profile dropdown (authenticated) showing the user's avatar and login, with a "Sign out" button that calls `logout()` → `POST /auth/logout` and clears `currentUser`.
+**API integration:** `StudioPage` calls `fetchArticles()` and `fetchCurrentUser()` on mount via `src/services/api.ts`. Articles are loaded lazily — the list fetches `ArticleMeta[]` (summaries), then the full `Article` is fetched when one is selected. Users explicitly click Save; `saveArticle()` (full save via PATCH) or `createArticle()` (POST) is called accordingly. On articles failure/timeout (3s), falls back to `MOCK_METAS` / `MOCK_ARTICLE`. Auth state (`AuthUser | null`) lives in `StudioPage` — the header renders either a "Sign in with GitHub" link (unauthenticated) or a profile dropdown (authenticated) showing the user's avatar and login, with a "Sign out" button that calls `logout()` → `POST /auth/logout` and clears `currentUser`.
 
 **State ownership rules** (enforced by `.claude/rules/ui.md`):
 
-- Global state (`selectedSlug`, `articles[]`, `zenMode`, `theme`, `sidePanelTab`, `dataSource`, `currentUser`, `profileMenuOpen`) lives in `StudioPage` and flows down as props
+- Global state (`selectedSlug`, `summaries` (`ArticleMeta[]`), `selectedArticle` (`Article | null`), `draftTitle`, `draftTags`, `zenMode`, `theme`, `sidePanelTab`, `currentUser`, `profileMenuOpen`, `saving`, `saveError`, `deleting`, `articleLoading`, `appLoading`) lives in `StudioPage` and flows down as props
 - Component-local state (e.g., `previewMode` in `EditorPane`, `lintResults` in `SidePanel`) stays in the component that owns it
-- The `Article` type is defined in `studio/page.tsx` — import it from there, don't redefine
+- The `Article` / `ArticleMeta` / `ArticleVersion` types are defined in `studio/page.tsx` — import them from there, don't redefine. The shape is: `Article { slug, content, meta: ArticleMeta, versions: ArticleVersion[] }`
 
 **Keyboard shortcuts:** `F11` or `Ctrl+Shift+Z` toggle zen mode (collapses header, article list, and side panel).
 
@@ -58,24 +58,25 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 ### API (`api/`)
 
-FastAPI REST API with in-memory article store seeded from mock data. Mirrors the UI's `Article` type via Pydantic.
+FastAPI REST API backed by GitHub repo file storage via `app/github_articles.py` (GitHub Contents API for reads, Git Data API for writes). All article routes require authentication. Configuration is centralized in `app/config.py`.
 
 **Endpoints:**
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `GET`  | `/articles` | List all articles |
-| `GET`  | `/articles/{slug}` | Get article by slug |
-| `POST` | `/articles` | Create article (409 on slug conflict) |
-| `PATCH` | `/articles/{slug}` | Partial update (404 on unknown slug) |
+| `GET`  | `/articles` | List all articles (401 if not authenticated, 502 on GitHub error) |
+| `GET`  | `/articles/{slug}` | Get article by slug (401, 404) |
+| `POST` | `/articles` | Create article (401, 409 on slug conflict) |
+| `PATCH` | `/articles/{slug}` | Full save — title, tags, content, optional commit message (401, 404) |
+| `DELETE` | `/articles/{slug}` | Delete article (401, 404) |
 | `GET`  | `/auth/login` | Redirect to GitHub OAuth authorize |
 | `GET`  | `/auth/callback` | GitHub OAuth callback — issues signed session cookie |
 | `GET`  | `/auth/me` | Returns current user profile (401 if not authenticated) |
 | `POST` | `/auth/logout` | Clears session cookie (403 if Origin not in allowlist) |
 
-**Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h max age) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. `POST /auth/logout` deletes both cookies and validates the request `Origin` header against the allowlist (403 if not allowed). Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `FRONTEND_URL` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
+**Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h max age) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. `POST /auth/logout` deletes both cookies and validates the request `Origin` header against the allowlist (403 if not allowed). Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `ALLOWED_REDIRECT_URLS` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
-**Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/ai/` (reserved for LangChain).
+**Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/github_articles.py` (GitHub-backed storage layer), `app/config.py` (env config), `app/ai/` (reserved for LangChain).
 
 **CORS:** Allows `http://localhost:5173` and `https://linnienaryshkin.github.io` with `allow_credentials=True`.
 
@@ -86,7 +87,7 @@ Rules are in `.claude/rules/unit-test.md`. Both packages follow the same convent
 - BDD approach: test behavior (user interactions / HTTP contract), not implementation internals
 - 90% coverage on lines, functions, branches, and statements (enforced in CI)
 - **UI:** test files colocated with the source file as `FileName.test.{ts,tsx}`; query priority: `getByRole` > `getByLabelText` > `getByText` > `data-testid`; mock only external libraries (Monaco, ReactMarkdown)
-- **API:** test files in `api/tests/`; cover success cases, error cases, and edge cases for every endpoint; mock only external I/O
+- **API:** test files in `api/tests/`; cover success cases, error cases, and edge cases for every endpoint; mock only external I/O (GitHub API calls)
 
 ## Git Workflow
 

@@ -92,36 +92,6 @@ describe("StudioPage", () => {
     mockLogout.mockReset();
   });
 
-  describe("Data Source Indicator", () => {
-    it("should show demo mode badge when API is unavailable", async () => {
-      render(<StudioPage />);
-      await waitFor(() => {
-        expect(screen.getByText("demo mode")).toBeInTheDocument();
-      });
-    });
-
-    it("should not show live badge when API responds", async () => {
-      mockFetchArticles.mockResolvedValue([
-        {
-          slug: "test",
-          title: "Test",
-          status: "draft",
-          tags: [],
-        },
-      ]);
-      mockFetchArticle.mockResolvedValue({
-        slug: "test",
-        content: "# Test",
-        meta: { slug: "test", title: "Test", status: "draft", tags: [] },
-        versions: [],
-      });
-      render(<StudioPage />);
-      await waitFor(() => {
-        expect(screen.queryByText("live")).not.toBeInTheDocument();
-      });
-    });
-  });
-
   describe("Article Loading", () => {
     it("shows loading indicator while fetching an article", async () => {
       // fetchArticle never resolves so loading state persists
@@ -259,12 +229,6 @@ describe("StudioPage", () => {
       });
     });
 
-    it("demo mode badge remains visible when unauthenticated", async () => {
-      render(<StudioPage />);
-      await waitFor(() => {
-        expect(screen.getByText("demo mode")).toBeInTheDocument();
-      });
-    });
   });
 
   describe("Logout", () => {

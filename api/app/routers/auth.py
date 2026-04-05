@@ -38,8 +38,8 @@ import secrets
 import urllib.parse
 
 import httpx
-from fastapi import APIRouter, Cookie, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Cookie, HTTPException, Request
+from fastapi.responses import RedirectResponse, Response
 
 from app.config import config
 from app.models.auth import UserProfile
@@ -163,3 +163,22 @@ async def me(gh_access_token: str | None = Cookie(default=None)) -> UserProfile:
 
     data = resp.json()
     return UserProfile(login=data["login"], name=data.get("name"), avatar_url=data["avatar_url"])
+
+
+@router.post("/logout", status_code=204)
+async def logout(request: Request) -> Response:
+    # Derive the set of allowed origins from the full redirect URLs by keeping only scheme+netloc.
+    # e.g. "http://localhost:5173/inkwell/" → "http://localhost:5173"
+    allowed_origins = {
+        urllib.parse.urlparse(url).scheme + "://" + urllib.parse.urlparse(url).netloc
+        for url in ALLOWED_REDIRECT_URLS
+    }
+
+    origin = request.headers.get("Origin")
+    if not origin or origin not in allowed_origins:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    response = Response(status_code=204)
+    response.delete_cookie(SESSION_COOKIE, httponly=True, samesite="none", secure=True)
+    response.delete_cookie(STATE_COOKIE, httponly=True, samesite="none", secure=True)
+    return response

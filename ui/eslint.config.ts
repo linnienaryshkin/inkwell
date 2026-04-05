@@ -74,6 +74,7 @@ const config: any[] = [
         window: "readonly",
         document: "readonly",
         navigator: "readonly",
+        console: "readonly",
         fetch: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",

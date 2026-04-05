@@ -171,3 +171,37 @@ def test_me_invalid_token_returns_401(mock_async_client, client):
     response = client.get("/auth/me")
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
+
+
+# --- /auth/logout ---
+
+_VALID_ORIGIN = "http://localhost:5173"
+
+
+def test_logout_valid_origin_returns_204(client):
+    response = client.post("/auth/logout", headers={"Origin": _VALID_ORIGIN})
+    assert response.status_code == 204
+
+
+def test_logout_missing_origin_returns_403(client):
+    response = client.post("/auth/logout")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden"
+
+
+def test_logout_invalid_origin_returns_403(client):
+    response = client.post("/auth/logout", headers={"Origin": "https://evil.com"})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden"
+
+
+def test_logout_clears_session_cookie(client):
+    client.cookies.set(SESSION_COOKIE, "gho_test_token")
+    response = client.post("/auth/logout", headers={"Origin": _VALID_ORIGIN})
+    assert response.status_code == 204
+    assert "max-age=0" in response.headers.get("set-cookie", "").lower()
+
+
+def test_logout_no_cookie_still_returns_204(client):
+    response = client.post("/auth/logout", headers={"Origin": _VALID_ORIGIN})
+    assert response.status_code == 204

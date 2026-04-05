@@ -27,6 +27,8 @@
       "mcp__github__pull_request_review_write",
       "mcp__github__add_comment_to_pending_review",
       "mcp__github__add_reply_to_pull_request_comment",
+      "mcp__github__add_issue_comment",
+      "mcp__github__issue_write",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
@@ -42,6 +44,10 @@
     "type": "command",
     "command": "sh .claude/statusline-command.sh"
   },
+  "enabledMcpjsonServers": [
+    "playwright",
+    "github"
+  ],
   "enabledPlugins": {
     "report-issue@codemie-ai": false,
     "claude-setup-audit@codemie-ai": false,

@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FaGithub } from "react-icons/fa";
 import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchCurrentUser, getLoginUrl } from "@/services/api";
+import { fetchArticles, fetchCurrentUser, getLoginUrl, logout } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type Article = {
@@ -175,6 +175,8 @@ export default function StudioPage() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [dataSource, setDataSource] = useState<"live" | "demo">("demo");
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -218,6 +220,16 @@ export default function StudioPage() {
 
   const toggleZen = useCallback(() => setZenMode((z) => !z), []);
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+    setCurrentUser(null);
+    setProfileMenuOpen(false);
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -230,10 +242,25 @@ export default function StudioPage() {
         e.preventDefault();
         toggleZen();
       }
+      if (e.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [toggleZen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [profileMenuOpen]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -316,14 +343,66 @@ export default function StudioPage() {
               Sign in with GitHub
             </a>
           ) : (
-            <>
-              <img
-                src={currentUser.avatar_url}
-                alt={currentUser.login}
-                className="w-8 h-8 rounded-full"
-              />
-              <span style={{ color: "var(--text-secondary)" }}>{currentUser.login}</span>
-            </>
+            <div ref={profileMenuRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setProfileMenuOpen((o) => !o)}
+                aria-label="Open profile menu"
+                aria-haspopup="true"
+                aria-expanded={profileMenuOpen}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "4px",
+                }}
+              >
+                <img
+                  src={currentUser.avatar_url}
+                  alt={currentUser.login}
+                  className="w-8 h-8 rounded-full"
+                />
+                <span style={{ color: "var(--text-secondary)" }}>{currentUser.login}</span>
+              </button>
+
+              {profileMenuOpen && (
+                <div
+                  role="menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 6px)",
+                    minWidth: "120px",
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    zIndex: 50,
+                  }}
+                >
+                  <button
+                    role="menuitem"
+                    onClick={handleLogout}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 12px",
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-primary)",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </header>

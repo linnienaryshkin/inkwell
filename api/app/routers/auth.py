@@ -1,186 +1,165 @@
-import os
+"""
+GitHub OAuth flow — httponly cookie auth.
+
+    Browser                   Inkwell API              GitHub
+       |                           |                      |
+       |-- GET /auth/login ------->|                      |
+       |                           |-- redirect + CSRF -->|
+       |<-- 307 + state cookie ----|                      |
+       |                           |                      |
+       |-- browser follows GitHub authorize ------------->|
+       |<-- GitHub redirects to /auth/callback ----------|
+       |                           |                      |
+       |-- GET /auth/callback ---->|                      |
+       |   ?code=...&state=...     |-- POST /access_token>|
+       |                           |<-- access_token -----|
+       |<-- 307 to frontend        |                      |
+       |   + gh_access_token cookie|                      |
+       |                           |                      |
+       |-- GET /auth/me ---------->|                      |
+       |   (cookie sent auto)      |-- GET /user -------->|
+       |                           |<-- profile data -----|
+       |<-- 200 UserProfile -------|                      |
+
+Threat model:
+- CSRF: state cookie (httponly) is compared to the state query param GitHub echoes back.
+  An attacker cannot read the cookie cross-origin, so they cannot forge a valid callback.
+- Open redirect: redirect_url is validated against ALLOWED_REDIRECT_URLS at both /login
+  and /callback (defense-in-depth). Arbitrary destinations are rejected with 400.
+- Token exposure: gh_access_token is httponly — inaccessible to JavaScript.
+  It is never logged or included in response bodies.
+- Token lifetime: currently inherits GitHub OAuth App token lifetime (no expiry).
+  Phase 2 switches to GitHub App User Tokens (8 h expiry + refresh token).
+- Stolen cookie: if the session cookie is exfiltrated, there is no server-side revocation
+  in this phase. Mitigation: short max_age (8 h in Phase 2) + HTTPS-only (secure=True).
+"""
+
 import secrets
-import time
 import urllib.parse
 
 import httpx
-import jwt
-from fastapi import APIRouter, Cookie, HTTPException, Response
+from fastapi import APIRouter, Cookie, HTTPException
 from fastapi.responses import RedirectResponse
 
-from app.models.auth import JWTPayload, UserProfile
+from app.config import config
+from app.models.auth import UserProfile
 
-# TODO: Add a ASCII Architecture diagram of how these resources work
+ALLOWED_REDIRECT_URLS: list[str] = config.allowed_redirect_urls
 
-# TODO: Create a separate ENV/Config module where all environment variables are loaded and validated. This way we can reuse the config in tests and have a single source of truth for required env vars. For now, we just load them at module level and fail fast if any are missing.
-_REQUIRED_ENV = [
-    "OAUTH_CLIENT_ID",
-    "OAUTH_CLIENT_SECRET",
-    "OAUTH_CALLBACK_URL",
-    "SESSION_SECRET",
-    "FRONTEND_URL",
-]
-
-# TODO: Reuse these cookie names in tests, I see duplications there...
-SESSION_COOKIE = "inkwell_session"
+SESSION_COOKIE = "gh_access_token"
 STATE_COOKIE = "gh_oauth_state"
 
-# TODO: Document why these values
-_JWT_ALGORITHM = "HS256"
-_SESSION_TTL = 86400  # 24 hours
+# 8 hours — matches GitHub App User Token lifetime (Phase 2)
+_TOKEN_MAX_AGE = 28800
 
-
-# Read config once at module load — fail fast if env vars are missing
-def _load_config() -> tuple[str, str, str, str, str]:
-    for v in _REQUIRED_ENV:
-        if not os.environ.get(v):
-            raise RuntimeError(f"Missing required environment variable: {v}")
-    return (
-        os.environ["OAUTH_CLIENT_ID"],
-        os.environ["OAUTH_CLIENT_SECRET"],
-        os.environ["OAUTH_CALLBACK_URL"],
-        # TODO: Since we're using JWTs, we don't actually need a session secret — we just need a signing key. Maybe rename this to JWT_SIGNING_KEY or something? Or even better, switch to asymmetric keys and call it JWT_PRIVATE_KEY or something like that.
-        os.environ["SESSION_SECRET"],
-        os.environ["FRONTEND_URL"],
-    )
-
-
-_OAUTH_CLIENT_ID, _OAUTH_CLIENT_SECRET, _OAUTH_CALLBACK_URL, _SESSION_SECRET, _FRONTEND_URL = _load_config()
-
-router = APIRouter(tags=["auth"])
-
-
-def _encode_jwt(login: str, name: str | None, avatar_url: str) -> str:
-    """Encode a signed JWT containing the user profile. The GitHub access token
-    is never included — it is discarded after fetching the profile in /callback."""
-    payload = {
-        "login": login,
-        "name": name,
-        "avatar_url": avatar_url,
-        "exp": int(time.time()) + _SESSION_TTL,
-    }
-    return jwt.encode(payload, _SESSION_SECRET, algorithm=_JWT_ALGORITHM)
-
-
-def _decode_jwt(token: str) -> JWTPayload:
-    try:
-        data = jwt.decode(token, _SESSION_SECRET, algorithms=[_JWT_ALGORITHM])
-    except jwt.ExpiredSignatureError as exc:
-        raise HTTPException(status_code=401, detail="Session expired") from exc
-    except jwt.InvalidTokenError as exc:
-        raise HTTPException(status_code=401, detail="Invalid session") from exc
-    return JWTPayload.model_validate(data)
+router = APIRouter()
 
 
 @router.get("/login")
-def login() -> RedirectResponse:
+def login(redirect_url: str | None = None) -> RedirectResponse:
+    # Validate caller-supplied redirect URL against the allowlist to prevent open redirect.
+    # Default to the first allowed URL if none provided.
+    if redirect_url is not None:
+        if redirect_url not in ALLOWED_REDIRECT_URLS:
+            raise HTTPException(status_code=400, detail="Invalid redirect URL")
+        chosen_redirect = redirect_url
+    else:
+        chosen_redirect = ALLOWED_REDIRECT_URLS[0]
+
+    # Encode CSRF state and chosen redirect URL together in one cookie (pipe-delimited).
+    # GitHub echoes the state param back in /callback — we split it there to recover both.
     state = secrets.token_urlsafe(32)
+    state_value = f"{state}|{chosen_redirect}"
+
     params = urllib.parse.urlencode(
-        # TODO: Document each parameter and why it's needed. Also, figure out if we can pass the UI url to GitHub in some way so we don't have to set it in env vars on the backend.
         {
-            "client_id": _OAUTH_CLIENT_ID,
-            "redirect_uri": _OAUTH_CALLBACK_URL,
-            "scope": "read:user",
-            "state": state,
+            "client_id": config.oauth_client_id,
+            "redirect_uri": config.oauth_callback_url,  # must match the registered OAuth app URL
+            "scope": "read:user",  # minimum scope to read the user profile
+            "state": state,  # CSRF protection token (GitHub echoes this back)
         }
     )
-    # TODO: What is this redirect eventually?
     redirect = RedirectResponse(url=f"https://github.com/login/oauth/authorize?{params}")
     redirect.set_cookie(
         key=STATE_COOKIE,
-        value=state,
+        value=state_value,
         httponly=True,
         samesite="none",
         secure=True,
-        max_age=600,
+        max_age=600,  # 10 min — long enough to complete the login flow
     )
     return redirect
 
 
-# Document each param and overall flow in this callback. It's a bit complex and it's not clear at first glance why we need each part.
 @router.get("/callback")
 async def callback(
-    code: str,
-    state: str,
-    gh_oauth_state: str | None = Cookie(default=None),
+    code: str,  # one-time code from GitHub
+    state: str,  # CSRF token echoed back by GitHub
+    gh_oauth_state: str | None = Cookie(default=None),  # our CSRF+redirect cookie
 ) -> RedirectResponse:
-    if not gh_oauth_state or state != gh_oauth_state:
+    if not gh_oauth_state or "|" not in gh_oauth_state:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
+    # Recover CSRF token and redirect URL from the pipe-delimited cookie
+    cookie_state, chosen_redirect = gh_oauth_state.split("|", 1)
+    if state != cookie_state:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+    # Defense-in-depth: re-validate redirect URL even though we set it ourselves
+    if chosen_redirect not in ALLOWED_REDIRECT_URLS:
+        raise HTTPException(status_code=400, detail="Invalid redirect URL")
+
     async with httpx.AsyncClient() as http:
+        # Exchange the one-time code for a GitHub access token
         token_resp = await http.post(
             "https://github.com/login/oauth/access_token",
             json={
-                "client_id": _OAUTH_CLIENT_ID,
-                "client_secret": _OAUTH_CLIENT_SECRET,
+                "client_id": config.oauth_client_id,
+                "client_secret": config.oauth_client_secret,
                 "code": code,
-                "redirect_uri": _OAUTH_CALLBACK_URL,
+                "redirect_uri": config.oauth_callback_url,
             },
             headers={"Accept": "application/json"},
         )
         token_resp.raise_for_status()
-        token_data = token_resp.json()
+        # token_data: {"access_token": "gho_...", "token_type": "bearer", "scope": "read:user"}
+        access_token = token_resp.json().get("access_token")
 
-        # TODO: What is inside token_data?
-        access_token = token_data.get("access_token")
-        if not access_token:
-            raise HTTPException(status_code=400, detail="Failed to obtain access token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Failed to obtain access token")
 
-        # TODO: I think overall picture, we don't need to put any user data into JWT...
-        # ... we have /me route already
-        # Just settle access_token as a cookie HTTP-only and that's it.
-        # That way we don't need about JWT or session at all
-        user_resp = await http.get(
-            "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
-        )
-        user_resp.raise_for_status()
-        user_data = user_resp.json()
-
-    # access_token is discarded here — only the profile goes into the JWT
-    session_token = _encode_jwt(
-        login=user_data["login"],
-        name=user_data.get("name"),
-        avatar_url=user_data["avatar_url"],
-    )
-
-    redirect = RedirectResponse(url=_FRONTEND_URL)
+    # Store the access token directly as an httponly cookie — never exposed to JavaScript.
+    # Phase 2: swap for GitHub App User Tokens (short-lived, refreshable).
+    redirect = RedirectResponse(url=chosen_redirect)
     redirect.set_cookie(
         key=SESSION_COOKIE,
-        value=session_token,
+        value=access_token,
         httponly=True,
         samesite="none",
         secure=True,
-        max_age=_SESSION_TTL,
+        max_age=_TOKEN_MAX_AGE,
     )
     redirect.delete_cookie(STATE_COOKIE)
     return redirect
 
 
 @router.get("/me", response_model=UserProfile)
-def me(inkwell_session: str | None = Cookie(default=None)) -> UserProfile:
-    if not inkwell_session:
+async def me(gh_access_token: str | None = Cookie(default=None)) -> UserProfile:
+    if not gh_access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = _decode_jwt(inkwell_session)
-    return UserProfile(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)
 
+    async with httpx.AsyncClient() as http:
+        try:
+            resp = await http.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {gh_access_token}",
+                    "Accept": "application/json",
+                },
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError:
+            raise HTTPException(status_code=401, detail="Not authenticated")
 
-# TODO: Not sure how refresh will work if we switch to just storing access_token in cookie. Is there a way to refresh GitHub access tokens?
-@router.get("/refresh", response_model=UserProfile)
-def refresh(
-    response: Response,
-    inkwell_session: str | None = Cookie(default=None),
-) -> UserProfile:
-    if not inkwell_session:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = _decode_jwt(inkwell_session)
-    new_token = _encode_jwt(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)
-    response.set_cookie(
-        key=SESSION_COOKIE,
-        value=new_token,
-        httponly=True,
-        samesite="none",
-        secure=True,
-        max_age=_SESSION_TTL,
-    )
-    return UserProfile(login=payload.login, name=payload.name, avatar_url=payload.avatar_url)
+    data = resp.json()
+    return UserProfile(login=data["login"], name=data.get("name"), avatar_url=data["avatar_url"])

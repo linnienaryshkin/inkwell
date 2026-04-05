@@ -20,7 +20,9 @@ jest.mock("@/components/VersionStrip", () => ({
 jest.mock("@/services/api", () => ({
   fetchArticles: jest.fn(),
   fetchCurrentUser: jest.fn(),
-  API_BASE: "http://localhost:8000",
+  getLoginUrl: jest.fn(
+    () => "http://localhost:8000/auth/login?redirect_url=http%3A%2F%2Flocalhost%3A5173%2F"
+  ),
 }));
 
 import StudioPage from "./page";

@@ -1,12 +1,13 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-STATE_COOKIE = "gh_oauth_state"
-SESSION_COOKIE = "inkwell_session"
+from app.routers.auth import SESSION_COOKIE, STATE_COOKIE
 
-from app.routers.auth import _encode_jwt  # noqa: E402
+_VALID_REDIRECT = "http://localhost:5173/inkwell/"
+_INVALID_REDIRECT = "https://evil.com"
 
 
 @pytest.fixture()
@@ -16,33 +17,39 @@ def client():
     return TestClient(app, follow_redirects=False)
 
 
-def _make_session(
-    login: str = "octocat",
-    name: str | None = "The Octocat",
-    avatar_url: str = "https://github.com/images/error/octocat_happy.gif",
-) -> str:
-    return _encode_jwt(login=login, name=name, avatar_url=avatar_url)
-
-
-def _mock_httpx_client(access_token: str = "gho_test_token", user_data: dict | None = None):
+def _mock_github_user(
+    user_data: dict | None = None,
+    status_code: int = 200,
+):
     if user_data is None:
         user_data = {
             "login": "octocat",
             "name": "The Octocat",
             "avatar_url": "https://github.com/images/error/octocat_happy.gif",
         }
+    mock_resp = MagicMock()
+    if status_code >= 400:
+        mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "HTTP error", request=MagicMock(), response=MagicMock()
+        )
+    else:
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = user_data
 
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    return mock_client
+
+
+def _mock_httpx_client(access_token: str = "gho_test_token"):
     token_response = MagicMock()
     token_response.raise_for_status = MagicMock()
     token_response.json.return_value = {"access_token": access_token}
 
-    user_response = MagicMock()
-    user_response.raise_for_status = MagicMock()
-    user_response.json.return_value = user_data
-
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(return_value=token_response)
-    mock_client.get = AsyncMock(return_value=user_response)
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
     return mock_client
@@ -67,11 +74,26 @@ def test_login_sets_state_cookie(client):
     )
 
 
+def test_login_with_valid_redirect_url_accepted(client):
+    response = client.get(f"/auth/login?redirect_url={_VALID_REDIRECT}")
+    assert response.status_code == 307
+    assert STATE_COOKIE in response.cookies or STATE_COOKIE in response.headers.get(
+        "set-cookie", ""
+    )
+
+
+def test_login_with_invalid_redirect_url_returns_400(client):
+    response = client.get(f"/auth/login?redirect_url={_INVALID_REDIRECT}")
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid redirect URL"
+
+
 # --- /auth/callback ---
 
 
 def test_callback_missing_state_returns_400(client):
-    client.cookies.set(STATE_COOKIE, "some_state")
+    # State cookie has "wrong_state|redirect" but query param state is different
+    client.cookies.set(STATE_COOKIE, f"some_state|{_VALID_REDIRECT}")
     response = client.get("/auth/callback?code=abc&state=wrong_state")
     assert response.status_code == 400
 
@@ -85,7 +107,7 @@ def test_callback_no_state_cookie_returns_400(client):
 def test_callback_valid_state_sets_session_cookie(mock_async_client, client):
     mock_async_client.return_value = _mock_httpx_client()
     state = "valid_state_value"
-    client.cookies.set(STATE_COOKIE, state)
+    client.cookies.set(STATE_COOKIE, f"{state}|{_VALID_REDIRECT}")
     response = client.get(f"/auth/callback?code=abc&state={state}")
     assert response.status_code == 307
     assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get(
@@ -97,13 +119,10 @@ def test_callback_valid_state_sets_session_cookie(mock_async_client, client):
 def test_callback_redirects_to_frontend(mock_async_client, client):
     mock_async_client.return_value = _mock_httpx_client()
     state = "valid_state_value"
-    client.cookies.set(STATE_COOKIE, state)
+    client.cookies.set(STATE_COOKIE, f"{state}|{_VALID_REDIRECT}")
     response = client.get(f"/auth/callback?code=abc&state={state}")
     assert response.status_code == 307
-    assert (
-        "localhost:5173" in response.headers["location"]
-        or "inkwell" in response.headers["location"]
-    )
+    assert "localhost:5173" in response.headers["location"]
 
 
 @patch("app.routers.auth.httpx.AsyncClient")
@@ -119,7 +138,7 @@ def test_callback_no_access_token_returns_400(mock_async_client, client):
     mock_async_client.return_value = mock_client
 
     state = "valid_state_value"
-    client.cookies.set(STATE_COOKIE, state)
+    client.cookies.set(STATE_COOKIE, f"{state}|{_VALID_REDIRECT}")
     response = client.get(f"/auth/callback?code=bad_code&state={state}")
     assert response.status_code == 400
 
@@ -133,15 +152,10 @@ def test_me_no_cookie_returns_401(client):
     assert response.json()["detail"] == "Not authenticated"
 
 
-def test_me_invalid_cookie_returns_401(client):
-    client.cookies.set(SESSION_COOKIE, "invalid.token.value")
-    response = client.get("/auth/me")
-    assert response.status_code == 401
-
-
-def test_me_valid_cookie_returns_profile(client):
-    token = _make_session()
-    client.cookies.set(SESSION_COOKIE, token)
+@patch("app.routers.auth.httpx.AsyncClient")
+def test_me_valid_cookie_returns_profile(mock_async_client, client):
+    mock_async_client.return_value = _mock_github_user()
+    client.cookies.set(SESSION_COOKIE, "gho_test_token")
     response = client.get("/auth/me")
     assert response.status_code == 200
     data = response.json()
@@ -150,28 +164,10 @@ def test_me_valid_cookie_returns_profile(client):
     assert "avatar_url" in data
 
 
-# --- /auth/refresh ---
-
-
-def test_refresh_no_cookie_returns_401(client):
-    response = client.get("/auth/refresh")
+@patch("app.routers.auth.httpx.AsyncClient")
+def test_me_invalid_token_returns_401(mock_async_client, client):
+    mock_async_client.return_value = _mock_github_user(status_code=401)
+    client.cookies.set(SESSION_COOKIE, "gho_expired_token")
+    response = client.get("/auth/me")
     assert response.status_code == 401
     assert response.json()["detail"] == "Not authenticated"
-
-
-def test_refresh_valid_cookie_reissues_session(client):
-    token = _make_session()
-    client.cookies.set(SESSION_COOKIE, token)
-    response = client.get("/auth/refresh")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["login"] == "octocat"
-    assert SESSION_COOKIE in response.cookies or SESSION_COOKIE in response.headers.get(
-        "set-cookie", ""
-    )
-
-
-def test_refresh_invalid_cookie_returns_401(client):
-    client.cookies.set(SESSION_COOKIE, "garbage.token")
-    response = client.get("/auth/refresh")
-    assert response.status_code == 401

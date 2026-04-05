@@ -27,6 +27,11 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return response.json() as Promise<AuthUser>;
 }
 
+export function getLoginUrl(): string {
+  const redirectUrl = window.location.origin + import.meta.env.BASE_URL;
+  return `${API_BASE}/auth/login?redirect_url=${encodeURIComponent(redirectUrl)}`;
+}
+
 export async function fetchArticles(): Promise<Article[]> {
   const response = await fetchWithTimeout(`${API_BASE}/articles`, {
     credentials: "include",

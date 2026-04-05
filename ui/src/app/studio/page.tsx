@@ -4,7 +4,7 @@ import { ArticleList } from "@/components/ArticleList";
 import { EditorPane } from "@/components/EditorPane";
 import { SidePanel } from "@/components/SidePanel";
 import { VersionStrip } from "@/components/VersionStrip";
-import { fetchArticles, fetchCurrentUser, API_BASE } from "@/services/api";
+import { fetchArticles, fetchCurrentUser, getLoginUrl } from "@/services/api";
 import type { AuthUser } from "@/services/api";
 
 export type Article = {
@@ -307,7 +307,7 @@ export default function StudioPage() {
           </button>
           {currentUser === null ? (
             <a
-              href={`${API_BASE}/auth/login`}
+              href={getLoginUrl()}
               aria-label="Sign in with GitHub"
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm"
               style={{ background: "var(--accent)", color: "var(--bg-primary)" }}

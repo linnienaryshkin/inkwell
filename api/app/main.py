@@ -1,4 +1,4 @@
-import os
+import urllib.parse
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,24 +7,22 @@ from app.routers import articles, auth
 
 app = FastAPI(title="Inkwell API", version="0.1.0")
 
-# TODO: Rename FRONTEND_URL to UI_URL.
-_frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# Derive CORS origins from the same allowlist used for OAuth redirect validation —
+# single source of truth. Strip paths: "http://localhost:5173/inkwell/" → "http://localhost:5173"
+_cors_origins = list(
+    {
+        urllib.parse.urlparse(url).scheme + "://" + urllib.parse.urlparse(url).netloc
+        for url in auth.ALLOWED_REDIRECT_URLS
+    }
+)
 
-# TODO: Leave comment what this is for?
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "https://linnienaryshkin.github.io",
-        _frontend_url,
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# TODO: Why articles doesn't have prefix?
-app.include_router(articles.router)
-app.include_router(auth.router, prefix="/auth")
+app.include_router(articles.router, prefix="/articles", tags=["articles"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])

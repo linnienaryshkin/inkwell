@@ -4,7 +4,7 @@ from app.models.article import Article, ArticlePatch
 
 # TODO: Add a ASCII Architecture diagram of how these resources work
 
-router = APIRouter(prefix="/articles", tags=["articles"])
+router = APIRouter()
 
 _store: dict[str, Article] = {
     a.slug: a

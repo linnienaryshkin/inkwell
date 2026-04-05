@@ -1,4 +1,4 @@
-import { fetchArticles, patchArticle } from "@/services/api";
+import { fetchArticles, patchArticle, getLoginUrl } from "@/services/api";
 
 const mockArticles = [
   {
@@ -9,6 +9,16 @@ const mockArticles = [
     tags: ["test"],
   },
 ];
+
+describe("getLoginUrl", () => {
+  it("builds login URL with encoded redirect_url from window.location.origin + BASE_URL", () => {
+    // jsdom sets window.location.origin to "http://localhost" by default
+    // BASE_URL is "/" in Jest (import.meta.env.BASE_URL mock returns "/")
+    const url = getLoginUrl();
+    expect(url).toMatch(/^http:\/\/localhost:8000\/auth\/login\?redirect_url=/);
+    expect(url).toContain(encodeURIComponent(window.location.origin));
+  });
+});
 
 describe("api service", () => {
   const originalFetch = global.fetch;

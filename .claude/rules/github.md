@@ -24,35 +24,42 @@ This rule enforces synchronization between:
 
 ### Overview
 
-Two separate workflows enforce code quality before merge to `main`:
+A single consolidated workflow (`.github/workflows/cicd.yml`) enforces code quality before merge to `main`. The workflow uses intelligent change detection to run only the relevant quality gates:
 
-| Workflow | Trigger | Gate Job | Task | Enforced By |
-|----------|---------|----------|------|------------|
-| **ui-ci.yml** | `ui/**` changes | `ui-quality-gate` | `task ui:quality-gate` | Branch protection |
-| **api-ci.yml** | `api/**` changes | `api-quality-gate` | `task api:quality-gate` | Branch protection |
+| Workflow | Jobs | Trigger | Enforced By |
+|----------|------|---------|------------|
+| **cicd.yml** | `detect-changes` (determine what changed) → conditional `ui-quality-gate` / `api-quality-gate` (only if their code changed) → conditional `ui-deploy` (only on main with UI changes) | `push` and `pull_request` to `main` | Branch protection |
 
-Both workflows run on `push` and `pull_request` to `main`. The gate jobs become required status checks, meaning:
-- **Pushes to main** must pass both gates (or only the changed one via path filtering)
-- **PRs** must pass both gates before merge
-- **Admins are NOT exempt** from status checks (enforced-for-admins = true)
+The gate jobs become required status checks, meaning:
+- **Pushes to main** must pass the gates corresponding to changed code
+- **PRs** must pass the gates corresponding to changed code before merge
+- **Admins CAN bypass** status checks and merge directly (enforce_admins = false)
 
-### Workflow Path Filters
+**⚠️ Critical:** The `cicd.yml` workflow must be on the `main` branch to be available in the GitHub Actions UI and to trigger on PRs. New workflows added only to feature branches won't show up in GitHub's workflow list until merged to main. **Old workflows must be explicitly disabled** in the GitHub UI if they conflict with the new consolidated workflow.
 
-**ui-ci.yml** runs when:
+### Workflow Change Detection
+
+The `detect-changes` job runs first and outputs boolean flags (`ui` and `api`) indicating which parts of the codebase changed:
+
 ```yaml
-paths:
-  - "ui/**"
-  - ".github/workflows/ui-ci.yml"
+detect-changes:
+  outputs:
+    ui: ${{ steps.changes.outputs.ui }}
+    api: ${{ steps.changes.outputs.api }}
+  steps:
+    - name: Detect file changes
+      run: |
+        # For PRs: compare against merge base
+        # For pushes: compare against previous commit
+        # Output: ui=true/false, api=true/false
 ```
 
-**api-ci.yml** runs when:
-```yaml
-paths:
-  - "api/**"
-  - ".github/workflows/api-ci.yml"
-```
+**Conditional Jobs:**
+- `ui-quality-gate` runs only if `detect-changes.outputs.ui == 'true'`
+- `api-quality-gate` runs only if `detect-changes.outputs.api == 'true'`
+- `ui-deploy` runs only if `github.ref == 'refs/heads/main'` AND `detect-changes.outputs.ui == 'true'`
 
-This prevents unnecessary runs. If a PR only changes API files, ui-ci doesn't trigger, but it's still required by branch protection (so the PR can't merge without being required to pass it).
+This prevents unnecessary quality gate runs and delays. If a PR only changes API files, ui-quality-gate doesn't trigger at all.
 
 ---
 
@@ -77,7 +84,7 @@ quality-gate:
     - task: build
 ```
 
-Each subtask corresponds to a step in `.github/workflows/ui-ci.yml`:
+Each subtask corresponds to a step in `.github/workflows/cicd.yml` (ui-quality-gate job):
 
 | Task | Workflow Step | Command |
 |------|---------------|---------|
@@ -102,7 +109,7 @@ quality-gate:
     - task: security
 ```
 
-Each subtask corresponds to a step in `.github/workflows/api-ci.yml`:
+Each subtask corresponds to a step in `.github/workflows/cicd.yml` (api-quality-gate job):
 
 | Task | Workflow Step | Command |
 |------|---------------|---------|
@@ -135,9 +142,9 @@ task api:quality-gate
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
-| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge |
+| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge (unless merged by admin with bypass) |
 | **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
-| **Enforce for admins** | ✗ Disabled | Admins can push directly to main, bypassing checks if needed |
+| **Enforce for admins** | ✗ Disabled | Admins can push directly to main and merge PRs without waiting for checks |
 | **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
 | **Allow deletions** | ✗ Disabled | Protect against accidental deletes |
 
@@ -164,11 +171,12 @@ To add a new required status check:
 
 ### Deployment Flow
 
-1. **Push to main** → `ui-ci.yml` triggers
-2. **`ui-quality-gate` passes** → Vite build artifact uploaded
-3. **`ui-deploy` job waits** for `ui-quality-gate` + checks `github.ref == 'refs/heads/main'`
-4. **Deployment to `github-pages` environment** occurs
-5. **GitHub Pages publishes** to <https://linnienaryshkin.github.io/inkwell/>
+1. **Push to main** → `cicd.yml` triggers
+2. **`detect-changes` runs** → outputs `ui=true` (UI code changed)
+3. **`ui-quality-gate` passes** → Vite build artifact uploaded
+4. **`ui-deploy` job waits** for `detect-changes` + `ui-quality-gate` + checks `github.ref == 'refs/heads/main'` and `ui == 'true'`
+5. **Deployment to `github-pages` environment** occurs
+6. **GitHub Pages publishes** to <https://linnienaryshkin.github.io/inkwell/>
 
 ---
 
@@ -184,9 +192,10 @@ To add a new required status check:
 
 ## 7. GitHub Actions Secrets
 
-| Secret | Used By | Purpose |
-|--------|---------|---------|
-| `ANTHROPIC_API_KEY` | `.github/workflows/claude.yml` | Claude API authentication |
+| Secret Name | Used By | Purpose |
+|------------|---------|---------|
+| `ALLOWED_REDIRECT_URLS` | `api/` (FastAPI) | Comma-separated OAuth redirect URL allowlist and CORS origin |
+| `ANTHROPIC_API_KEY` | `.github/workflows/claude.yml` | Claude API authentication for AI workflows |
 | `OAUTH_CLIENT_ID` | `api/` (FastAPI) | GitHub OAuth app client ID |
 | `OAUTH_CLIENT_SECRET` | `api/` (FastAPI) | GitHub OAuth app client secret |
 | `OAUTH_CALLBACK_URL` | `api/` (FastAPI) | GitHub OAuth callback URL |
@@ -197,6 +206,39 @@ To add a new required status check:
 gh secret set SECRET_NAME --body "value"
 gh secret list  # Verify
 ```
+
+### Environment Variable Source of Truth
+
+| File | Purpose | Committed? |
+|------|---------|-----------|
+| `api/.env.example` | Documents all API secrets/vars with placeholders | ✓ Yes |
+| `ui/.env.example` | Documents all UI env vars with placeholders | ✓ Yes |
+| `api/.env` (gitignored) | Local dev; developer fills in real values | ✗ No |
+| `ui/.env` (gitignored) | Local dev; developer fills in real values | ✗ No |
+| GitHub Actions Secrets | CI/CD with real values | Encrypted |
+
+---
+
+## 7.5. Managing Multiple Workflow Versions
+
+When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui-ci.yml` and `api-ci.yml` with `cicd.yml`):
+
+1. **Create the new workflow** on a feature branch and test locally with `task quality-gate`
+2. **Merge the feature branch to main** to make the new workflow available in GitHub's workflow list
+3. **Disable old workflows** via GitHub UI or CLI:
+   ```bash
+   gh workflow disable old-workflow-name --repo owner/repo
+   ```
+4. **Update branch protection** to reference the new job names (if different):
+   ```bash
+   # View current config
+   gh api repos/owner/repo/branches/main/protection
+
+   # Jobs on PRs against main will now reference the new workflow's job names
+   ```
+5. **Delete old workflow files** from the repository to avoid confusion (optional but recommended)
+
+**Why this matters:** GitHub only recognizes workflows committed to `main`. Workflow files on feature branches won't trigger and won't appear in the Actions UI, even if correctly written. This can cause "checks awaiting conflict resolution" without any actual workflow runs.
 
 ---
 
@@ -216,30 +258,34 @@ gh secret list  # Verify
        - new-command
    ```
 
-2. **Edit `.github/workflows/ui-ci.yml`:**
+2. **Edit `.github/workflows/cicd.yml` (ui-quality-gate job):**
    ```yaml
    - name: Run new check
      run: task new-check
    ```
 
-3. **Update `.claude/CURRENT.md` section 2** with the new step
+3. **Update this rule's section 2** with the new step
 
 4. **The pre-commit hook automatically picks up the Taskfile change**
 
 ### Adding a New Required Status Check
 
-1. **Create a new workflow file** (e.g., `.github/workflows/security.yml`)
+1. **Create a new workflow file** (e.g., `.github/workflows/security.yml`) and **merge to main first** to make it available
 2. **Define a gate job** (must complete before merge)
-3. **Add to branch protection:**
+3. **Disable any conflicting old workflows** if consolidating:
    ```bash
-   gh api repos/linnienaryshkin/inkwell/branches/main/protection \
-     -f required_status_checks="{checks:[{context:'ui-quality-gate'},{context:'api-quality-gate'},{context:'new-gate'}]}"
+   gh workflow disable old-workflow-name --repo linnienaryshkin/inkwell
    ```
-4. **Update this rule** with the new check name
+4. **Verify the new job appears in GitHub's Actions UI** by viewing the workflow runs on main
+5. **Update branch protection** (GitHub may auto-update this, but verify):
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/branches/main/protection
+   ```
+6. **Update this rule** with the new check name
 
 ### Modifying Deployment Settings
 
-1. **Edit `.github/workflows/ui-ci.yml`** (deployment conditions)
+1. **Edit `.github/workflows/cicd.yml`** (ui-deploy job conditions)
 2. **Verify environment settings:**
    ```bash
    gh api repos/linnienaryshkin/inkwell/environments/github-pages
@@ -266,6 +312,9 @@ gh secret list  # Verify
 Use these to verify GitHub state matches this rule:
 
 ```bash
+# List all workflows and their status (active/disabled)
+gh workflow list --repo linnienaryshkin/inkwell
+
 # Branch protection
 gh api repos/linnienaryshkin/inkwell/branches/main/protection
 
@@ -277,6 +326,9 @@ gh api repos/linnienaryshkin/inkwell/pages
 
 # GitHub Actions secrets
 gh secret list --repo linnienaryshkin/inkwell
+
+# Workflow runs on main (to verify recent runs)
+gh run list --repo linnienaryshkin/inkwell --branch main --limit 10
 ```
 
 ---
@@ -288,15 +340,14 @@ gh secret list --repo linnienaryshkin/inkwell
 - **Workflow file changes** → Update the corresponding Taskfile section
 - **Taskfile changes** → Update the workflow if steps differ
 - **GitHub settings changes** → Run the verification commands and update this rule
-- **New features/APIs** → Update section 7 (API Endpoints)
+- **Workflow consolidation** → Update section 7.5 with lessons learned
+- **New required status checks** → Update section 4 branch protection table
 
 ### Verification Process
 
 1. Make the change (workflow, Taskfile, or GitHub settings)
 2. Run the corresponding verification command above
 3. Update this rule with the new state
-4. Update `.claude/CURRENT.md` with the change
-5. Commit with message: `#0: sync github config`
 
 ---
 
@@ -304,10 +355,8 @@ gh secret list --repo linnienaryshkin/inkwell
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/ui-ci.yml` | UI workflow definition |
-| `.github/workflows/api-ci.yml` | API workflow definition |
+| `.github/workflows/cicd.yml` | Consolidated CI/CD workflow (detect-changes, ui-quality-gate, api-quality-gate, ui-deploy jobs); includes comprehensive inline documentation explaining the job flow |
 | `.github/workflows/claude.yml` | Claude Code Action responder |
-| `ui/Taskfile.yml` | UI task definitions (quality-gate source) |
-| `api/Taskfile.yml` | API task definitions (quality-gate source) |
+| `ui/Taskfile.yml` | UI task definitions (quality-gate source, called from cicd.yml) |
+| `api/Taskfile.yml` | API task definitions (quality-gate source, called from cicd.yml) |
 | `.husky/pre-commit` | Local pre-commit hook (runs both quality-gates) |
-| `.claude/CURRENT.md` | Human-readable mirror of current GitHub state |

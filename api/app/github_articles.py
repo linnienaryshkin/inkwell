@@ -72,12 +72,19 @@ GITHUB_API_BASE = "https://api.github.com"
 
 
 async def list_article_metas(access_token: str) -> list[ArticleMeta]:
-    """
-    Fetch all article metadata from GitHub.
-    1. GET /repos/{ARTICLES_REPO}/contents/articles → list of dir entries
-    2. For each entry where type == "dir", fetch meta.json in parallel
-    Returns list[ArticleMeta]; raises httpx.HTTPStatusError on GitHub errors,
-    ValueError on malformed meta.json.
+    """Fetch all article metadata from GitHub.
+
+    Lists all article directories, then fetches meta.json for each in parallel.
+
+    Args:
+        access_token: GitHub access token for API authentication.
+
+    Returns:
+        list[ArticleMeta]: List of all article metadata summaries.
+
+    Raises:
+        httpx.HTTPStatusError: On GitHub API errors.
+        ValueError: If meta.json is malformed JSON.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -113,12 +120,21 @@ async def list_article_metas(access_token: str) -> list[ArticleMeta]:
 
 
 async def get_article(access_token: str, slug: str) -> Article:
-    """
-    Fetch a full article (meta + content + commit history) for a single slug.
-    Versions are fetched from the Git commit log for articles/{slug}/.
+    """Fetch a full article including content and commit history.
+
+    Retrieves meta.json, content.md, and Git commit history for an article.
     Missing commit history is non-fatal (returns empty list).
-    Raises httpx.HTTPStatusError if meta.json or content.md is missing.
-    Raises ValueError if meta.json is malformed.
+
+    Args:
+        access_token: GitHub access token for API authentication.
+        slug: The article slug (directory name).
+
+    Returns:
+        Article: Full article with metadata, content, and version history.
+
+    Raises:
+        httpx.HTTPStatusError: If meta.json or content.md is missing or on GitHub API errors.
+        ValueError: If meta.json is malformed JSON.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -170,12 +186,20 @@ async def get_article(access_token: str, slug: str) -> Article:
 
 
 async def delete_article(access_token: str, slug: str) -> None:
-    """
-    Deletes articles/<slug>/meta.json and articles/<slug>/content.md from main.
-    Steps:
-      1. GET meta.json and content.md to fetch their SHAs (in parallel)
-      2. DELETE meta.json, then DELETE content.md (sequentially to avoid tree conflicts)
-    Raises httpx.HTTPStatusError if either file is not found or a GitHub error occurs.
+    """Delete an article's meta.json and content.md from GitHub.
+
+    Fetches file SHAs for both files in parallel, then deletes them sequentially
+    to avoid tree SHA conflicts.
+
+    Args:
+        access_token: GitHub access token for API authentication.
+        slug: The article slug (directory name).
+
+    Returns:
+        None
+
+    Raises:
+        httpx.HTTPStatusError: If either file is not found or GitHub API error occurs.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -209,7 +233,19 @@ async def delete_article(access_token: str, slug: str) -> None:
 
 
 async def _create_blob(client: httpx.AsyncClient, headers: dict, raw: str) -> str:
-    """POST /git/blobs and return the blob SHA."""
+    """Create a Git blob object on GitHub and return its SHA.
+
+    Args:
+        client: The httpx AsyncClient for making requests.
+        headers: HTTP headers including Authorization.
+        raw: Raw file content to upload.
+
+    Returns:
+        str: The SHA hash of the created blob.
+
+    Raises:
+        httpx.HTTPStatusError: On GitHub API error.
+    """
     resp = await client.post(
         f"{GITHUB_API_BASE}/repos/{ARTICLES_REPO}/git/blobs",
         headers=headers,
@@ -228,17 +264,22 @@ async def _commit_files(
     message: str,
     files: list[tuple[str, str]],
 ) -> None:
-    """
-    Write multiple files to main in a single commit via the Git Data API.
+    """Write multiple files to main in a single commit via the Git Data API.
 
-    files: list of (tree_path, raw_content) tuples.
+    Creates blobs for all files, fetches the current HEAD and tree SHAs, creates
+    a new tree, commits it, and advances the main branch reference.
 
-    Steps:
-      1. Create blobs for all files in parallel
-      2. Fetch current HEAD ref and its tree SHA (sequential, parallel with step 1)
-      3. Create a new tree based on the current tree with the new blobs
-      4. Create a new commit pointing at the new tree
-      5. Advance the main branch ref to the new commit
+    Args:
+        client: The httpx AsyncClient for making requests.
+        headers: HTTP headers including Authorization.
+        message: Commit message.
+        files: List of (tree_path, raw_content) tuples to commit.
+
+    Returns:
+        None
+
+    Raises:
+        httpx.HTTPStatusError: On GitHub API errors.
     """
 
     async def get_head_and_tree() -> tuple[str, str]:
@@ -299,10 +340,23 @@ async def create_article(
     tags: list[str],
     content: str,
 ) -> Article:
-    """
-    Creates articles/<slug>/meta.json and articles/<slug>/content.md on main
-    in a single commit via the Git Data API.
-    After the commit succeeds, calls get_article() and returns the result.
+    """Create a new article with metadata and initial content in a single commit.
+
+    Creates both meta.json and content.md files, then fetches and returns
+    the complete article object.
+
+    Args:
+        access_token: GitHub access token for API authentication.
+        title: Article title.
+        slug: Article slug (becomes directory name).
+        tags: List of article tags.
+        content: Initial markdown content.
+
+    Returns:
+        Article: The newly created article with full metadata and history.
+
+    Raises:
+        httpx.HTTPStatusError: On GitHub API errors.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -330,10 +384,24 @@ async def save_article(
     content: str,
     message: str,
 ) -> Article:
-    """
-    Updates articles/<slug>/meta.json and articles/<slug>/content.md on main
-    in a single commit via the Git Data API.
-    After the commit succeeds, calls get_article() and returns the result.
+    """Update an existing article's metadata and content in a single commit.
+
+    Updates both meta.json and content.md files, then fetches and returns
+    the complete updated article object.
+
+    Args:
+        access_token: GitHub access token for API authentication.
+        slug: Article slug (directory name).
+        title: Updated article title.
+        tags: Updated article tags.
+        content: Updated markdown content.
+        message: Commit message.
+
+    Returns:
+        Article: The updated article with full metadata and history.
+
+    Raises:
+        httpx.HTTPStatusError: On GitHub API errors.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",

@@ -18,6 +18,15 @@ _REQUIRED_ENV = [
 
 @dataclass(frozen=True)
 class Config:
+    """Central configuration loaded from environment variables at startup.
+
+    Attributes:
+        oauth_client_id: GitHub OAuth application client ID.
+        oauth_client_secret: GitHub OAuth application client secret.
+        oauth_callback_url: URL where GitHub redirects after authorization.
+        allowed_redirect_urls: Comma-separated list of frontend URLs allowed for OAuth redirect.
+    """
+
     oauth_client_id: str
     oauth_client_secret: str
     oauth_callback_url: str
@@ -26,6 +35,14 @@ class Config:
 
 
 def _load() -> Config:
+    """Load and validate required environment variables at startup.
+
+    Returns:
+        Config: Configuration object with all required environment variables.
+
+    Raises:
+        RuntimeError: If any required environment variable is missing or empty.
+    """
     for v in _REQUIRED_ENV:
         if not os.environ.get(v):
             raise RuntimeError(f"Missing required environment variable: {v}")

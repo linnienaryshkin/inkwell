@@ -24,7 +24,17 @@ router = APIRouter()
 
 
 def require_auth(gh_access_token: str | None = Cookie(default=None)) -> str:
-    """Dependency that enforces authentication via the gh_access_token cookie."""
+    """Dependency that enforces authentication via the gh_access_token cookie.
+
+    Args:
+        gh_access_token: GitHub access token from httponly cookie.
+
+    Returns:
+        str: The validated access token.
+
+    Raises:
+        HTTPException: 401 if no valid access token is found.
+    """
     if not gh_access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return gh_access_token
@@ -34,6 +44,17 @@ def require_auth(gh_access_token: str | None = Cookie(default=None)) -> str:
 async def list_articles(
     access_token: str = Depends(require_auth),
 ) -> list[ArticleMeta]:
+    """List all articles for the authenticated user.
+
+    Args:
+        access_token: GitHub access token from authentication dependency.
+
+    Returns:
+        list[ArticleMeta]: List of article metadata summaries.
+
+    Raises:
+        HTTPException: 401 if not authenticated, 502 on GitHub API error.
+    """
     try:
         return await list_article_metas(access_token)
     except httpx.HTTPStatusError as e:
@@ -49,6 +70,18 @@ async def get_article_by_slug(
     slug: str,
     access_token: str = Depends(require_auth),
 ) -> Article:
+    """Retrieve a full article by slug including content and version history.
+
+    Args:
+        slug: The article slug (alphanumeric with hyphens).
+        access_token: GitHub access token from authentication dependency.
+
+    Returns:
+        Article: Full article with metadata, content, and version history.
+
+    Raises:
+        HTTPException: 401 if not authenticated, 404 if article not found, 502 on GitHub API error.
+    """
     try:
         return await gh_get_article(access_token, slug)
     except httpx.HTTPStatusError as e:
@@ -64,6 +97,19 @@ async def create_article_endpoint(
     body: ArticleCreate,
     access_token: str = Depends(require_auth),
 ) -> Article:
+    """Create a new article with metadata and initial content.
+
+    Args:
+        body: Request body containing title, slug, tags, and content.
+        access_token: GitHub access token from authentication dependency.
+
+    Returns:
+        Article: The newly created article (status 201).
+
+    Raises:
+        HTTPException: 401 if not authenticated, 409 if slug already exists, 422 on validation error,
+            502 on GitHub API error.
+    """
     if not body.title.strip():
         raise HTTPException(status_code=422, detail="Title must not be empty")
     if not re.match(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$", body.slug):
@@ -88,6 +134,20 @@ async def save_article_endpoint(
     body: ArticleSave,
     access_token: str = Depends(require_auth),
 ) -> Article:
+    """Update an existing article's metadata and content.
+
+    Args:
+        slug: The article slug to update.
+        body: Request body containing title, tags, content, and optional commit message.
+        access_token: GitHub access token from authentication dependency.
+
+    Returns:
+        Article: The updated article.
+
+    Raises:
+        HTTPException: 401 if not authenticated, 404 if article not found, 422 on validation error,
+            502 on GitHub API error.
+    """
     if not re.match(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$", slug):
         raise HTTPException(
             status_code=422, detail="Slug must be lowercase alphanumeric with hyphens"
@@ -114,6 +174,19 @@ async def delete_article_endpoint(
     slug: str,
     access_token: str = Depends(require_auth),
 ) -> None:
+    """Delete an article and all its associated files.
+
+    Args:
+        slug: The article slug to delete.
+        access_token: GitHub access token from authentication dependency.
+
+    Returns:
+        None
+
+    Raises:
+        HTTPException: 401 if not authenticated, 404 if article not found, 422 on validation error,
+            502 on GitHub API error.
+    """
     if not re.match(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$", slug):
         raise HTTPException(
             status_code=422, detail="Slug must be lowercase alphanumeric with hyphens"

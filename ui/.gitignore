@@ -1,0 +1,46 @@
+# UI-specific ignores (Node.js / Vite / React)
+
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build outputs
+dist
+out
+.next
+
+# Caches
+.npm
+.cache
+.parcel-cache
+.eslintcache
+.stylelintcache
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# VSCode test
+.vscode-test
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Optional REPL history
+.node_repl_history
+
+# npm pack
+*.tgz
+
+# Yarn Integrity
+.yarn-integrity

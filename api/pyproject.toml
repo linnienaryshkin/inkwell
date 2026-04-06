@@ -10,7 +10,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = [
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "pip-audit>=2.7",
     "langchain>=0.3",
     "langchain-anthropic>=0.3",
     "langchain-mcp-adapters>=0.1",
@@ -21,13 +26,6 @@ ai = [
     "ipykernel>=6.0",
     "nest-asyncio>=1.5",
     "python-dotenv>=1.0",
-]
-dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.24",
-    "httpx>=0.28",
-    "ruff>=0.8",
-    "pip-audit>=2.7",
 ]
 
 [tool.ruff]

@@ -666,8 +666,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-ai = [
+dev = [
     { name = "anthropic" },
+    { name = "httpx" },
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "jupyter" },
@@ -676,39 +677,36 @@ ai = [
     { name = "langchain-anthropic" },
     { name = "langchain-mcp-adapters" },
     { name = "nest-asyncio" },
-    { name = "python-dotenv" },
-]
-dev = [
-    { name = "httpx" },
     { name = "pip-audit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "python-dotenv" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.87.0" },
+    { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.87.0" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28" },
-    { name = "ipykernel", marker = "extra == 'ai'", specifier = ">=6.0" },
-    { name = "ipython", marker = "extra == 'ai'", specifier = ">=8.0" },
-    { name = "jupyter", marker = "extra == 'ai'", specifier = ">=1.0" },
-    { name = "jupyterlab", marker = "extra == 'ai'", specifier = ">=4.0" },
-    { name = "langchain", marker = "extra == 'ai'", specifier = ">=0.3" },
-    { name = "langchain-anthropic", marker = "extra == 'ai'", specifier = ">=0.3" },
-    { name = "langchain-mcp-adapters", marker = "extra == 'ai'", specifier = ">=0.1" },
-    { name = "nest-asyncio", marker = "extra == 'ai'", specifier = ">=1.5" },
+    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.0" },
+    { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0" },
+    { name = "jupyterlab", marker = "extra == 'dev'", specifier = ">=4.0" },
+    { name = "langchain", marker = "extra == 'dev'", specifier = ">=0.3" },
+    { name = "langchain-anthropic", marker = "extra == 'dev'", specifier = ">=0.3" },
+    { name = "langchain-mcp-adapters", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "nest-asyncio", marker = "extra == 'dev'", specifier = ">=1.5" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7" },
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "python-dotenv", marker = "extra == 'ai'", specifier = ">=1.0" },
+    { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
-provides-extras = ["ai", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "ipykernel"

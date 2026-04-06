@@ -668,6 +668,7 @@ dependencies = [
 [package.optional-dependencies]
 ai = [
     { name = "anthropic" },
+    { name = "ipykernel" },
     { name = "ipython" },
     { name = "jupyter" },
     { name = "jupyterlab" },
@@ -691,6 +692,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28" },
+    { name = "ipykernel", marker = "extra == 'ai'", specifier = ">=6.0" },
     { name = "ipython", marker = "extra == 'ai'", specifier = ">=8.0" },
     { name = "jupyter", marker = "extra == 'ai'", specifier = ">=1.0" },
     { name = "jupyterlab", marker = "extra == 'ai'", specifier = ">=4.0" },

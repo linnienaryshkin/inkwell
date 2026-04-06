@@ -33,7 +33,9 @@ A single consolidated workflow (`.github/workflows/cicd.yml`) enforces code qual
 The gate jobs become required status checks, meaning:
 - **Pushes to main** must pass the gates corresponding to changed code
 - **PRs** must pass the gates corresponding to changed code before merge
-- **Admins are NOT exempt** from status checks (enforced-for-admins = true)
+- **Admins CAN bypass** status checks and merge directly (enforce_admins = false)
+
+**⚠️ Critical:** The `cicd.yml` workflow must be on the `main` branch to be available in the GitHub Actions UI and to trigger on PRs. New workflows added only to feature branches won't show up in GitHub's workflow list until merged to main. **Old workflows must be explicitly disabled** in the GitHub UI if they conflict with the new consolidated workflow.
 
 ### Workflow Change Detection
 
@@ -140,9 +142,9 @@ task api:quality-gate
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
-| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge |
+| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge (unless merged by admin with bypass) |
 | **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
-| **Enforce for admins** | ✗ Disabled | Admins can push directly to main, bypassing checks if needed |
+| **Enforce for admins** | ✗ Disabled | Admins can push directly to main and merge PRs without waiting for checks |
 | **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
 | **Allow deletions** | ✗ Disabled | Protect against accidental deletes |
 
@@ -217,6 +219,29 @@ gh secret list  # Verify
 
 ---
 
+## 7.5. Managing Multiple Workflow Versions
+
+When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui-ci.yml` and `api-ci.yml` with `cicd.yml`):
+
+1. **Create the new workflow** on a feature branch and test locally with `task quality-gate`
+2. **Merge the feature branch to main** to make the new workflow available in GitHub's workflow list
+3. **Disable old workflows** via GitHub UI or CLI:
+   ```bash
+   gh workflow disable old-workflow-name --repo owner/repo
+   ```
+4. **Update branch protection** to reference the new job names (if different):
+   ```bash
+   # View current config
+   gh api repos/owner/repo/branches/main/protection
+
+   # Jobs on PRs against main will now reference the new workflow's job names
+   ```
+5. **Delete old workflow files** from the repository to avoid confusion (optional but recommended)
+
+**Why this matters:** GitHub only recognizes workflows committed to `main`. Workflow files on feature branches won't trigger and won't appear in the Actions UI, even if correctly written. This can cause "checks awaiting conflict resolution" without any actual workflow runs.
+
+---
+
 ## 8. How to Make Changes
 
 ### Adding a New Quality Check to UI
@@ -245,14 +270,18 @@ gh secret list  # Verify
 
 ### Adding a New Required Status Check
 
-1. **Create a new workflow file** (e.g., `.github/workflows/security.yml`)
+1. **Create a new workflow file** (e.g., `.github/workflows/security.yml`) and **merge to main first** to make it available
 2. **Define a gate job** (must complete before merge)
-3. **Add to branch protection:**
+3. **Disable any conflicting old workflows** if consolidating:
    ```bash
-   gh api repos/linnienaryshkin/inkwell/branches/main/protection \
-     -f required_status_checks="{checks:[{context:'ui-quality-gate'},{context:'api-quality-gate'},{context:'new-gate'}]}"
+   gh workflow disable old-workflow-name --repo linnienaryshkin/inkwell
    ```
-4. **Update this rule** with the new check name
+4. **Verify the new job appears in GitHub's Actions UI** by viewing the workflow runs on main
+5. **Update branch protection** (GitHub may auto-update this, but verify):
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/branches/main/protection
+   ```
+6. **Update this rule** with the new check name
 
 ### Modifying Deployment Settings
 
@@ -283,6 +312,9 @@ gh secret list  # Verify
 Use these to verify GitHub state matches this rule:
 
 ```bash
+# List all workflows and their status (active/disabled)
+gh workflow list --repo linnienaryshkin/inkwell
+
 # Branch protection
 gh api repos/linnienaryshkin/inkwell/branches/main/protection
 
@@ -294,6 +326,9 @@ gh api repos/linnienaryshkin/inkwell/pages
 
 # GitHub Actions secrets
 gh secret list --repo linnienaryshkin/inkwell
+
+# Workflow runs on main (to verify recent runs)
+gh run list --repo linnienaryshkin/inkwell --branch main --limit 10
 ```
 
 ---
@@ -305,7 +340,8 @@ gh secret list --repo linnienaryshkin/inkwell
 - **Workflow file changes** → Update the corresponding Taskfile section
 - **Taskfile changes** → Update the workflow if steps differ
 - **GitHub settings changes** → Run the verification commands and update this rule
-- **New features/APIs** → Update section 7 (API Endpoints)
+- **Workflow consolidation** → Update section 7.5 with lessons learned
+- **New required status checks** → Update section 4 branch protection table
 
 ### Verification Process
 

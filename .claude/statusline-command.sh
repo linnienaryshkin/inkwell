@@ -55,20 +55,35 @@ five_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 seven_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
 seven_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 
-# Human-readable countdown
-time_until() {
+# Human-readable reset time
+format_reset_time() {
 	_now=$(date +%s)
-	_diff=$(($1 - _now))
-	if [ "$_diff" -le 0 ]; then
+	_reset_ts=$1
+	if [ "$_reset_ts" -le 0 ]; then
 		printf "now"
 		return
 	fi
-	_h=$((_diff / 3600))
-	_m=$(((_diff % 3600) / 60))
-	if [ "$_h" -gt 0 ]; then
-		printf "%dh%dm" "$_h" "$_m"
+
+	# Get today's date at midnight
+	_today_start=$(date -v0H -v0M -v0S +%s 2>/dev/null || date -d "today 00:00:00" +%s 2>/dev/null)
+	_tomorrow_start=$((_today_start + 86400))
+
+	# If reset is today, show time (HH:MM)
+	if [ "$_reset_ts" -lt "$_tomorrow_start" ]; then
+		date -r "$_reset_ts" +%H:%M 2>/dev/null || date -d "@$_reset_ts" +%H:%M
 	else
-		printf "%dm" "$_m"
+		# Otherwise show date (Mon d, e.g., Apr 13)
+		date -r "$_reset_ts" +%b\ %d 2>/dev/null || date -d "@$_reset_ts" +%b\ %d
+	fi
+}
+
+# Color based on remaining percentage
+get_limit_color() {
+	_remaining=$1
+	if [ "$_remaining" -lt 25 ]; then
+		printf '%s' "$C_RED"
+	else
+		printf '%s' "$C_GRAY"
 	fi
 }
 
@@ -115,11 +130,13 @@ if [ -n "$five_pct" ] || [ -n "$seven_pct" ]; then
 	# 5-hour limit
 	if [ -n "$five_pct" ]; then
 		five_int=$(printf '%.0f' "$five_pct")
-		five_countdown=""
-		[ -n "$five_reset" ] && five_countdown=$(time_until "$five_reset")
-		printf "%s5h limit: %s%%%s" "$C_GRAY" "$five_int" "$C_RESET"
-		if [ -n "$five_countdown" ]; then
-			printf " %still %s%s" "$C_GRAY" "$five_countdown" "$C_RESET"
+		five_remaining=$((100 - five_int))
+		five_color=$(get_limit_color "$five_remaining")
+		five_reset_display=""
+		[ -n "$five_reset" ] && five_reset_display=$(format_reset_time "$five_reset")
+		printf "%s5h limit - %s%s%%%s" "$C_GRAY" "$five_color" "$five_remaining" "$C_RESET"
+		if [ -n "$five_reset_display" ]; then
+			printf " %suntil %s%s" "$C_GRAY" "$five_reset_display" "$C_RESET"
 		fi
 	fi
 
@@ -131,11 +148,13 @@ if [ -n "$five_pct" ] || [ -n "$seven_pct" ]; then
 	# 7-day limit
 	if [ -n "$seven_pct" ]; then
 		seven_int=$(printf '%.0f' "$seven_pct")
-		seven_countdown=""
-		[ -n "$seven_reset" ] && seven_countdown=$(time_until "$seven_reset")
-		printf "%s7d limit: %s%%%s" "$C_GRAY" "$seven_int" "$C_RESET"
-		if [ -n "$seven_countdown" ]; then
-			printf " %still %s%s" "$C_GRAY" "$seven_countdown" "$C_RESET"
+		seven_remaining=$((100 - seven_int))
+		seven_color=$(get_limit_color "$seven_remaining")
+		seven_reset_display=""
+		[ -n "$seven_reset" ] && seven_reset_display=$(format_reset_time "$seven_reset")
+		printf "%s7d limit - %s%s%%%s" "$C_GRAY" "$seven_color" "$seven_remaining" "$C_RESET"
+		if [ -n "$seven_reset_display" ]; then
+			printf " %suntil %s%s" "$C_GRAY" "$seven_reset_display" "$C_RESET"
 		fi
 	fi
 

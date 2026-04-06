@@ -1,306 +1,313 @@
 ---
-description: GitHub CI/CD workflows, branch protection, deployment environments, Pages configuration, and secrets for this repository. Read this before editing any workflow file or GitHub settings.
+description: GitHub CI/CD workflows, branch protection, deployment environments, Pages configuration, and secrets. This is the single source of truth for all GitHub configuration. Read this before editing any workflow file, Taskfile, or GitHub settings.
 paths:
   - ".github/**"
+  - ".husky/**"
   - "Taskfile.yml"
   - "ui/Taskfile.yml"
   - "api/Taskfile.yml"
 ---
 
-## When This Rule Applies
+# GitHub Rule
 
-- Editing `.github/workflows/*.yml`
-- Changing branch protection rules on `main`
-- Modifying the `github-pages` deployment environment
-- Changing GitHub Pages source or configuration
-- Debugging a failed CI/CD run
+This rule enforces synchronization between:
+1. **Workflow definitions** (`.github/workflows/*.yml`) — CI/CD trigger logic
+2. **Task definitions** (`ui/Taskfile.yml`, `api/Taskfile.yml`) — quality gate steps
+3. **Pre-commit hooks** (`.husky/pre-commit`) — local validation
+4. **GitHub settings** (branch protection, environments, secrets)
 
-## Quality Gate Sync Rule
+**Source of truth:** Always edit the relevant Taskfile first, then update the workflow to call the task.
 
-**`.husky/pre-commit` must always mirror the CI quality gates.** When the steps in `ui-ci.yml` or `api-ci.yml` change, update `.husky/pre-commit` to match. Current pre-commit runs:
+---
+
+## 1. CI/CD Workflow Architecture
+
+### Overview
+
+Two separate workflows enforce code quality before merge to `main`:
+
+| Workflow | Trigger | Gate Job | Task | Enforced By |
+|----------|---------|----------|------|------------|
+| **ui-ci.yml** | `ui/**` changes | `ui-quality-gate` | `task ui:quality-gate` | Branch protection |
+| **api-ci.yml** | `api/**` changes | `api-quality-gate` | `task api:quality-gate` | Branch protection |
+
+Both workflows run on `push` and `pull_request` to `main`. The gate jobs become required status checks, meaning:
+- **Pushes to main** must pass both gates (or only the changed one via path filtering)
+- **PRs** must pass both gates before merge
+- **Admins are NOT exempt** from status checks (enforced-for-admins = true)
+
+### Workflow Path Filters
+
+**ui-ci.yml** runs when:
+```yaml
+paths:
+  - "ui/**"
+  - ".github/workflows/ui-ci.yml"
+```
+
+**api-ci.yml** runs when:
+```yaml
+paths:
+  - "api/**"
+  - ".github/workflows/api-ci.yml"
+```
+
+This prevents unnecessary runs. If a PR only changes API files, ui-ci doesn't trigger, but it's still required by branch protection (so the PR can't merge without being required to pass it).
+
+---
+
+## 2. Task Definition Sync
+
+### Source of Truth: Taskfiles
+
+Each Taskfile contains a `quality-gate` task that mirrors the corresponding workflow steps.
+
+#### ui/Taskfile.yml (`quality-gate` task)
+
+```yaml
+quality-gate:
+  deps:
+    - install
+  cmds:
+    - task: lint-check
+    - task: format-check
+    - task: types-check
+    - task: test-coverage
+    - task: security
+    - task: build
+```
+
+Each subtask corresponds to a step in `.github/workflows/ui-ci.yml`:
+
+| Task | Workflow Step | Command |
+|------|---------------|---------|
+| `install` | Install dependencies | `npm ci && npx husky install` |
+| `lint-check` | Check ESLint | `npx eslint . --report-unused-disable-directives --max-warnings 0` |
+| `format-check` | Check Prettier | `npx prettier . --check` |
+| `types-check` | Check TypeScript | `tsc --noEmit` |
+| `test-coverage` | Run tests | `jest --coverage --coverageThreshold='{"lines":90,"functions":90,"branches":90,"statements":90}'` |
+| `security` | Audit dependencies | `npm audit --audit-level=high` |
+| `build` | Build | `vite build` |
+
+#### api/Taskfile.yml (`quality-gate` task)
+
+```yaml
+quality-gate:
+  deps:
+    - install
+  cmds:
+    - task: lint-check
+    - task: format-check
+    - task: test
+    - task: security
+```
+
+Each subtask corresponds to a step in `.github/workflows/api-ci.yml`:
+
+| Task | Workflow Step | Command |
+|------|---------------|---------|
+| `install` | Install dependencies | `uv sync --extra dev` |
+| `lint-check` | Lint | `ruff check .` |
+| `format-check` | Format check | `ruff format --check .` |
+| `test` | Test | `pytest tests/` |
+| `security` | Security audit | `pip-audit` |
+
+---
+
+## 3. Pre-commit Hook Sync
+
+The `.husky/pre-commit` hook runs quality-gate tasks locally before commit:
 
 ```sh
-task ui:quality-gate   # lint → format → types → test → security → build
-task api:quality-gate  # lint → format → test → security
+task ui:quality-gate
+task api:quality-gate
 ```
 
-These map exactly to the `ui-quality-gate` (in `ui-ci.yml`) and `api-quality-gate` (in `api-ci.yml`) CI jobs. If you add or remove a step from either job, update the corresponding `quality-gate` task in `ui/Taskfile.yml` or `api/Taskfile.yml` — the pre-commit hook picks it up automatically.
+**Rule:** The hook runs both gates on every commit. This catches issues before they reach CI and prevents unnecessary CI runs.
 
-## Implementation Checklist
-
-- [ ] Read this file and the relevant workflow file (`ui-ci.yml` or `api-ci.yml`) — never edit from memory
-- [ ] If adding a new job: add it to branch protection required checks (section 1 below) and ensure the right workflow file is updated
-- [ ] If changing quality gate steps: update the matching `quality-gate` task in the relevant Taskfile (`ui/Taskfile.yml` or `api/Taskfile.yml`), then verify `.husky/pre-commit` still reflects the gates
-- [ ] If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
-- [ ] After any workflow change: open a PR, watch the CI run, confirm all affected jobs pass
-- [ ] If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge
-- [ ] Update the "Current state" tables below if any settings were changed
-- [ ] Remember that `ui-ci.yml` triggers only on `ui/**` changes, and `api-ci.yml` triggers only on `api/**` changes
-
-# GitHub Configuration
-
-> **Keep this file current.** Whenever a setting is changed (via API or website), update the "Current state" for the relevant section below.
+**Why both tasks?** Because the cost of running both locally (~20s total) is much lower than pushing to CI and getting blocked. The workflow path filters then optimize CI runs.
 
 ---
 
-## Workflows
+## 4. Branch Protection (main)
 
-| File | Trigger | Purpose |
-|------|---------|---------|
-| `ui-ci.yml` | push / PR → `main` (on `ui/**` changes) | UI quality gate + GitHub Pages deploy |
-| `api-ci.yml` | push / PR → `main` (on `api/**` changes) | API quality gate |
-| `claude.yml` | issue/PR comments containing `@claude` | Runs Claude Code Action to respond to `@claude` mentions |
+### Current Configuration
 
-**UI workflow (`ui-ci.yml`) job dependency graph:**
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge |
+| **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
+| **Enforce for admins** | ✓ Enabled | Admins cannot bypass status checks |
+| **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
+| **Allow deletions** | ✗ Disabled | Protect against accidental deletes |
 
-```
-ui-quality-gate
-  ├── npm ci
-  ├── ESLint check
-  ├── Prettier check
-  ├── tsc --noEmit
-  ├── Jest (90% coverage)
-  ├── npm audit
-  └── Vite build ──→ upload artifact (ui/dist)
-                          │
-                       ui-deploy  (needs ui-quality-gate; targets github-pages environment; main only)
-```
+### How to Modify
 
-**API workflow (`api-ci.yml`) job dependency graph:**
+To add a new required status check:
 
-```
-api-quality-gate
-  ├── ruff lint
-  ├── ruff format --check
-  ├── pytest
-  └── pip-audit
-```
-
-**Workflow separation:** `ui-ci.yml` and `api-ci.yml` are completely independent. Each triggers only on changes in its respective directory. Both `ui-quality-gate` and `api-quality-gate` are required to pass before merging to `main`.
-
-## Common Pitfalls
-
-- **Deploy fails with 404** — GitHub Pages not enabled; use `gh` CLI (`gh api`) to set source to "GitHub Actions" in repo settings
-- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use `gh api` to set `null` policy instead of a named branch
-- **New CI job doesn't gate merges** — added to workflow but not to branch protection required checks
-- **Re-run fails instantly** — environment branch policy still restricts the ref; check with `gh api`
+1. Create a new workflow job (e.g., `security-scan`)
+2. Make it a gate job (runs-on: ubuntu-latest, no dependencies except setup steps)
+3. Add the job name to this rule's `Required status checks` list
+4. Verify on GitHub: Settings → Branches → main → Edit → Require status checks
 
 ---
 
-## 1. Branch Protection (`main`)
+## 5. Deployment Environment (github-pages)
 
-**Website:** <https://github.com/linnienaryshkin/inkwell/settings/branches>
+### Current Configuration
 
-### Current state
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| **Deployment branch policy** | Custom branch policies (enabled) | Only specific branches can deploy |
+| **Allowed branches** | `main` (1 policy) | Only main deploys |
+| **Require admin approval** | ✗ Disabled | Automatic deployment on push to main |
+
+### Deployment Flow
+
+1. **Push to main** → `ui-ci.yml` triggers
+2. **`ui-quality-gate` passes** → Vite build artifact uploaded
+3. **`ui-deploy` job waits** for `ui-quality-gate` + checks `github.ref == 'refs/heads/main'`
+4. **Deployment to `github-pages` environment** occurs
+5. **GitHub Pages publishes** to <https://linnienaryshkin.github.io/inkwell/>
+
+---
+
+## 6. GitHub Pages
 
 | Setting | Value |
 |---------|-------|
-| Required status checks | `ui-quality-gate`, `api-quality-gate` |
-| Require branch up to date | `true` (strict) |
-| Enforce admins | `true` (only admins can push without PR or skip checks) |
-| Allow force pushes | `false` |
-| Allow deletions | `false` |
+| **Source** | GitHub Actions (workflow) |
+| **Build status** | ✓ Published |
+| **Live URL** | <https://linnienaryshkin.github.io/inkwell/> |
 
-### View
+---
 
-Use `gh` CLI:
+## 7. GitHub Actions Secrets
+
+| Secret | Used By | Purpose |
+|--------|---------|---------|
+| `ANTHROPIC_API_KEY` | `.github/workflows/claude.yml` | Claude API authentication |
+| `OAUTH_CLIENT_ID` | `api/` (FastAPI) | GitHub OAuth app client ID |
+| `OAUTH_CLIENT_SECRET` | `api/` (FastAPI) | GitHub OAuth app client secret |
+| `OAUTH_CALLBACK_URL` | `api/` (FastAPI) | GitHub OAuth callback URL |
+
+**How to add a new secret:**
+
 ```bash
+gh secret set SECRET_NAME --body "value"
+gh secret list  # Verify
+```
+
+---
+
+## 8. How to Make Changes
+
+### Adding a New Quality Check to UI
+
+1. **Edit `ui/Taskfile.yml`:**
+   ```yaml
+   quality-gate:
+     cmds:
+       - task: lint-check
+       - task: new-check  # Add here
+
+   new-check:
+     cmds:
+       - new-command
+   ```
+
+2. **Edit `.github/workflows/ui-ci.yml`:**
+   ```yaml
+   - name: Run new check
+     run: task new-check
+   ```
+
+3. **Update `.claude/CURRENT.md` section 2** with the new step
+
+4. **The pre-commit hook automatically picks up the Taskfile change**
+
+### Adding a New Required Status Check
+
+1. **Create a new workflow file** (e.g., `.github/workflows/security.yml`)
+2. **Define a gate job** (must complete before merge)
+3. **Add to branch protection:**
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/branches/main/protection \
+     -f required_status_checks="{checks:[{context:'ui-quality-gate'},{context:'api-quality-gate'},{context:'new-gate'}]}"
+   ```
+4. **Update this rule** with the new check name
+
+### Modifying Deployment Settings
+
+1. **Edit `.github/workflows/ui-ci.yml`** (deployment conditions)
+2. **Verify environment settings:**
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/environments/github-pages
+   ```
+3. **Update branch policies:**
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies \
+     -f deployment_branch_policy="{protected_branches:true,custom_branch_policies:true}" \
+     -f custom_deployment_branch_policies='[{name:"main"}]'
+   ```
+
+### Changing GitHub Pages Settings
+
+1. **Edit deployment source:**
+   ```bash
+   gh api repos/linnienaryshkin/inkwell/pages \
+     -f source="{branch:\"gh-pages\",path:\"/\"}"
+   ```
+
+---
+
+## 9. Verification Commands
+
+Use these to verify GitHub state matches this rule:
+
+```bash
+# Branch protection
 gh api repos/linnienaryshkin/inkwell/branches/main/protection
-```
 
-### Update required status checks
-
-Use `gh` CLI: `gh api -X PUT repos/linnienaryshkin/inkwell/branches/main/protection --input -` with body:
-```json
-{
-  "required_status_checks": {
-    "strict": true,
-    "checks": [
-      { "context": "ui-quality-gate" },
-      { "context": "api-quality-gate" }
-    ]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": null,
-  "restrictions": null,
-  "allow_force_pushes": false,
-  "allow_deletions": false
-}
-```
-
-**Current setting:** `enforce_admins` is `true`, meaning only admins can push to `main` without a PR or skip required status checks.
-
-When adding a new CI job that should gate merges, add it to both the workflow file and the `checks` array above, then update the current state table.
-
-### Remove branch protection entirely
-
-Use `gh` CLI:
-```bash
-gh api -X DELETE repos/linnienaryshkin/inkwell/branches/main/protection
-```
-
----
-
-## 2. Deployment Environment (`github-pages`)
-
-**Website:** <https://github.com/linnienaryshkin/inkwell/settings/environments/13524189492/edit>
-
-### Current state
-
-| Setting | Value |
-|---------|-------|
-| Deployment branch policy | Custom branch policies |
-| Allowed branches | `main` only |
-
-### View
-
-Use `gh` CLI:
-```bash
+# Deployment environment
 gh api repos/linnienaryshkin/inkwell/environments/github-pages
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies
-```
 
-### Restrict deployments to `main` only (production state)
-
-1. Enable custom branch policies with `gh api`:
-```bash
-gh api repos/linnienaryshkin/inkwell/environments/github-pages --input -
-```
-```json
-{ "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true } }
-```
-
-2. Add main policy with `gh api`:
-```bash
-gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies --input -
-```
-```json
-{ "name": "main", "type": "branch" }
-```
-
-### Temporarily allow all branches (to validate a fix)
-
-Use `gh api` with body:
-```json
-{ "deployment_branch_policy": null }
-```
-
-> **Important:** Name-based branch policies do NOT match PR merge refs (`refs/pull/*/merge`). When deploying from a PR context, use `null` (all branches) rather than a named policy. Always restore `main`-only restriction after validation, and update the current state table above.
-
-### Allow a specific branch temporarily
-
-Use `gh api` with body:
-```json
-{ "name": "fix/my-branch", "type": "branch" }
-```
-
-### Remove a specific branch policy
-
-1. Get the policy ID with `gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
-2. Delete with `gh api -X DELETE repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID>`
-
----
-
-## 3. GitHub Pages
-
-**Website:** <https://github.com/linnienaryshkin/inkwell/settings/pages>
-
-### Current state
-
-| Setting | Value |
-|---------|-------|
-| Source | GitHub Actions (`workflow`) |
-| Live URL | <https://linnienaryshkin.github.io/inkwell/> |
-
-### View
-
-Use `gh` CLI:
-```bash
+# GitHub Pages config
 gh api repos/linnienaryshkin/inkwell/pages
-```
-Extract `build_type`, `status`, and `html_url`.
 
-### Enable (first-time setup)
-
-Use `gh api` with body:
-```json
-{ "build_type": "workflow" }
-```
-
-### Update source to GitHub Actions (if previously set to a branch)
-
-Use `gh api` with body:
-```json
-{ "build_type": "workflow" }
-```
-
----
-
-## 4. Secrets
-
-**Website:** <https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>
-
-### Source of truth: `.env.example`
-
-`.env.example` is the canonical list of every secret/env var this project needs. It lives at `api/.env.example` (API secrets) and `ui/.env.example` (Vite vars) and contains placeholder values so CI and tests can run without real credentials.
-
-**Three-layer contract:**
-
-| Layer | Who manages it | Purpose |
-|-------|---------------|---------|
-| `api/.env.example`, `ui/.env.example` | Committed to repo (devops skill keeps them up to date) | Documents every required var with a placeholder value; `api/.env.example` used by `api/tests/conftest.py` to seed test env |
-| `api/.env`, `ui/.env` | **Manual — each developer** copies the example and fills in real values; never committed | Local dev with real credentials |
-| GitHub Actions secrets (<https://github.com/linnienaryshkin/inkwell/settings/secrets/actions>) | **Manual — repo owner** adds real values via the UI; devops skill creates the secret slot if missing | CI/CD with real credentials |
-
-**Rules:**
-- Whenever a new secret is added to `api/.env.example` or `ui/.env.example`, the devops skill must also create the corresponding GitHub Actions secret slot (with a placeholder). The **user must then fill in the real value** in both the local `.env` and the GitHub Actions secret (via the website above).
-- `api/.env` and `ui/.env` must never be committed — they are gitignored.
-- `.env.example` files must never contain real secret values — only placeholders like `ci-placeholder` or empty strings.
-
-### Current state
-
-| Secret | Used by | Origin in `.env.example` | Last updated |
-|--------|---------|--------------------------|--------------|
-| `ANTHROPIC_API_KEY` | `claude.yml` | `ANTHROPIC_API_KEY=` | 2026-03-24 |
-| `OAUTH_CLIENT_ID` | `api/` OAuth | `OAUTH_CLIENT_ID=ci-placeholder` | 2026-04-04 |
-| `OAUTH_CLIENT_SECRET` | `api/` OAuth | `OAUTH_CLIENT_SECRET=ci-placeholder` | 2026-04-04 |
-| `OAUTH_CALLBACK_URL` | `api/` OAuth | `OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback` | 2026-04-04 |
-| `SESSION_SECRET` | `api/` OAuth | `SESSION_SECRET=ci-placeholder-secret` | 2026-04-04 |
-
-### List secrets (names only — values are never shown)
-
-Use `gh` CLI:
-```bash
+# GitHub Actions secrets
 gh secret list --repo linnienaryshkin/inkwell
 ```
 
-### Add or update a secret
+---
 
-Use `gh` CLI:
-```bash
-gh secret set <SECRET_NAME> --repo linnienaryshkin/inkwell
-```
-(Prompts for secret value interactively)
+## 10. Keep This Rule Current
+
+### When to Update
+
+- **Workflow file changes** → Update the corresponding Taskfile section
+- **Taskfile changes** → Update the workflow if steps differ
+- **GitHub settings changes** → Run the verification commands and update this rule
+- **New features/APIs** → Update section 7 (API Endpoints)
+
+### Verification Process
+
+1. Make the change (workflow, Taskfile, or GitHub settings)
+2. Run the corresponding verification command above
+3. Update this rule with the new state
+4. Update `.claude/CURRENT.md` with the change
+5. Commit with message: `#0: sync github config`
 
 ---
 
-## 5. Re-running Failed Workflow Jobs
+## 11. Quick Reference: File Locations
 
-Use `gh` CLI for workflow operations:
-
-```bash
-# List recent runs on a branch
-gh run list --repo linnienaryshkin/inkwell --branch <branch> --limit 5
-
-# View failure summary
-gh run view <RUN_ID> --repo linnienaryshkin/inkwell
-
-# View failure logs
-gh run view <RUN_ID> --log --repo linnienaryshkin/inkwell
-
-# Re-run failed jobs only
-gh run rerun <RUN_ID> --failed --repo linnienaryshkin/inkwell
-
-# Re-run all jobs
-gh run rerun <RUN_ID> --repo linnienaryshkin/inkwell
-```
+| File | Purpose |
+|------|---------|
+| `.github/workflows/ui-ci.yml` | UI workflow definition |
+| `.github/workflows/api-ci.yml` | API workflow definition |
+| `.github/workflows/claude.yml` | Claude Code Action responder |
+| `ui/Taskfile.yml` | UI task definitions (quality-gate source) |
+| `api/Taskfile.yml` | API task definitions (quality-gate source) |
+| `.husky/pre-commit` | Local pre-commit hook (runs both quality-gates) |
+| `.claude/CURRENT.md` | Human-readable mirror of current GitHub state |

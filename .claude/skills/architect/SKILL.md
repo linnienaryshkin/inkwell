@@ -3,6 +3,7 @@ name: architect
 description: Use this skill when the user wants to create a technical specification from a GitHub issue — pass an issue URL as the argument. Invoke for requests like "write spec for issue #42", "create spec for this issue", or "analyze issue #42", even if the user doesn't say "technical specification". Produces a detailed, actionable spec for development.
 argument-hint: <GitHub issue URL>
 compatibility: GitHub CLI, internet access
+allowed-tools: Grep, Glob, Read
 license: MIT
 ---
 

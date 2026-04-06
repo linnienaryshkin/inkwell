@@ -137,7 +137,7 @@ task api:quality-gate
 |---------|-------|---------|
 | **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge |
 | **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
-| **Enforce for admins** | ✓ Enabled | Admins cannot bypass status checks |
+| **Enforce for admins** | ✗ Disabled | Admins can push directly to main, bypassing checks if needed |
 | **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
 | **Allow deletions** | ✗ Disabled | Protect against accidental deletes |
 

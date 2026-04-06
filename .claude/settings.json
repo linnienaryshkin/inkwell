@@ -15,20 +15,10 @@
       "Bash(npm install:*)",
       "Bash(npm prune:*)",
       "Bash(npm show:*)",
-      "Bash(make *)",
       "Bash(uv *)",
       "Bash(uv add:*)",
       "Bash(task *)",
       "Bash(grep:*)",
-      "mcp__github__issue_read",
-      "mcp__github__pull_request_read",
-      "mcp__github__list_issues",
-      "mcp__github__search_issues",
-      "mcp__github__pull_request_review_write",
-      "mcp__github__add_comment_to_pending_review",
-      "mcp__github__add_reply_to_pull_request_comment",
-      "mcp__github__add_issue_comment",
-      "mcp__github__issue_write",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
@@ -36,7 +26,9 @@
       "Bash(git fetch:*)",
       "Bash(git stash:*)",
       "Bash(git pull:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue:*)"
     ]
   },
   "model": "haiku",
@@ -45,8 +37,7 @@
     "command": "sh \"$(git rev-parse --show-toplevel)/.claude/statusline-command.sh\""
   },
   "enabledMcpjsonServers": [
-    "playwright",
-    "github"
+    "playwright"
   ],
   "enabledPlugins": {
     "report-issue@codemie-ai": false,

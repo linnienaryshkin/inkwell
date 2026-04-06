@@ -2,7 +2,7 @@
 name: architect
 description: Use this skill when the user wants to create a technical specification from a GitHub issue — pass an issue URL as the argument. Invoke for requests like "write spec for issue #42", "create spec for this issue", or "analyze issue #42", even if the user doesn't say "technical specification". Produces a detailed, actionable spec for development.
 argument-hint: <GitHub issue URL>
-compatibility: GitHub MCP, internet access
+compatibility: GitHub CLI, internet access
 license: MIT
 ---
 
@@ -14,7 +14,7 @@ When given a GitHub issue URL, you will:
 
 1. **Fetch and Analyze the Issue**
    - Read `.claude/CLAUDE.md` to get current project conventions before doing anything else
-   - Retrieve the full issue details using GitHub MCP: `mcp__github__issue_read` with `method: "get"` to fetch full details, comments, and metadata
+   - Retrieve the full issue details using `gh` CLI: `gh issue view <ISSUE_NUMBER>` to fetch full details, comments, and metadata
    - Explore relevant existing code with Glob/Grep/Read to understand the current state before asking questions — this makes your questions and spec much more precise
    - Identify the core requirement, stakeholders, and any existing context or linked discussions
    - Note the issue's current labels and milestone (if any)
@@ -128,9 +128,9 @@ When given a GitHub issue URL, you will:
    - **Stop and wait.** Do not post to GitHub until the user replies with **publish** (or equivalent confirmation).
 
 7. **Post as GitHub Comment & Label** *(only after user confirms)*
-   - Post the spec using GitHub MCP `mcp__github__add_issue_comment` with the full contents of `.claude/plans/issue-<number>.md`
-   - Add the `refined` label using `mcp__github__issue_write` with `method: "update"` and `labels: ["refined"]`
-   - If QA was requested, also add the `qa` label in the same update
+   - Post the spec using `gh issue comment <ISSUE_NUMBER> --body "$(cat .claude/plans/issue-<number>.md)"`
+   - Add the `refined` label using `gh issue edit <ISSUE_NUMBER> --add-label refined`
+   - If QA was requested, also add the `qa` label with `gh issue edit <ISSUE_NUMBER> --add-label qa`
    - Use markdown formatting (headers, code blocks, tables)
 
 8. **Remove plan from `.claude/plans/issue-<number>.md`**

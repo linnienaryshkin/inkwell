@@ -1,18 +1,16 @@
-name: ci-cd
+name: ui-ci
 
 on:
   push:
     branches: [main]
     paths:
       - "ui/**"
-      - "api/**"
-      - ".github/workflows/ci-cd.yml"
+      - ".github/workflows/ui-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "ui/**"
-      - "api/**"
-      - ".github/workflows/ci-cd.yml"
+      - ".github/workflows/ui-ci.yml"
 
 jobs:
   ui-quality-gate:
@@ -60,39 +58,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ui/dist
-
-  api-quality-gate:
-    name: api-quality-gate
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Task
-        uses: arduino/setup-task@v2
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Setup Python
-        run: uv python install
-
-      - name: Install dependencies
-        run: task install
-
-      - name: Lint
-        run: task lint-check
-
-      - name: Format check
-        run: task format-check
-
-      - name: Test
-        run: task test
-
-      - name: Security audit
-        run: task security
 
   ui-deploy:
     name: ui-deploy

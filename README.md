@@ -36,6 +36,8 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 ## Development | "Everything as code"
 
+This is a monorepo, that include everything related to the project, single source of truth. The only additional piece of information, are GitHub Issues and PR.
+
 ### Prerequisites
 
 | Tool                                   | Version | Purpose                                                     |
@@ -44,6 +46,7 @@ Give developer-writers a distraction-free, code-quality writing environment that
 | [Node.js](https://nodejs.org)          | 24+     | Runtime and package manager                                 |
 | [uv](https://docs.astral.sh/uv/)       | latest  | Python package manager (auto-installs Python 3.12 for api/) |
 | [Task](https://taskfile.dev)           | latest  | Task runner for unified commands across UI and API          |
+| [GitHub CLI](https://cli.github.com)   | latest  | GitHub repo management, OAuth app setup, MCP integration    |
 | [Claude Code](https://claude.ai/code)  | latest  | AI-assisted spec and development workflow                   |
 
 ### Environment Setup
@@ -52,82 +55,29 @@ Give developer-writers a distraction-free, code-quality writing environment that
 
 ```bash
 task install         # Install all dependencies (ui + api)
-task dev             # Start both servers concurrently
-task test            # Run all tests (ui + api)
-task quality-gate    # Run all quality checks (ui then api)
+task quality-gate    # Run all quality checks, including tests (ui + api)
 ```
 
-### GitHub OAuth setup
+### API environment variables
 
-The API requires four environment variables for GitHub OAuth login. The server raises a `RuntimeError` at startup if any are absent.
+Go to [.env](api/.env.example), follow the instructions in the comments to set up your environment variables.
 
-| Variable | Description | Where to get it |
-|---|---|---|
-| `OAUTH_CLIENT_ID` | OAuth App client ID | From GitHub OAuth App settings (Client ID field) |
-| `OAUTH_CLIENT_SECRET` | OAuth App client secret | From GitHub OAuth App settings (generate a new client secret) |
-| `OAUTH_CALLBACK_URL` | Must exactly match the "Authorization callback URL" registered in the OAuth App | Set by you when creating the OAuth App |
-
-**Create a GitHub OAuth App:**
-
-1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App** | <https://github.com/settings/developers>
-2. Set **Authorization callback URL** to `http://localhost:8000/auth/callback` (dev) or your production URL
-3. Copy the **Client ID** and generate a **Client Secret**
-
-**Local development** — create `api/.env` (never commit):
+Then run the app to ensure all works:
 
 ```bash
-OAUTH_CLIENT_ID=your_client_id_here
-OAUTH_CLIENT_SECRET=your_client_secret_here
-OAUTH_CALLBACK_URL=http://localhost:8000/auth/callback
-SESSION_SECRET=your_random_secret_here
-ENVIRONMENT=development
+task dev
 ```
 
-### Development guide
+### AI-Native SDLC
 
-See [CLAUDE.md](.claude/CLAUDE.md) for commands, architecture, testing rules, and available skills.
-
-### AI-Native SDLC flow
-
-**GitHub MCP Integration:**
-
-The project uses Claude Code's GitHub MCP server for AI-assisted workflows. To enable GitHub integration:
-
-1. **Generate a GitHub Personal Access Token (PAT):**
-   - Go to <https://github.com/settings/tokens/new>
-   - Select scopes: `repo`, `read:org`, `read:user`
-   - Copy the token
-
-2. **Create `.env` file and add your token:**
+The project embraces an AI-native software development lifecycle, using Claude Code for spec writing, architecture design, and code generation. The `.claude/` directory contains all AI-generated content, including the project architecture document, agent definitions, and skill implementations.
 
 ```bash
-cp .env.example .env
-nano .env  # Add your GITHUB_TOKEN
+task claude  # Start the AI code assistant
 ```
 
-1. **Load environment and launch Claude Code:**
+#### Architecture
 
-```bash
-source .dev-env && codemie-claude
-```
-
-```bash
-source .dev-env && claude
-```
-
-For detailed setup instructions, see [GITHUB_MCP_SETUP.md](./GITHUB_MCP_SETUP.md).
-
-**Or, quick one-liner:**
-
-```bash
-export GITHUB_TOKEN=<your-token> && claude
-```
-
-**Or, add environment variable to your shell configuration:**
-
-```bash
-echo 'export GITHUB_TOKEN=<your-token>' >> ~/.zshrc
-source ~/.zshrc
-```
+See [CLAUDE.md](.claude/CLAUDE.md) for architecture, rules, commands, settle agents, skills, and a lot more.
 
 <!-- TODO: Explain how to work with agents and skill, provide an examples -->

@@ -4,6 +4,7 @@ tasks:
   install:
     desc: Install API dependencies
     cmds:
+      - test -f .env || cp .env.example .env
       - uv sync --extra dev
 
   dev:

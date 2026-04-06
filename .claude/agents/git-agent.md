@@ -1,7 +1,7 @@
 ---
 name: git-agent
 description: "Use this agent when you need to manage Git operations including committing changes, creating branches, pushing code, and creating pull requests. This agent should be invoked after code changes are complete and quality gates have passed.\\n\\n<example>\\nContext: User has finished writing code and wants to commit their changes with proper formatting.\\nuser: \"I've finished the feature implementation. Can you commit these changes?\"\\nassistant: \"I'll use the git-agent to commit your changes with proper formatting and create a PR.\"\\n<function call to Agent tool with git-agent>\\n</example>\\n\\n<example>\\nContext: User wants to push changes to a new branch and create a pull request.\\nuser: \"Create a new branch for this feature and push it\"\\nassistant: \"Let me use the git-agent to handle the branching, pushing, and PR creation.\"\\n<function call to Agent tool with git-agent>\\n</example>"
-tools: Glob, Grep, Read, WebFetch, WebSearch, Bash, mcp__ide__executeCode, mcp__ide__getDiagnostics, mcp__github__api_call, mcp__github__pulls_list, mcp__github__pulls_get, mcp__github__pulls_create, mcp__github__pulls_update, mcp__github__pulls_add_labels
+tools: Glob, Grep, Read, Bash, GitHub CLI
 model: haiku
 effort: low
 memory: project
@@ -55,7 +55,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
   - Clear title (under 70 chars)
   - Description with: summary (1-3 bullets), test plan, note that it was generated with Claude Code
   - Link to issue if applicable
-- If there is a linked issue, copy all labels from the issue to the PR using GitHub MCP `mcp__github__pulls_add_labels`
+- If there is a linked issue, copy all labels from the issue to the PR using `gh pr edit <PR_NUMBER> --add-label <LABELS>`
 
 **Example PR description:**
 

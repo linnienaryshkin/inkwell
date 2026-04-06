@@ -228,7 +228,6 @@ describe("StudioPage", () => {
         ).not.toBeInTheDocument();
       });
     });
-
   });
 
   describe("Logout", () => {

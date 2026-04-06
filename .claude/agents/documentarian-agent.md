@@ -34,7 +34,7 @@ When invoked at session start:
 1. Read every file in the ownership table above
 2. Cross-check documented facts against the actual codebase:
    - **API endpoints**: compare CLAUDE.md endpoint table against `api/app/routers/*.py`
-   - **CI jobs**: compare github.md job graph against `.github/workflows/ci-cd.yml`
+   - **CI jobs**: compare github.md job graph against `.github/workflows/ui-ci.yml` and `.github/workflows/api-ci.yml`
    - **UI components**: compare CLAUDE.md component list against `ui/src/components/*.tsx`
    - **Agent/skill/rule registry**: compare CLAUDE.md Skills & Agents section against `.claude/agents/`, `.claude/skills/`, `.claude/rules/`
    - **Branch protection required checks**: compare github.md table against what's documented as current state

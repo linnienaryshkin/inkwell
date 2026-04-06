@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
-        run: task install-ci
+        run: task install
 
       - name: Check ESLint
         run: task lint-check

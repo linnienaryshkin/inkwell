@@ -13,7 +13,8 @@
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
     "test": "jest",
-    "test:coverage": "jest --coverage --silent"
+    "test:coverage": "jest --coverage --silent",
+    "husky": "husky"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

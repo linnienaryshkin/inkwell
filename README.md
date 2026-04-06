@@ -68,6 +68,8 @@ Then run the app to ensure all works:
 task dev
 ```
 
+Visit `http://localhost:8000/docs` to see the API documentation and test the endpoints.
+
 ### AI-Native SDLC
 
 The project embraces an AI-native software development lifecycle, using Claude Code for spec writing, architecture design, and code generation. The `.claude/` directory contains all AI-generated content, including the project architecture document, agent definitions, and skill implementations.

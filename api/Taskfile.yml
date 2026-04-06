@@ -49,3 +49,8 @@ tasks:
       - task: format-check
       - task: test
       - task: security
+
+  lab:
+    desc: Start JupyterLab for API development
+    cmds:
+      - uv run jupyter lab

@@ -13,6 +13,7 @@ tasks:
     desc: Install all dependencies (ui + api)
     cmds:
       - task: ui:install
+      - chmod +x .husky/pre-commit
       - task: api:install
 
   dev:
@@ -21,14 +22,14 @@ tasks:
       - task: api:dev
       - task: ui:dev
 
-  test:
-    desc: Run all tests (ui + api)
-    cmds:
-      - task: ui:test
-      - task: api:test
-
   quality-gate:
     desc: Run all quality checks (ui then api) in sequence
     cmds:
       - task: ui:quality-gate
       - task: api:quality-gate
+  
+  claude:
+    desc: Run AI code assistant
+    cmds:
+      - claude
+      # - codemie-claude

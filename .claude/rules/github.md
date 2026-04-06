@@ -17,24 +17,25 @@ paths:
 
 ## Quality Gate Sync Rule
 
-**`.husky/pre-commit` must always mirror the CI quality gates.** When the steps in `ci-cd.yml` change, update `.husky/pre-commit` to match. Current pre-commit runs:
+**`.husky/pre-commit` must always mirror the CI quality gates.** When the steps in `ui-ci.yml` or `api-ci.yml` change, update `.husky/pre-commit` to match. Current pre-commit runs:
 
 ```sh
 task ui:quality-gate   # lint → format → types → test → security → build
 task api:quality-gate  # lint → format → test → security
 ```
 
-These map exactly to the `ui-quality-gate` and `api-quality-gate` CI jobs. If you add or remove a step from either job, update the corresponding `quality-gate` task in `ui/Taskfile.yml` or `api/Taskfile.yml` — the pre-commit hook picks it up automatically.
+These map exactly to the `ui-quality-gate` (in `ui-ci.yml`) and `api-quality-gate` (in `api-ci.yml`) CI jobs. If you add or remove a step from either job, update the corresponding `quality-gate` task in `ui/Taskfile.yml` or `api/Taskfile.yml` — the pre-commit hook picks it up automatically.
 
 ## Implementation Checklist
 
-- [ ] Read this file and the current workflow file — never edit from memory
-- [ ] If adding a new job: add it to branch protection required checks (section 1 below)
-- [ ] If changing quality gate steps: update the matching `quality-gate` task in the relevant Taskfile, then verify `.husky/pre-commit` still reflects the gates
+- [ ] Read this file and the relevant workflow file (`ui-ci.yml` or `api-ci.yml`) — never edit from memory
+- [ ] If adding a new job: add it to branch protection required checks (section 1 below) and ensure the right workflow file is updated
+- [ ] If changing quality gate steps: update the matching `quality-gate` task in the relevant Taskfile (`ui/Taskfile.yml` or `api/Taskfile.yml`), then verify `.husky/pre-commit` still reflects the gates
 - [ ] If the ui-deploy job is involved: verify environment branch policies are correct for the context (PR vs. direct push)
-- [ ] After any workflow change: open a PR, watch the CI run, confirm all jobs pass
+- [ ] After any workflow change: open a PR, watch the CI run, confirm all affected jobs pass
 - [ ] If deploy job is temporarily unlocked: re-lock to `main` before or immediately after merge
 - [ ] Update the "Current state" tables below if any settings were changed
+- [ ] Remember that `ui-ci.yml` triggers only on `ui/**` changes, and `api-ci.yml` triggers only on `api/**` changes
 
 # GitHub Configuration
 
@@ -46,10 +47,11 @@ These map exactly to the `ui-quality-gate` and `api-quality-gate` CI jobs. If yo
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `ci-cd.yml` | push / PR → `main` | Quality gate (lint, format, types, test, security, build) + GitHub Pages deploy |
+| `ui-ci.yml` | push / PR → `main` (on `ui/**` changes) | UI quality gate + GitHub Pages deploy |
+| `api-ci.yml` | push / PR → `main` (on `api/**` changes) | API quality gate |
 | `claude.yml` | issue/PR comments containing `@claude` | Runs Claude Code Action to respond to `@claude` mentions |
 
-`ci-cd.yml` job dependency graph:
+**UI workflow (`ui-ci.yml`) job dependency graph:**
 
 ```
 ui-quality-gate
@@ -61,21 +63,27 @@ ui-quality-gate
   ├── npm audit
   └── Vite build ──→ upload artifact (ui/dist)
                           │
-                       ui-deploy  (needs ui-quality-gate; targets github-pages environment)
+                       ui-deploy  (needs ui-quality-gate; targets github-pages environment; main only)
+```
 
-api-quality-gate (parallel, does NOT block ui-deploy)
+**API workflow (`api-ci.yml`) job dependency graph:**
+
+```
+api-quality-gate
   ├── ruff lint
   ├── ruff format --check
   ├── pytest
   └── pip-audit
 ```
 
+**Workflow separation:** `ui-ci.yml` and `api-ci.yml` are completely independent. Each triggers only on changes in its respective directory. Both `ui-quality-gate` and `api-quality-gate` are required to pass before merging to `main`.
+
 ## Common Pitfalls
 
-- **Deploy fails with 404** — GitHub Pages not enabled; use GitHub MCP to set source to "GitHub Actions" in repo settings
-- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use GitHub MCP to set `null` policy instead of a named branch
+- **Deploy fails with 404** — GitHub Pages not enabled; use `gh` CLI (`gh api`) to set source to "GitHub Actions" in repo settings
+- **Deploy blocked on PR branch** — branch policy doesn't match `refs/pull/*/merge`; use `gh api` to set `null` policy instead of a named branch
 - **New CI job doesn't gate merges** — added to workflow but not to branch protection required checks
-- **Re-run fails instantly** — environment branch policy still restricts the ref; check with GitHub MCP API
+- **Re-run fails instantly** — environment branch policy still restricts the ref; check with `gh api`
 
 ---
 
@@ -89,17 +97,20 @@ api-quality-gate (parallel, does NOT block ui-deploy)
 |---------|-------|
 | Required status checks | `ui-quality-gate`, `api-quality-gate` |
 | Require branch up to date | `true` (strict) |
-| Enforce admins | `false` |
+| Enforce admins | `true` (only admins can push without PR or skip checks) |
 | Allow force pushes | `false` |
 | Allow deletions | `false` |
 
 ### View
 
-Use GitHub MCP: `mcp__github__list_branches` or `GET /repos/linnienaryshkin/inkwell/branches/main/protection`
+Use `gh` CLI:
+```bash
+gh api repos/linnienaryshkin/inkwell/branches/main/protection
+```
 
 ### Update required status checks
 
-Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` and body:
+Use `gh` CLI: `gh api -X PUT repos/linnienaryshkin/inkwell/branches/main/protection --input -` with body:
 ```json
 {
   "required_status_checks": {
@@ -109,17 +120,24 @@ Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/branches/main/protection` an
       { "context": "api-quality-gate" }
     ]
   },
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": null,
-  "restrictions": null
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
 }
 ```
+
+**Current setting:** `enforce_admins` is `true`, meaning only admins can push to `main` without a PR or skip required status checks.
 
 When adding a new CI job that should gate merges, add it to both the workflow file and the `checks` array above, then update the current state table.
 
 ### Remove branch protection entirely
 
-Use GitHub MCP: DELETE `/repos/linnienaryshkin/inkwell/branches/main/protection`
+Use `gh` CLI:
+```bash
+gh api -X DELETE repos/linnienaryshkin/inkwell/branches/main/protection
+```
 
 ---
 
@@ -136,25 +154,33 @@ Use GitHub MCP: DELETE `/repos/linnienaryshkin/inkwell/branches/main/protection`
 
 ### View
 
-Use GitHub MCP:
-- GET `/repos/linnienaryshkin/inkwell/environments/github-pages`
-- GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
+Use `gh` CLI:
+```bash
+gh api repos/linnienaryshkin/inkwell/environments/github-pages
+gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies
+```
 
 ### Restrict deployments to `main` only (production state)
 
-1. Enable custom branch policies with PUT `/repos/linnienaryshkin/inkwell/environments/github-pages`:
+1. Enable custom branch policies with `gh api`:
+```bash
+gh api repos/linnienaryshkin/inkwell/environments/github-pages --input -
+```
 ```json
 { "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true } }
 ```
 
-2. Add main policy with POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`:
+2. Add main policy with `gh api`:
+```bash
+gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies --input -
+```
 ```json
 { "name": "main", "type": "branch" }
 ```
 
 ### Temporarily allow all branches (to validate a fix)
 
-PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` with body:
+Use `gh api` with body:
 ```json
 { "deployment_branch_policy": null }
 ```
@@ -163,15 +189,15 @@ PUT `/repos/linnienaryshkin/inkwell/environments/github-pages` with body:
 
 ### Allow a specific branch temporarily
 
-POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies` with body:
+Use `gh api` with body:
 ```json
 { "name": "fix/my-branch", "type": "branch" }
 ```
 
 ### Remove a specific branch policy
 
-1. Get the policy ID with GET `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
-2. Delete with DELETE `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID>`
+1. Get the policy ID with `gh api repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies`
+2. Delete with `gh api -X DELETE repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch-policies/<ID>`
 
 ---
 
@@ -188,18 +214,22 @@ POST `/repos/linnienaryshkin/inkwell/environments/github-pages/deployment-branch
 
 ### View
 
-Use GitHub MCP: GET `/repos/linnienaryshkin/inkwell/pages` and extract `build_type`, `status`, and `html_url`
+Use `gh` CLI:
+```bash
+gh api repos/linnienaryshkin/inkwell/pages
+```
+Extract `build_type`, `status`, and `html_url`.
 
 ### Enable (first-time setup)
 
-POST `/repos/linnienaryshkin/inkwell/pages` with body:
+Use `gh api` with body:
 ```json
 { "build_type": "workflow" }
 ```
 
 ### Update source to GitHub Actions (if previously set to a branch)
 
-PUT `/repos/linnienaryshkin/inkwell/pages` with body:
+Use `gh api` with body:
 ```json
 { "build_type": "workflow" }
 ```
@@ -239,20 +269,38 @@ PUT `/repos/linnienaryshkin/inkwell/pages` with body:
 
 ### List secrets (names only — values are never shown)
 
-Use GitHub MCP: GET `/repos/linnienaryshkin/inkwell/actions/secrets`
+Use `gh` CLI:
+```bash
+gh secret list --repo linnienaryshkin/inkwell
+```
 
 ### Add or update a secret
 
-Use GitHub MCP: PUT `/repos/linnienaryshkin/inkwell/actions/secrets/<SECRET_NAME>` with encrypted secret value (base64-encoded)
+Use `gh` CLI:
+```bash
+gh secret set <SECRET_NAME> --repo linnienaryshkin/inkwell
+```
+(Prompts for secret value interactively)
 
 ---
 
 ## 5. Re-running Failed Workflow Jobs
 
-Use GitHub MCP for workflow operations:
+Use `gh` CLI for workflow operations:
 
-- **List recent runs on a branch**: GET `/repos/linnienaryshkin/inkwell/actions/runs?branch=<branch>&per_page=5`
-- **View failure summary**: GET `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>`
-- **View failure logs**: GET `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/attempts/<ATTEMPT_NUMBER>/logs`
-- **Re-run failed jobs**: POST `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/rerun-failed-jobs`
-- **Re-run all jobs**: POST `/repos/linnienaryshkin/inkwell/actions/runs/<RUN_ID>/rerun`
+```bash
+# List recent runs on a branch
+gh run list --repo linnienaryshkin/inkwell --branch <branch> --limit 5
+
+# View failure summary
+gh run view <RUN_ID> --repo linnienaryshkin/inkwell
+
+# View failure logs
+gh run view <RUN_ID> --log --repo linnienaryshkin/inkwell
+
+# Re-run failed jobs only
+gh run rerun <RUN_ID> --failed --repo linnienaryshkin/inkwell
+
+# Re-run all jobs
+gh run rerun <RUN_ID> --repo linnienaryshkin/inkwell
+```

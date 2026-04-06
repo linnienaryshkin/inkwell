@@ -1,74 +1,143 @@
 #!/bin/sh
+# Claude statusline renderer - single line output
+
 input=$(cat)
+
+# Extract basic info
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
 dir=$(basename "$cwd")
 model=$(echo "$input" | jq -r '.model.display_name // ""')
 branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null)
-used_tokens=$(echo "$input" | jq -r '(.context_window.current_usage | if . then .input_tokens + .cache_creation_input_tokens + .cache_read_input_tokens else 0 end) // 0')
+
+# Token usage
+used_tokens=$(echo "$input" | jq -r '
+  if .context_window.current_usage != null then
+    (.context_window.current_usage.input_tokens // 0)
+    + (.context_window.current_usage.cache_creation_input_tokens // 0)
+    + (.context_window.current_usage.cache_read_input_tokens // 0)
+  else 0 end')
+
 total_tokens=$(echo "$input" | jq -r '.context_window.context_window_size // 0')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-total_display=$(echo "$total_tokens" | awk '{if($1>=1000) printf "%dk", $1/1000; else print $1}')
-used_display=$(echo "$used_tokens" | awk '{if($1>=1000) printf "%dk", $1/1000; else print $1}')
 
-# Build a 10-char block progress bar for a given integer percentage (0-100)
-# Usage: make_bar PCT
-make_bar() {
-  _pct="$1"
-  _filled=$(echo "$_pct" | awk '{n=int($1/10+0.5); if(n>10)n=10; if(n<0)n=0; print n}')
-  _empty=$(( 10 - _filled ))
-  _bar=""
-  _i=0
-  while [ "$_i" -lt "$_filled" ]; do
-    _bar="${_bar}█"
-    _i=$(( _i + 1 ))
-  done
-  _i=0
-  while [ "$_i" -lt "$_empty" ]; do
-    _bar="${_bar}░"
-    _i=$(( _i + 1 ))
-  done
-  printf "%s" "$_bar"
+# Format numbers: 27000 → 27K
+fmt_k() {
+	echo "$1" | awk '{if($1>=1000) printf "%.0fK",$1/1000; else print $1}'
 }
 
-# Build context usage inline segment (appended to line 1)
-ctx_inline=""
-if [ -n "$used_pct" ] && [ "$total_tokens" -gt 0 ] 2>/dev/null; then
-  ctx_bar=$(make_bar "$(printf '%.0f' "$used_pct")")
-  pct_int=$(printf '%.0f' "$used_pct")
-  ctx_inline="  \033[32m${ctx_bar}  ${pct_int}% (${used_display}/${total_display})\033[0m"
-elif [ "$total_tokens" -gt 0 ] 2>/dev/null; then
-  ctx_inline="  ${used_display}/${total_display}"
-fi
+total_display=$(fmt_k "$total_tokens")
+used_display=$(fmt_k "$used_tokens")
 
-# Build 5-hour rate limit line
-five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
-five_line=""
-if [ -n "$five_pct" ]; then
-  five_bar=$(make_bar "$(printf '%.0f' "$five_pct")")
-  five_int=$(printf '%.0f' "$five_pct")
-  five_line="\n5h  \033[32m${five_bar}\033[0m  ${five_int}%"
-fi
+# Progress bar: 14% → ████░░░░░░
+make_bar() {
+	_filled=$(echo "$1" | awk '{n=int($1/10+0.5); if(n>10)n=10; if(n<0)n=0; print n}')
+	_empty=$((10 - _filled))
+	_bar=""
+	_i=0
+	while [ "$_i" -lt "$_filled" ]; do
+		_bar="${_bar}█"
+		_i=$((_i + 1))
+	done
+	_i=0
+	while [ "$_i" -lt "$_empty" ]; do
+		_bar="${_bar}░"
+		_i=$((_i + 1))
+	done
+	printf "%s" "$_bar"
+}
 
-# Build 7-day rate limit line
-seven_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
-seven_line=""
-if [ -n "$seven_pct" ]; then
-  seven_bar=$(make_bar "$(printf '%.0f' "$seven_pct")")
-  seven_int=$(printf '%.0f' "$seven_pct")
-  seven_line="\n7d  \033[32m${seven_bar}\033[0m  ${seven_int}%"
-fi
-
-# Build cost string (grey)
+# Cost
 cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
-cost_str=""
-if [ -n "$cost_usd" ]; then
-  cost_str=$(echo "$cost_usd" | awk '{printf "  \033[90m$%.4f\033[0m", $1}')
+
+# Rate limits
+five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+five_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+seven_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
+seven_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+
+# Human-readable countdown
+time_until() {
+	_now=$(date +%s)
+	_diff=$(($1 - _now))
+	if [ "$_diff" -le 0 ]; then
+		printf "now"
+		return
+	fi
+	_h=$((_diff / 3600))
+	_m=$(((_diff % 3600) / 60))
+	if [ "$_h" -gt 0 ]; then
+		printf "%dh%dm" "$_h" "$_m"
+	else
+		printf "%dm" "$_m"
+	fi
+}
+
+# ANSI color codes (using printf for proper escape interpretation)
+C_CYAN=$(printf '\033[96m')      # directory (bright cyan)
+C_BLUE=$(printf '\033[34m')      # git: prefix (dark blue)
+C_RED=$(printf '\033[31m')       # (branch) name
+C_MAGENTA=$(printf '\033[35m')   # model
+C_GREEN=$(printf '\033[32m')     # progress bar
+C_GRAY=$(printf '\033[90m')      # numbers
+C_RESET=$(printf '\033[0m')      # reset color
+
+# Build output line
+# cyan directory
+printf "%s%s%s" "$C_CYAN" "$dir" "$C_RESET"
+
+# dark blue git:(, red branch, dark blue )
+if [ -n "$branch" ]; then
+	printf " %sgit:(%s%s%s)%s" "$C_BLUE" "$C_RED" "$branch" "$C_BLUE" "$C_RESET"
 fi
 
-if [ -n "$branch" ]; then
-  printf "\033[32m➜\033[0m  \033[36m%s\033[0m  \033[33m%s\033[0m  \033[35m%s\033[0m" "$dir" "$branch" "$model"
-else
-  printf "\033[32m➜\033[0m  \033[36m%s\033[0m  \033[35m%s\033[0m" "$dir" "$model"
+# magenta model
+printf " %s%s%s" "$C_MAGENTA" "$model" "$C_RESET"
+
+# Add progress bar and tokens if we have data
+if [ "$total_tokens" -gt 0 ] 2>/dev/null; then
+	pct_int=$(printf '%.0f' "${used_pct:-0}")
+	bar=$(make_bar "$pct_int")
+	# green bar, gray numbers
+	printf " %s%s%s %s%s/%s, %s%%%s" "$C_GREEN" "$bar" "$C_RESET" "$C_GRAY" "$used_display" "$total_display" "$pct_int" "$C_RESET"
 fi
-printf "%b%b" "$ctx_inline" "$cost_str"
-printf "%b%b" "$five_line" "$seven_line"
+
+# Add cost if available
+if [ -n "$cost_usd" ]; then
+	printf ", %s\$%.2f%s" "$C_GRAY" "$cost_usd" "$C_RESET"
+fi
+
+printf "\n"
+
+# Second line: Rate limits (if available)
+if [ -n "$five_pct" ] || [ -n "$seven_pct" ]; then
+	printf "  "  # indent
+
+	# 5-hour limit
+	if [ -n "$five_pct" ]; then
+		five_int=$(printf '%.0f' "$five_pct")
+		five_countdown=""
+		[ -n "$five_reset" ] && five_countdown=$(time_until "$five_reset")
+		printf "%s5h limit: %s%%%s" "$C_GRAY" "$five_int" "$C_RESET"
+		if [ -n "$five_countdown" ]; then
+			printf " %still %s%s" "$C_GRAY" "$five_countdown" "$C_RESET"
+		fi
+	fi
+
+	# separator
+	if [ -n "$five_pct" ] && [ -n "$seven_pct" ]; then
+		printf " | "
+	fi
+
+	# 7-day limit
+	if [ -n "$seven_pct" ]; then
+		seven_int=$(printf '%.0f' "$seven_pct")
+		seven_countdown=""
+		[ -n "$seven_reset" ] && seven_countdown=$(time_until "$seven_reset")
+		printf "%s7d limit: %s%%%s" "$C_GRAY" "$seven_int" "$C_RESET"
+		if [ -n "$seven_countdown" ]; then
+			printf " %still %s%s" "$C_GRAY" "$seven_countdown" "$C_RESET"
+		fi
+	fi
+
+	printf "\n"
+fi

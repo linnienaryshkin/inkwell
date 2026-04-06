@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "npm ci && npx husky",
     "dev": "vite",
     "build": "vite build --logLevel silent",
     "preview": "vite preview",

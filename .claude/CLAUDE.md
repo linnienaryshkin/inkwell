@@ -95,14 +95,6 @@ Rules are in `.claude/rules/unit-test.md`. Both packages follow the same convent
 
 Commit format: `#ISSUE: description` (e.g. `#42: add user authentication`). Use `#0` when no issue applies.
 
-## GitHub MCP & Environment Setup
-
-Claude Code uses GitHub MCP server for AI-assisted GitHub workflows. **Setup required before launching Claude Code:**
-
-```bash
-source .dev-env
-```
-
 ## Skills & Agents
 
 - **architect skill** — fetches a GitHub issue, asks clarifying questions, writes a technical spec with a Team Execution Plan, posts it as a GitHub comment, and labels the issue `refined`

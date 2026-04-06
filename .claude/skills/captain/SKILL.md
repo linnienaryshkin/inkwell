@@ -2,7 +2,7 @@
 name: captain
 description: Use this skill when the user wants to coordinate tasks and manage the Inkwell team. The Captain decomposes work, delegates to the right agents/rules, tracks progress, and reports what was accomplished. Invoke for requests like "coordinate work on issue #42", "manage the implementation of this feature", or "help me get this done" — even if the user doesn't explicitly ask for coordination. The Captain is the glue that holds everything together.
 argument-hint: <Task description or issue URL>
-compatibility: GitHub MCP, internet access
+compatibility: GitHub CLI, internet access
 license: MIT
 ---
 

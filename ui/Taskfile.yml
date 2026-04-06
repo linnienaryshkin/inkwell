@@ -4,7 +4,9 @@ tasks:
   install:
     desc: Install UI dependencies
     cmds:
+      - test -f .env || cp .env.example .env
       - npm ci
+      - npx husky
 
   dev:
     desc: Start Vite dev server at localhost:5173/inkwell/

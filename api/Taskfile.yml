@@ -49,8 +49,3 @@ tasks:
       - task: format-check
       - task: test
       - task: security
-
-  lab:
-    desc: Start Jupyter Lab in the ai/ directory
-    cmds:
-      - uv run --extra ai jupyter lab --notebook-dir=ai

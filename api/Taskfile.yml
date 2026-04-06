@@ -5,7 +5,7 @@ tasks:
     desc: Install API dependencies
     cmds:
       - test -f .env || cp .env.example .env
-      - uv sync --extra dev
+      - uv sync --extra dev --extra ai
 
   dev:
     desc: Start FastAPI dev server at localhost:8000

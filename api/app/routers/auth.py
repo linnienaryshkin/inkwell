@@ -57,6 +57,21 @@ router = APIRouter()
 
 @router.get("/login")
 def login(redirect_url: str | None = None) -> RedirectResponse:
+    """Initiate GitHub OAuth login flow.
+
+    Validates the redirect_url against the allowlist, generates a CSRF state token,
+    and redirects to GitHub's authorization endpoint.
+
+    Args:
+        redirect_url: URL to redirect to after authentication completes. Must be in ALLOWED_REDIRECT_URLS.
+            If not provided, uses the first allowed URL.
+
+    Returns:
+        RedirectResponse: 307 redirect to GitHub authorize with state cookie set.
+
+    Raises:
+        HTTPException: 400 if redirect_url is not in the allowlist.
+    """
     # Validate caller-supplied redirect URL against the allowlist to prevent open redirect.
     # Default to the first allowed URL if none provided.
     if redirect_url is not None:
@@ -97,6 +112,23 @@ async def callback(
     state: str,  # CSRF token echoed back by GitHub
     gh_oauth_state: str | None = Cookie(default=None),  # our CSRF+redirect cookie
 ) -> RedirectResponse:
+    """Handle GitHub OAuth callback and exchange code for access token.
+
+    Validates the CSRF state against the stored cookie, exchanges the one-time
+    code for a GitHub access token, and issues a session cookie with httponly protection.
+
+    Args:
+        code: One-time authorization code from GitHub.
+        state: CSRF token echoed back by GitHub (must match cookie value).
+        gh_oauth_state: CSRF state and redirect URL from the login step cookie.
+
+    Returns:
+        RedirectResponse: 307 redirect to the original redirect_url with session cookie set.
+
+    Raises:
+        HTTPException: 400 if OAuth state is invalid, missing, or mismatched; 400 if access token
+            exchange fails.
+    """
     if not gh_oauth_state or "|" not in gh_oauth_state:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
@@ -145,6 +177,20 @@ async def callback(
 
 @router.get("/me", response_model=UserProfile)
 async def me(gh_access_token: str | None = Cookie(default=None)) -> UserProfile:
+    """Retrieve the authenticated user's profile from GitHub.
+
+    Fetches the current user's public profile information from the GitHub API
+    using the session's access token.
+
+    Args:
+        gh_access_token: GitHub access token from httponly cookie.
+
+    Returns:
+        UserProfile: User login, name, and avatar URL.
+
+    Raises:
+        HTTPException: 401 if no valid access token is present or if GitHub auth fails.
+    """
     if not gh_access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -167,6 +213,20 @@ async def me(gh_access_token: str | None = Cookie(default=None)) -> UserProfile:
 
 @router.post("/logout", status_code=204)
 async def logout(request: Request) -> Response:
+    """End the user's session by clearing authentication cookies.
+
+    Validates the request's Origin header against the allowlist before clearing
+    the session and state cookies.
+
+    Args:
+        request: The HTTP request object containing the Origin header.
+
+    Returns:
+        Response: 204 No Content with cookies deleted.
+
+    Raises:
+        HTTPException: 403 if the request Origin is not in ALLOWED_REDIRECT_URLS.
+    """
     # Derive the set of allowed origins from the full redirect URLs by keeping only scheme+netloc.
     # e.g. "http://localhost:5173/inkwell/" → "http://localhost:5173"
     allowed_origins = {

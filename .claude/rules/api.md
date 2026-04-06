@@ -75,6 +75,44 @@ Keep these two types in sync when either changes.
 - Test happy paths, 404s, 409 conflicts, and partial updates
 - All tests must pass before committing: `uv run --env-file .env.example pytest tests/ -v`
 
+## Documentation
+
+All API functions and Pydantic models must use Google-style docstrings:
+
+**Function docstrings** (required sections in this order):
+```python
+def my_function(param1: str, param2: int) -> dict:
+    """Brief one-line summary of what the function does.
+
+    Longer description if needed. Explain behavior, side effects, or important details.
+
+    Args:
+        param1: Description of param1.
+        param2: Description of param2.
+
+    Returns:
+        dict: Description of return value.
+
+    Raises:
+        ValueError: When validation fails.
+        HTTPException: When an HTTP error occurs.
+    """
+```
+
+**Pydantic model docstrings**:
+```python
+class MyModel(BaseModel):
+    """Brief description of what this model represents."""
+    field1: str  # Can add inline comments for clarity
+    field2: int
+```
+
+**Key requirements:**
+- All parameters must have descriptions in the `Args:` section
+- Functions with return values need a `Returns:` section
+- Functions that raise exceptions need a `Raises:` section
+- Section order: Summary → Description (optional) → Args → Returns → Raises
+
 ## Linting
 
 - Ruff with `E`, `F`, `I` rules enabled, `E501` ignored (long lines in string literals)
@@ -86,6 +124,7 @@ Keep these two types in sync when either changes.
 - [ ] Identify which router/model is affected
 - [ ] If adding a new endpoint: define Pydantic model, add route, return correct status code
 - [ ] If changing the Article schema: update both `api/app/models/article.py` and `ui/src/app/studio/page.tsx`
+- [ ] Document all functions and models with Google-style docstrings (Args, Returns, Raises sections)
 - [ ] Write or update tests in `api/tests/`
 - [ ] Run `uv run --env-file .env.example pytest tests/ -v` — all tests pass
 - [ ] Run `uv run ruff check app/ tests/` — zero errors

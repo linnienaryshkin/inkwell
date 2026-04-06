@@ -113,11 +113,32 @@ class MyModel(BaseModel):
 - Functions that raise exceptions need a `Raises:` section
 - Section order: Summary → Description (optional) → Args → Returns → Raises
 
-## Linting
+## Linting & Formatting
 
-- Ruff with `E`, `F`, `I` rules enabled, `E501` ignored (long lines in string literals)
-- Target: Python 3.12
-- Run `uv run ruff check app/ tests/` — must pass with zero errors
+**Ruff Configuration** (from `pyproject.toml`):
+- **Line length:** 100 characters
+- **Target version:** Python 3.12
+- **Enabled rules:**
+  - `E` — PEP 8 errors (whitespace, indentation, line length)
+  - `F` — Pyflakes (undefined names, unused imports, syntax errors)
+  - `I` — isort (import sorting)
+- **Ignored rules:**
+  - `E501` — line too long (allows long strings/literals)
+
+**PEP 8 Spacing (enforced by `ruff format`):**
+- 2 blank lines between top-level class/function definitions
+- 1 blank line between methods inside a class
+- 1 blank line inside functions to separate logical sections
+
+**Import Formatting:**
+- Imports are automatically sorted by `ruff` (isort rule)
+- Groups: stdlib → third-party → local (separated by blank lines)
+- Alphabetical within each group
+- Remove unused imports
+
+**Commands:**
+- `uv run ruff check app/ tests/` — check for all rule violations (must pass with zero errors)
+- `uv run ruff format app/ tests/` — auto-fix formatting issues
 
 ## Implementation Checklist
 

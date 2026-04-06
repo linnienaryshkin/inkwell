@@ -13,6 +13,9 @@ dependencies = [
 ai = [
     "langchain>=0.3",
     "langchain-anthropic>=0.3",
+    "jupyter>=1.0",
+    "jupyterlab>=4.0",
+    "ipython>=8.0",
 ]
 dev = [
     "pytest>=8",

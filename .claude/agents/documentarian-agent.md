@@ -23,7 +23,7 @@ You are the single source of truth for project documentation. You own these file
 | `.claude/rules/ui-engineer.md` | UI state rules, styling conventions, test patterns |
 | `.claude/rules/unit-test.md` | Testing conventions for both packages |
 | `.claude/agents/*.md` | Agent definitions (documentarian, dev-agent, git-agent, qa-agent) |
-| `.claude/skills/*/SKILL.md` | Skill definitions (architect, captain, code-review) |
+| `.claude/skills/*/SKILL.md` | Skill definitions (architect, dev-supervisor, code-review) |
 
 ---
 
@@ -131,6 +131,6 @@ When asked "where is X?", "which file covers Y?", "what agent handles Z?":
 | CI/CD workflows | `.github/workflows/` | `devops rule` + `dev-agent` |
 | Documentation | `.claude/**/*.md` | `documentarian-agent` |
 | Issue specs | GitHub issues | `architect skill` |
-| Task coordination | session | `captain skill` |
+| Task coordination | session | `dev-supervisor skill` |
 | Manual QA | Playwright | `qa-agent` |
 | Commit/push/PR | git | `git-agent` |

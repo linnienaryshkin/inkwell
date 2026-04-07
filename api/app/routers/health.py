@@ -4,7 +4,7 @@ router = APIRouter()
 
 
 @router.get("/", tags=["health"])
-def health_check():
+def health_check() -> dict[str, str]:
     """Health check endpoint.
 
     Returns:

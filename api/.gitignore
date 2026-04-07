@@ -24,3 +24,6 @@ htmlcov/
 
 # IDE Python cache
 .pytype/
+
+# LangGraph runtime & development
+.langgraph_api/

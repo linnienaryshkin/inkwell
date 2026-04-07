@@ -10,6 +10,7 @@ to pre-built httpx.Response objects.
 
 import base64
 import json
+from typing import Never
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -73,7 +74,7 @@ def _make_client_mock(url_map: dict[str, httpx.Response]) -> MagicMock:
     .get() coroutine looks up the response by URL from url_map.
     """
 
-    async def _get(url: str, **kwargs) -> httpx.Response:
+    async def _get(url: str, **kwargs: object) -> httpx.Response:
         if url in url_map:
             return url_map[url]
         raise KeyError(f"Unexpected URL in test: {url}")
@@ -100,7 +101,7 @@ class TestListArticleMetas:
         return f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
 
     @pytest.mark.asyncio
-    async def test_two_valid_folders_returns_two_metas(self):
+    async def test_two_valid_folders_returns_two_metas(self) -> None:
         """
         GitHub returns 2 dir entries + 2 valid meta.json files.
         Exercises the asyncio.gather parallel path.
@@ -139,7 +140,7 @@ class TestListArticleMetas:
         assert sp.tags == []
 
     @pytest.mark.asyncio
-    async def test_non_dir_entries_are_skipped(self):
+    async def test_non_dir_entries_are_skipped(self) -> None:
         """
         GitHub returns a mix of dir and file entries — only dirs are processed.
         """
@@ -166,7 +167,7 @@ class TestListArticleMetas:
         assert result[0].slug == "my-article"
 
     @pytest.mark.asyncio
-    async def test_malformed_meta_json_raises_value_error(self):
+    async def test_malformed_meta_json_raises_value_error(self) -> None:
         """
         meta.json contains invalid JSON → ValueError is raised.
         """
@@ -187,7 +188,7 @@ class TestListArticleMetas:
                 await list_article_metas(TOKEN)
 
     @pytest.mark.asyncio
-    async def test_github_401_on_dir_listing_raises_http_status_error(self):
+    async def test_github_401_on_dir_listing_raises_http_status_error(self) -> None:
         """
         GitHub returns 401 on the directory listing → httpx.HTTPStatusError propagates.
         """
@@ -206,7 +207,7 @@ class TestListArticleMetas:
         assert exc_info.value.response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_github_404_on_meta_json_raises_http_status_error(self):
+    async def test_github_404_on_meta_json_raises_http_status_error(self) -> None:
         """
         Directory listing succeeds but meta.json returns 404 → HTTPStatusError raised.
         """
@@ -272,7 +273,7 @@ class TestGetArticle:
         return _commits_url()
 
     @pytest.mark.asyncio
-    async def test_valid_slug_returns_article_with_correct_fields(self):
+    async def test_valid_slug_returns_article_with_correct_fields(self) -> None:
         """
         All three concurrent fetches succeed → Article returned with correct fields.
         Exercises the full asyncio.gather path (content.md + meta.json + versions).
@@ -301,7 +302,7 @@ class TestGetArticle:
         assert result.versions[0].sha == "abc123"
 
     @pytest.mark.asyncio
-    async def test_content_md_404_raises_http_status_error(self):
+    async def test_content_md_404_raises_http_status_error(self) -> None:
         """
         content.md returns 404 → httpx.HTTPStatusError propagates (not swallowed).
         """
@@ -326,7 +327,7 @@ class TestGetArticle:
         assert exc_info.value.response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_malformed_meta_json_raises_value_error(self):
+    async def test_malformed_meta_json_raises_value_error(self) -> None:
         """
         meta.json is fetched successfully but contains invalid JSON → ValueError raised.
         """
@@ -343,7 +344,7 @@ class TestGetArticle:
                 await get_article(TOKEN, slug)
 
     @pytest.mark.asyncio
-    async def test_base64_with_line_breaks_decodes_correctly(self):
+    async def test_base64_with_line_breaks_decodes_correctly(self) -> None:
         """
         GitHub wraps base64 content with newlines every 60 chars.
         Verifies the .replace('\\n', '') stripping in fetch_file() decodes correctly.
@@ -384,7 +385,7 @@ class TestGetArticle:
         assert result.meta.title == "Wrapped"
 
     @pytest.mark.asyncio
-    async def test_missing_versions_is_non_fatal(self):
+    async def test_missing_versions_is_non_fatal(self) -> None:
         """
         Commits API returns 404 → error is swallowed; Article is still returned with empty versions.
         """
@@ -414,7 +415,7 @@ class TestGetArticle:
         assert result.versions == []
 
     @pytest.mark.asyncio
-    async def test_versions_are_returned_in_article(self):
+    async def test_versions_are_returned_in_article(self) -> None:
         """
         Commits API returns multiple commits → versions list included in Article.
         """
@@ -477,18 +478,18 @@ def _make_git_data_client_mock(
     post_calls: list[dict] = []
     post_queue = list(post_responses)
 
-    async def _get(url: str, **kwargs) -> httpx.Response:
+    async def _get(url: str, **kwargs: object) -> httpx.Response:
         if url in get_url_map:
             return get_url_map[url]
         raise KeyError(f"Unexpected GET URL in test: {url}")
 
-    async def _post(url: str, **kwargs) -> httpx.Response:
+    async def _post(url: str, **kwargs: object) -> httpx.Response:
         post_calls.append({"url": url, "json": kwargs.get("json", {})})
         if post_queue:
             return post_queue.pop(0)
         raise KeyError(f"Unexpected POST URL in test (queue exhausted): {url}")
 
-    async def _patch(url: str, **kwargs) -> httpx.Response:
+    async def _patch(url: str, **kwargs: object) -> httpx.Response:
         if url in patch_url_map:
             return patch_url_map[url]
         raise KeyError(f"Unexpected PATCH URL in test: {url}")
@@ -526,7 +527,7 @@ def _make_two_phase_git_mock(
 
     call_count = [0]
 
-    def _side_effect(*args, **kwargs):
+    def _side_effect(*args: object, **kwargs: object) -> MagicMock:
         call_count[0] += 1
         return write_client if call_count[0] == 1 else read_client
 
@@ -640,7 +641,7 @@ class TestCreateArticle:
         }
 
     @pytest.mark.asyncio
-    async def test_success_returns_article_with_version(self):
+    async def test_success_returns_article_with_version(self) -> None:
         """
         All Git Data API calls succeed; the subsequent get_article() returns an Article.
         """
@@ -661,7 +662,7 @@ class TestCreateArticle:
         assert len(result.versions) == 1
 
     @pytest.mark.asyncio
-    async def test_meta_json_blob_content_is_correct(self):
+    async def test_meta_json_blob_content_is_correct(self) -> None:
         """
         The blob POST for meta.json, when base64-decoded, must contain
         {"title": ..., "status": "draft", "tags": [...]}.
@@ -688,7 +689,7 @@ class TestCreateArticle:
         assert decoded["tags"] == tags
 
     @pytest.mark.asyncio
-    async def test_content_md_blob_content_is_correct(self):
+    async def test_content_md_blob_content_is_correct(self) -> None:
         """
         The blob POST for content.md, when base64-decoded, must match the supplied content.
         """
@@ -711,7 +712,7 @@ class TestCreateArticle:
         assert decoded == content
 
     @pytest.mark.asyncio
-    async def test_blob_post_error_raises_http_status_error(self):
+    async def test_blob_post_error_raises_http_status_error(self) -> None:
         """
         If blob POST returns an error, HTTPStatusError propagates.
         """
@@ -732,7 +733,7 @@ class TestCreateArticle:
         assert exc_info.value.response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_ref_get_error_raises_http_status_error(self):
+    async def test_ref_get_error_raises_http_status_error(self) -> None:
         """
         If GET /git/ref/heads/main returns 404, HTTPStatusError propagates.
         """
@@ -779,7 +780,7 @@ class TestSaveArticle:
         }
 
     @pytest.mark.asyncio
-    async def test_success_returns_updated_article(self):
+    async def test_success_returns_updated_article(self) -> None:
         """
         All Git Data API calls succeed; returns the updated Article from get_article().
         """
@@ -801,7 +802,7 @@ class TestSaveArticle:
         assert result.meta.title == title
 
     @pytest.mark.asyncio
-    async def test_commit_message_used_in_git_commit(self):
+    async def test_commit_message_used_in_git_commit(self) -> None:
         """
         The message field in the git commit POST body must equal the supplied commit message.
         """
@@ -825,7 +826,7 @@ class TestSaveArticle:
         assert commit_post_body["message"] == custom_message
 
     @pytest.mark.asyncio
-    async def test_default_commit_message_used_when_none(self):
+    async def test_default_commit_message_used_when_none(self) -> None:
         """
         The router fills in 'update <slug>' when the client omits the message field.
         """
@@ -848,7 +849,7 @@ class TestSaveArticle:
         assert commit_post_body["message"] == default_message
 
     @pytest.mark.asyncio
-    async def test_ref_get_404_raises_http_status_error(self):
+    async def test_ref_get_404_raises_http_status_error(self) -> None:
         """
         If GET /git/ref/heads/main returns 404, HTTPStatusError propagates.
         """
@@ -877,7 +878,7 @@ class TestSaveArticle:
 
 class TestDeleteArticle:
     @pytest.mark.asyncio
-    async def test_success_deletes_both_files(self):
+    async def test_success_deletes_both_files(self) -> None:
         """
         Successful delete calls GitHub twice (once per file) and returns None.
         """
@@ -913,7 +914,7 @@ class TestDeleteArticle:
         mock_client.__aexit__.return_value = None
 
         # Setup .get() to return appropriate responses
-        async def get_side_effect(url, **kwargs):
+        async def get_side_effect(url: str, **kwargs: object) -> httpx.Response:
             if "meta.json" in url:
                 return get_meta_resp
             elif "content.md" in url:
@@ -921,7 +922,7 @@ class TestDeleteArticle:
             raise ValueError(f"Unexpected GET URL: {url}")
 
         # Setup .request() for DELETE calls
-        async def request_side_effect(method, url, **kwargs):
+        async def request_side_effect(method: str, url: str, **kwargs: object) -> httpx.Response:
             if method == "DELETE":
                 if "meta.json" in url:
                     return delete_meta_resp
@@ -942,7 +943,7 @@ class TestDeleteArticle:
         assert mock_client.request.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_meta_json_404_raises_http_status_error(self):
+    async def test_meta_json_404_raises_http_status_error(self) -> None:
         """
         If GET meta.json returns 404, HTTPStatusError propagates.
         """
@@ -967,7 +968,7 @@ class TestDeleteArticle:
         assert exc_info.value.response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_content_md_404_raises_http_status_error(self):
+    async def test_content_md_404_raises_http_status_error(self) -> None:
         """
         If GET content.md returns 404 (after getting meta.json), HTTPStatusError propagates.
         """
@@ -987,7 +988,7 @@ class TestDeleteArticle:
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
 
-        async def get_side_effect(url, **kwargs):
+        async def get_side_effect(url: str, **kwargs: object) -> httpx.Response:
             if "meta.json" in url:
                 return get_meta_resp
             elif "content.md" in url:
@@ -1005,7 +1006,7 @@ class TestDeleteArticle:
         assert exc_info.value.response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_meta_json_failure_raises_http_status_error(self):
+    async def test_delete_meta_json_failure_raises_http_status_error(self) -> None:
         """
         If DELETE meta.json returns 500, HTTPStatusError propagates.
         """
@@ -1030,14 +1031,14 @@ class TestDeleteArticle:
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
 
-        async def get_side_effect(url, **kwargs):
+        async def get_side_effect(url: str, **kwargs: object) -> httpx.Response:
             if "meta.json" in url:
                 return get_meta_resp
             elif "content.md" in url:
                 return get_content_resp
             raise ValueError(f"Unexpected GET URL: {url}")
 
-        async def request_side_effect(method, url, **kwargs):
+        async def request_side_effect(method: str, url: str, **kwargs: object) -> Never:
             if method == "DELETE" and "meta.json" in url:
                 raise httpx.HTTPStatusError(
                     "server error", request=delete_error.request, response=delete_error

@@ -20,6 +20,9 @@ dev = [
     "langchain>=0.3",
     "langchain-anthropic>=0.3",
     "langchain-mcp-adapters>=0.1",
+    "mcp[cli]>=0.1",
+    "langgraph>=0.1",
+    "langgraph-cli[inmem]>=0.1",
     "anthropic>=0.87.0",
     "jupyter>=1.0",
     "jupyterlab>=4.0",
@@ -32,10 +35,44 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E501"]
+select = [
+    "E",       # pycodestyle errors (core code-style correctness)
+    "F",       # Pyflakes (unused imports, undefined names, etc.)
+    "I",       # import sorting/order (isort-compatible)
+    "N",       # naming conventions (PEP 8 naming consistency)
+    "D",       # docstring conventions (pydocstyle)
+    "ANN",     # type annotation presence checks
+    "UP",      # pyupgrade rules (modern Python syntax)
+    "B",       # flake8-bugbear (likely bugs and risky patterns)
+]
+ignore = [
+    "E501",    # line too long
+    "D205",    # 1 blank line between summary and description
+    "D212",    # multi-line summary should start at first line
+    "D100",    # missing docstring in public module
+    "D104",    # missing docstring in public package
+    "D203",    # conflicts with D211
+    "D213",    # conflicts with D212
+    "B008",    # allow Field(...) defaults in FastMCP tool signatures
+    "B904",    # allow plain raise HTTPException in except blocks
+    "B905",    # allow zip() without strict in compatibility code
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests prioritize behavior verification while still enforcing annotations.
+# Keep bug-prone checks except B007 loops.
+"tests/**/*.py" = ["D", "B007"]
+
+# Lab notebooks are educational/interactive artifacts. We still enforce syntax,
+# imports, naming, and annotations, but relax docstring/bugbear strictness to
+# avoid notebook-specific noise blocking the quality gate.
+"lab/**/*.ipynb" = ["D", "B"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A browser-based markdown writing studio for developer-writers. Monaco editor at the center, with article CRUD via a FastAPI backend backed by GitHub repo file storage. Articles are stored as files in `linnienaryshkin/inkwell` at `articles/{slug}/meta.json` and `articles/{slug}/content.md`. Deployed at <https://linnienaryshkin.github.io/inkwell/>.
 
-**What's currently mock (not wired up):** lint results in SidePanel, publish platform calls.
+**Currently wired up:** Article CRUD (fetch, create, save, delete), GitHub OAuth, version history from commits, Zen mode, dark/light theme, table of contents extraction from markdown.
+
+**Currently mock (not wired up):** Lint results in SidePanel (shows hardcoded readability score), publish platform API calls (UI has platform buttons but no real POST calls to dev.to/Hashnode/Medium/Substack/LinkedIn).
 
 ## Repository Structure
 
@@ -112,10 +114,8 @@ FastMCP server that mirrors REST API endpoints, enabling Claude Code and other M
 
 ## Testing
 
-Rules are in `.claude/rules/unit-test.md`. Both packages follow the same conventions:
+Full testing rules are in `.claude/rules/unit-test.md`. Both packages follow the same conventions:
 
-- BDD approach: test behavior (user interactions / HTTP contract), not implementation internals
-- 90% coverage on lines, functions, branches, and statements (enforced in CI)
 - **UI:** test files colocated with the source file as `FileName.test.{ts,tsx}`; query priority: `getByRole` > `getByLabelText` > `getByText` > `data-testid`; mock only external libraries (Monaco, ReactMarkdown)
 - **API:** test files in `api/tests/`; cover success cases, error cases, and edge cases for every endpoint; mock only external I/O (GitHub API calls)
 
@@ -128,12 +128,13 @@ Commit format: `#ISSUE: description` (e.g. `#42: add user authentication`). Use 
 ## Skills & Agents
 
 - **architect skill** — fetches a GitHub issue, asks clarifying questions, writes a technical spec with a Team Execution Plan, posts it as a GitHub comment, and labels the issue `refined`
-- **captain skill** — coordinates sub-agents; decomposes tasks, assigns agents, runs parallel batches, tracks progress, and reports results. Never implements anything directly
+- **dev-supervisor skill** — coordinates sub-agents; decomposes tasks, assigns agents, runs parallel batches, tracks progress, and reports results. Never implements anything directly
 - **dev-agent** — primary implementation agent; handles feature development from GitHub issues, bug fixes, code reviews, and architectural questions following all CLAUDE.md conventions
 - **documentarian-agent** — documentation owner and synchronizer; knows where every doc file lives, cross-checks docs against actual code, and updates stale entries. Run via `/init` at session start or after code changes. Also answers "where is X?" questions about the codebase
 - **qa-agent** — manual-only QA agent; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs found, and delegates fixes to the appropriate engineer
 - **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs. **Only agent with git permissions.**
-- **ui rule** (`.claude/rules/ui.md`) — applied automatically for UI changes; enforces state ownership and styling rules
-- **api rule** (`.claude/rules/api.md`) — applied automatically for API changes; enforces API conventions, schema sync, and testing
-- **github rule** — applied automatically for CI/CD changes; `.claude/rules/github.md` is the single source of truth for workflow files, branch protection, deployment environment, Pages config, secrets, and re-running jobs
+- **ui rule** (see `.claude/rules/ui.md`) — applied automatically for UI changes; enforces state ownership, styling rules, and development conventions
+- **api rule** (see `.claude/rules/api.md`) — applied automatically for API changes; enforces API conventions, schema sync, testing, and docstring requirements
+- **unit-test rule** (see `.claude/rules/unit-test.md`) — applied automatically for test changes; enforces BDD approach and 90% coverage
+- **github rule** (see `.claude/rules/github.md`) — applied automatically for CI/CD changes; is the single source of truth for workflow files, branch protection, deployment environment, Pages config, secrets, and re-running jobs
 - **code-review skill** — `/code-review <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments

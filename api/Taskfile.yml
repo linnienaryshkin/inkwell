@@ -15,7 +15,7 @@ tasks:
   mcp-dev:
     desc: Start FastMCP MCP server with MCP Inspector
     cmds:
-      - mcp dev app/main_mcp.py:mcp
+      - uv run mcp dev app/main_mcp.py:mcp
 
   test:
     desc: Run pytest tests
@@ -28,24 +28,24 @@ tasks:
       - uv run --env-file .env.example pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=90
 
   lint:
-    desc: Lint API code with ruff (auto-fix)
+    desc: Lint API code with Ruff (semantic/static checks; auto-fix where safe)
     cmds:
-      - uv run ruff check --fix app/ tests/
+      - uv run ruff check --fix app/ tests/ lab/
 
   lint-check:
-    desc: Lint API code with ruff (read-only)
+    desc: Lint API code with Ruff (read-only semantic/static checks)
     cmds:
-      - uv run ruff check app/ tests/
+      - uv run ruff check app/ tests/ lab/
 
   format:
-    desc: Auto-format API code with ruff
+    desc: Auto-format API code with Ruff formatter (layout/style normalization)
     cmds:
-      - uv run ruff format app/ tests/
+      - uv run ruff format app/ tests/ lab/
 
   format-check:
-    desc: Check API formatting with ruff (read-only)
+    desc: Check API formatting with Ruff formatter (read-only)
     cmds:
-      - uv run ruff format --check app/ tests/
+      - uv run ruff format --check app/ tests/ lab/
 
   security:
     desc: Audit Python dependencies for known vulnerabilities
@@ -64,3 +64,8 @@ tasks:
     desc: Start JupyterLab for API development
     cmds:
       - uv run jupyter lab
+
+  agent:
+    desc: Start LangGraph Inkwell article agent with IDE support
+    cmds:
+      - uv run langgraph dev --no-browser

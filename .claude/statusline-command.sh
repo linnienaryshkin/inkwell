@@ -4,7 +4,7 @@
 input=$(cat)
 
 # Debug: uncomment to inspect JSON structure
-# echo "$input" | jq '.' > statusline-context.json
+# echo "$input" | jq '.' > .tmp/statusline-context.json
 
 # Extract basic info
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
@@ -115,8 +115,13 @@ printf " %s%s%s" "$C_MAGENTA" "$model" "$C_RESET"
 if [ "$total_tokens" -gt 0 ] 2>/dev/null; then
 	pct_int=$(printf '%.0f' "${used_pct:-0}")
 	bar=$(make_bar "$pct_int")
-	# green bar, gray numbers
-	printf " %s%s%s %s%s/%s, %s%%%s" "$C_GREEN" "$bar" "$C_RESET" "$C_GRAY" "$used_display" "$total_display" "$pct_int" "$C_RESET"
+	# Red bar if over 150K tokens, otherwise green
+	if [ "$used_tokens" -gt 150000 ] 2>/dev/null; then
+		bar_color="$C_RED"
+	else
+		bar_color="$C_GREEN"
+	fi
+	printf " %s%s%s %s%s/%s, %s%%%s" "$bar_color" "$bar" "$C_RESET" "$C_GRAY" "$used_display" "$total_display" "$pct_int" "$C_RESET"
 fi
 
 # Add cost if available

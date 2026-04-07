@@ -17,7 +17,7 @@ tasks:
       - task: api:install
 
   dev:
-    desc: Start all dev servers concurrently
+    desc: Start all dev servers concurrently (REST API, MCP server, UI)
     deps:
       - api:rest-dev
       - api:mcp-dev

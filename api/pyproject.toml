@@ -20,6 +20,7 @@ dev = [
     "langchain>=0.3",
     "langchain-anthropic>=0.3",
     "langchain-mcp-adapters>=0.1",
+    "mcp[cli]>=0.1",
     "langgraph>=0.1",
     "langgraph-cli[inmem]>=0.1",
     "anthropic>=0.87.0",

@@ -4,7 +4,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main_rest import app
 from app.models.article import Article, ArticleMeta, ArticleVersion
 
 

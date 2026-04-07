@@ -19,6 +19,7 @@
       "Bash(uv add:*)",
       "Bash(task *)",
       "Bash(grep:*)",
+      "Bash(cd:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",

@@ -7,10 +7,15 @@ tasks:
       - test -f .env || cp .env.example .env
       - uv sync --extra dev
 
-  dev:
-    desc: Start FastAPI dev server at localhost:8000
+  rest-dev:
+    desc: Start FastAPI REST server at localhost:8000
     cmds:
-      - uv run uvicorn app.main:app --reload --env-file .env
+      - uv run uvicorn app.main_rest:app --reload --env-file .env
+
+  mcp-dev:
+    desc: Start FastMCP MCP server on stdio
+    cmds:
+      - uv run python -m app.main_mcp
 
   test:
     desc: Run pytest tests

@@ -17,10 +17,11 @@ tasks:
       - task: api:install
 
   dev:
-    desc: Start both dev servers concurrently
+    desc: Start all dev servers concurrently
     deps:
-      - task: api:dev
-      - task: ui:dev
+      - api:rest-dev
+      - api:mcp-dev
+      - ui:dev
 
   quality-gate:
     desc: Run all quality checks (ui then api) in sequence

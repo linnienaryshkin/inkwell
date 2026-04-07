@@ -12,7 +12,7 @@ _INVALID_REDIRECT = "https://evil.com"
 
 @pytest.fixture()
 def client():
-    from app.main import app
+    from app.main_rest import app
 
     return TestClient(app, follow_redirects=False)
 

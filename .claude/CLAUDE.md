@@ -80,6 +80,36 @@ FastAPI REST API backed by GitHub repo file storage via `app/github_articles.py`
 
 **CORS:** Allows `http://localhost:5173` and `https://linnienaryshkin.github.io` with `allow_credentials=True`.
 
+### MCP Server (`api/app/mcp/`)
+
+FastMCP server that mirrors REST API endpoints, enabling Claude Code and other MCP clients to access article management via the Model Context Protocol.
+
+**Transport:** stdio (message-based, no HTTP ports)
+
+**Tools (5 total):**
+
+| Tool | Parameters | Returns | Errors |
+|------|-----------|---------|--------|
+| `list_articles` | `access_token: str` | `ArticleMeta[]` | 401, 502 |
+| `get_article` | `access_token: str`, `slug: str` | `Article` | 401, 404, 502 |
+| `create_article` | `access_token: str`, `title`, `slug`, `tags`, `content` | `Article` | 401, 409, 502 |
+| `save_article` | `access_token: str`, `slug`, `title`, `tags`, `content`, `message?` | `Article` | 401, 404, 502 |
+| `delete_article` | `access_token: str`, `slug` | `null` | 401, 404, 502 |
+
+**Authentication:** Pass GitHub access token as `access_token` parameter on each tool call (per-call auth, not stored server-side).
+
+**Module structure:**
+- `app/mcp/tools.py` — Tool definitions with input schemas
+- `app/mcp/handlers.py` — Tool implementations; call `github_articles.py` functions
+- `app/main_mcp.py` — FastMCP entrypoint; registers all tools
+
+**Shared infrastructure:**
+- Reuses `github_articles.py` (GitHub API layer)
+- Reuses `app/models/` (Pydantic schemas)
+- Reuses error handling from `app/shared/middleware.py`
+
+**Development:** Start with `task api:mcp-dev` or `task dev` (which spawns all servers).
+
 ## Testing
 
 Rules are in `.claude/rules/unit-test.md`. Both packages follow the same conventions:

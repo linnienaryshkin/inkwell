@@ -3,6 +3,9 @@
 
 input=$(cat)
 
+# Debug: uncomment to inspect JSON structure
+# echo "$input" | jq '.' > statusline-context.json
+
 # Extract basic info
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
 dir=$(basename "$cwd")

@@ -13,7 +13,7 @@ from app.mcp.resources import (
 class TestListArticleSchemas:
     """Tests for list_article_schemas resource."""
 
-    def test_returns_all_schemas(self):
+    def test_returns_all_schemas(self) -> None:
         """Should return all available schema definitions."""
         schemas = list_article_schemas()
 
@@ -25,7 +25,7 @@ class TestListArticleSchemas:
         assert "ArticleSave" in schemas
         assert "ArticleVersion" in schemas
 
-    def test_schemas_are_json_serializable(self):
+    def test_schemas_are_json_serializable(self) -> None:
         """Should return JSON-serializable schema objects."""
         schemas = list_article_schemas()
 
@@ -37,14 +37,14 @@ class TestListArticleSchemas:
 class TestGetArticleSchema:
     """Tests for get_article_schema resource."""
 
-    def test_returns_specific_schema(self):
+    def test_returns_specific_schema(self) -> None:
         """Should return schema for requested name."""
         schema = get_article_schema("ArticleMeta")
 
         assert isinstance(schema, dict)
         assert "properties" in schema
 
-    def test_returns_all_schema_types(self):
+    def test_returns_all_schema_types(self) -> None:
         """Should return valid schema for all schema names."""
         schema_names = [
             "ArticleMeta",
@@ -59,7 +59,7 @@ class TestGetArticleSchema:
             schema = get_article_schema(schema_name)
             assert isinstance(schema, dict)
 
-    def test_raises_error_for_unknown_schema(self):
+    def test_raises_error_for_unknown_schema(self) -> None:
         """Should raise ValueError for unknown schema name."""
         with pytest.raises(ValueError) as exc_info:
             get_article_schema("UnknownSchema")
@@ -67,7 +67,7 @@ class TestGetArticleSchema:
         assert "not found" in str(exc_info.value)
         assert "Available schemas" in str(exc_info.value)
 
-    def test_error_lists_available_schemas(self):
+    def test_error_lists_available_schemas(self) -> None:
         """Error message should list available schemas."""
         with pytest.raises(ValueError) as exc_info:
             get_article_schema("InvalidName")
@@ -80,7 +80,7 @@ class TestGetArticleSchema:
 class TestListArticleStatuses:
     """Tests for list_article_statuses resource."""
 
-    def test_returns_status_mapping(self):
+    def test_returns_status_mapping(self) -> None:
         """Should return mapping of status codes to descriptions."""
         statuses = list_article_statuses()
 
@@ -88,7 +88,7 @@ class TestListArticleStatuses:
         assert "draft" in statuses
         assert "published" in statuses
 
-    def test_status_values_are_strings(self):
+    def test_status_values_are_strings(self) -> None:
         """Status descriptions should be strings."""
         statuses = list_article_statuses()
 
@@ -96,7 +96,7 @@ class TestListArticleStatuses:
             assert isinstance(status_code, str)
             assert isinstance(description, str)
 
-    def test_all_statuses_documented(self):
+    def test_all_statuses_documented(self) -> None:
         """All statuses should have descriptions."""
         statuses = list_article_statuses()
 
@@ -107,7 +107,7 @@ class TestListArticleStatuses:
 class TestListArticleConstants:
     """Tests for list_article_constants resource."""
 
-    def test_returns_constants_dict(self):
+    def test_returns_constants_dict(self) -> None:
         """Should return dict with constant definitions."""
         constants = list_article_constants()
 
@@ -115,7 +115,7 @@ class TestListArticleConstants:
         assert "statuses" in constants
         assert "article_fields" in constants
 
-    def test_statuses_section_structure(self):
+    def test_statuses_section_structure(self) -> None:
         """Statuses section should have valid values and description."""
         constants = list_article_constants()
         statuses = constants["statuses"]
@@ -125,7 +125,7 @@ class TestListArticleConstants:
         assert isinstance(statuses["valid_values"], list)
         assert len(statuses["valid_values"]) > 0
 
-    def test_article_fields_structure(self):
+    def test_article_fields_structure(self) -> None:
         """Article fields should document field definitions."""
         constants = list_article_constants()
         fields = constants["article_fields"]
@@ -135,7 +135,7 @@ class TestListArticleConstants:
             assert field_name in fields
             assert isinstance(fields[field_name], dict)
 
-    def test_field_definitions_complete(self):
+    def test_field_definitions_complete(self) -> None:
         """Each field should have type and description."""
         constants = list_article_constants()
         fields = constants["article_fields"]
@@ -144,7 +144,7 @@ class TestListArticleConstants:
             assert "type" in field_def or "enum" in field_def
             assert "description" in field_def
 
-    def test_slug_field_has_pattern(self):
+    def test_slug_field_has_pattern(self) -> None:
         """Slug field should include validation pattern."""
         constants = list_article_constants()
         slug_def = constants["article_fields"]["slug"]
@@ -152,7 +152,7 @@ class TestListArticleConstants:
         assert "pattern" in slug_def
         assert "a-z0-9" in slug_def["pattern"]
 
-    def test_status_field_has_enum(self):
+    def test_status_field_has_enum(self) -> None:
         """Status field should define allowed values."""
         constants = list_article_constants()
         status_def = constants["article_fields"]["status"]

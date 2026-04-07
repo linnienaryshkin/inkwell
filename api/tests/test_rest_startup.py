@@ -7,12 +7,12 @@ configuration, routers, middleware, and error handlers.
 import httpx
 
 
-def test_rest_app_imports_successfully():
+def test_rest_app_imports_successfully() -> None:
     """Test that the main_rest module imports without errors."""
     import app.main_rest  # noqa: F401
 
 
-def test_rest_app_has_routers():
+def test_rest_app_has_routers() -> None:
     """Test that REST app has all required routers registered."""
     from app.main_rest import app
 
@@ -27,7 +27,7 @@ def test_rest_app_has_routers():
     assert any("auth" in route for route in routes)
 
 
-def test_rest_app_has_cors_middleware():
+def test_rest_app_has_cors_middleware() -> None:
     """Test that REST app has CORS middleware configured."""
     from app.main_rest import app
 
@@ -36,7 +36,7 @@ def test_rest_app_has_cors_middleware():
     assert "CORSMiddleware" in middleware_names
 
 
-def test_rest_app_has_error_handlers():
+def test_rest_app_has_error_handlers() -> None:
     """Test that REST app has error handlers configured."""
     from app.main_rest import app
 
@@ -45,7 +45,7 @@ def test_rest_app_has_error_handlers():
     assert ValueError in app.exception_handlers
 
 
-def test_rest_app_metadata():
+def test_rest_app_metadata() -> None:
     """Test that REST app has proper metadata."""
     from app.main_rest import app
 
@@ -53,7 +53,7 @@ def test_rest_app_metadata():
     assert app.version == "0.1.0"
 
 
-def test_rest_app_cors_config_loads_from_config():
+def test_rest_app_cors_config_loads_from_config() -> None:
     """Test that CORS configuration is loaded from app.config."""
     from app.shared.config import get_cors_origins
 
@@ -63,7 +63,7 @@ def test_rest_app_cors_config_loads_from_config():
     assert len(origins) > 0
 
 
-def test_rest_app_error_handling_setup():
+def test_rest_app_error_handling_setup() -> None:
     """Test that error handling middleware is properly configured."""
     from app.main_rest import app
 

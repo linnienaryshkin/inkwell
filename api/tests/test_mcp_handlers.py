@@ -97,7 +97,7 @@ class TestListArticles:
     """Tests for list_articles tool."""
 
     @pytest.mark.asyncio
-    async def test_success_returns_article_list(self, sample_article_meta):
+    async def test_success_returns_article_list(self, sample_article_meta: ArticleMeta) -> None:
         """Tool returns article list when GitHub call succeeds."""
         metas = [sample_article_meta]
         with patch(
@@ -112,7 +112,7 @@ class TestListArticles:
         mock_list.assert_awaited_once_with("valid-token")
 
     @pytest.mark.asyncio
-    async def test_success_with_empty_list(self):
+    async def test_success_with_empty_list(self) -> None:
         """Tool returns empty list when no articles exist."""
         with patch(
             "app.mcp.tools.list_article_metas",
@@ -125,8 +125,8 @@ class TestListArticles:
 
     @pytest.mark.asyncio
     async def test_success_with_multiple_articles(
-        self, sample_article_meta, sample_article_meta_no_tags
-    ):
+        self, sample_article_meta: ArticleMeta, sample_article_meta_no_tags: ArticleMeta
+    ) -> None:
         """Tool returns multiple articles."""
         metas = [sample_article_meta, sample_article_meta_no_tags]
         with patch(
@@ -141,7 +141,7 @@ class TestListArticles:
         assert "no-tags" in slugs
 
     @pytest.mark.asyncio
-    async def test_error_401_invalid_token(self):
+    async def test_error_401_invalid_token(self) -> None:
         """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
@@ -152,7 +152,7 @@ class TestListArticles:
                 await tools.list_articles("bad-token")
 
     @pytest.mark.asyncio
-    async def test_error_502_github_api_down(self):
+    async def test_error_502_github_api_down(self) -> None:
         """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
@@ -163,7 +163,7 @@ class TestListArticles:
                 await tools.list_articles("valid-token")
 
     @pytest.mark.asyncio
-    async def test_error_503_generic_http_error(self):
+    async def test_error_503_generic_http_error(self) -> None:
         """Tool translates non-401/502 HTTP errors to generic message."""
         error = _make_github_error(503)
         with patch(
@@ -174,7 +174,7 @@ class TestListArticles:
                 await tools.list_articles("valid-token")
 
     @pytest.mark.asyncio
-    async def test_error_unexpected_exception(self):
+    async def test_error_unexpected_exception(self) -> None:
         """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
             "app.mcp.tools.list_article_metas",
@@ -193,7 +193,7 @@ class TestGetArticle:
     """Tests for get_article tool."""
 
     @pytest.mark.asyncio
-    async def test_success_returns_article(self, sample_article):
+    async def test_success_returns_article(self, sample_article: Article) -> None:
         """Tool returns full article when GitHub call succeeds."""
         with patch(
             "app.mcp.tools.get_article_service",
@@ -208,7 +208,7 @@ class TestGetArticle:
         mock_get.assert_awaited_once_with("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_success_with_no_versions(self, sample_article_no_versions):
+    async def test_success_with_no_versions(self, sample_article_no_versions: Article) -> None:
         """Tool returns article with empty versions list."""
         with patch(
             "app.mcp.tools.get_article_service",
@@ -219,7 +219,7 @@ class TestGetArticle:
         assert result.versions == []
 
     @pytest.mark.asyncio
-    async def test_error_401_invalid_token(self):
+    async def test_error_401_invalid_token(self) -> None:
         """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
@@ -230,7 +230,7 @@ class TestGetArticle:
                 await tools.get_article("bad-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_404_article_not_found(self):
+    async def test_error_404_article_not_found(self) -> None:
         """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
@@ -241,7 +241,7 @@ class TestGetArticle:
                 await tools.get_article("valid-token", "missing-slug")
 
     @pytest.mark.asyncio
-    async def test_error_502_github_api_down(self):
+    async def test_error_502_github_api_down(self) -> None:
         """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
@@ -252,7 +252,7 @@ class TestGetArticle:
                 await tools.get_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_500_generic_http_error(self):
+    async def test_error_500_generic_http_error(self) -> None:
         """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
@@ -263,7 +263,7 @@ class TestGetArticle:
                 await tools.get_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_unexpected_exception(self):
+    async def test_error_unexpected_exception(self) -> None:
         """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
             "app.mcp.tools.get_article_service",
@@ -282,7 +282,7 @@ class TestCreateArticle:
     """Tests for create_article tool."""
 
     @pytest.mark.asyncio
-    async def test_success_creates_article(self, sample_article):
+    async def test_success_creates_article(self, sample_article: Article) -> None:
         """Tool returns created article when GitHub call succeeds."""
         with patch(
             "app.mcp.tools.create_article",
@@ -308,7 +308,7 @@ class TestCreateArticle:
         )
 
     @pytest.mark.asyncio
-    async def test_success_with_empty_tags(self, sample_article_meta_no_tags):
+    async def test_success_with_empty_tags(self, sample_article_meta_no_tags: ArticleMeta) -> None:
         """Tool creates article with empty tags list."""
         article = Article(
             slug="no-tags",
@@ -331,7 +331,7 @@ class TestCreateArticle:
         assert result.meta.tags == []
 
     @pytest.mark.asyncio
-    async def test_success_with_empty_content(self, sample_article_meta):
+    async def test_success_with_empty_content(self, sample_article_meta: ArticleMeta) -> None:
         """Tool creates article with empty initial content."""
         article = Article(
             slug="empty-content",
@@ -354,7 +354,7 @@ class TestCreateArticle:
         assert result.content == ""
 
     @pytest.mark.asyncio
-    async def test_error_401_invalid_token(self):
+    async def test_error_401_invalid_token(self) -> None:
         """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
@@ -365,7 +365,7 @@ class TestCreateArticle:
                 await tools.create_article("bad-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
-    async def test_error_409_slug_conflict(self):
+    async def test_error_409_slug_conflict(self) -> None:
         """Tool raises ValueError with slug conflict message on 409."""
         error = _make_github_error(409)
         with patch(
@@ -376,7 +376,7 @@ class TestCreateArticle:
                 await tools.create_article("valid-token", "Title", "existing", [], "content")
 
     @pytest.mark.asyncio
-    async def test_error_502_github_api_down(self):
+    async def test_error_502_github_api_down(self) -> None:
         """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
@@ -387,7 +387,7 @@ class TestCreateArticle:
                 await tools.create_article("valid-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
-    async def test_error_500_generic_http_error(self):
+    async def test_error_500_generic_http_error(self) -> None:
         """Tool translates non-401/409/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
@@ -398,7 +398,7 @@ class TestCreateArticle:
                 await tools.create_article("valid-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
-    async def test_error_unexpected_exception(self):
+    async def test_error_unexpected_exception(self) -> None:
         """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
             "app.mcp.tools.create_article_service",
@@ -417,7 +417,7 @@ class TestSaveArticle:
     """Tests for save_article tool."""
 
     @pytest.mark.asyncio
-    async def test_success_saves_article(self, sample_article):
+    async def test_success_saves_article(self, sample_article: Article) -> None:
         """Tool returns saved article when GitHub call succeeds."""
         with patch(
             "app.mcp.tools.save_article",
@@ -444,7 +444,9 @@ class TestSaveArticle:
         )
 
     @pytest.mark.asyncio
-    async def test_success_with_none_message_generates_default(self, sample_article):
+    async def test_success_with_none_message_generates_default(
+        self, sample_article: Article
+    ) -> None:
         """Tool generates default message when message is None."""
         with patch(
             "app.mcp.tools.save_article_service",
@@ -471,7 +473,7 @@ class TestSaveArticle:
         )
 
     @pytest.mark.asyncio
-    async def test_success_with_empty_tags(self, sample_article_meta_no_tags):
+    async def test_success_with_empty_tags(self, sample_article_meta_no_tags: ArticleMeta) -> None:
         """Tool saves article with empty tags list."""
         article = Article(
             slug="test-article",
@@ -495,7 +497,7 @@ class TestSaveArticle:
         assert result.meta.tags == []
 
     @pytest.mark.asyncio
-    async def test_error_401_invalid_token(self):
+    async def test_error_401_invalid_token(self) -> None:
         """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
@@ -506,7 +508,7 @@ class TestSaveArticle:
                 await tools.save_article("bad-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
-    async def test_error_404_article_not_found(self):
+    async def test_error_404_article_not_found(self) -> None:
         """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
@@ -519,7 +521,7 @@ class TestSaveArticle:
                 )
 
     @pytest.mark.asyncio
-    async def test_error_502_github_api_down(self):
+    async def test_error_502_github_api_down(self) -> None:
         """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
@@ -530,7 +532,7 @@ class TestSaveArticle:
                 await tools.save_article("valid-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
-    async def test_error_500_generic_http_error(self):
+    async def test_error_500_generic_http_error(self) -> None:
         """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
@@ -541,7 +543,7 @@ class TestSaveArticle:
                 await tools.save_article("valid-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
-    async def test_error_unexpected_exception(self):
+    async def test_error_unexpected_exception(self) -> None:
         """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
             "app.mcp.tools.save_article_service",
@@ -560,7 +562,7 @@ class TestDeleteArticle:
     """Tests for delete_article tool."""
 
     @pytest.mark.asyncio
-    async def test_success_deletes_article(self):
+    async def test_success_deletes_article(self) -> None:
         """Tool returns None when GitHub call succeeds."""
         with patch(
             "app.mcp.tools.delete_article_service",
@@ -572,7 +574,7 @@ class TestDeleteArticle:
         mock_delete.assert_awaited_once_with("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_401_invalid_token(self):
+    async def test_error_401_invalid_token(self) -> None:
         """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
@@ -583,7 +585,7 @@ class TestDeleteArticle:
                 await tools.delete_article("bad-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_404_article_not_found(self):
+    async def test_error_404_article_not_found(self) -> None:
         """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
@@ -594,7 +596,7 @@ class TestDeleteArticle:
                 await tools.delete_article("valid-token", "missing-slug")
 
     @pytest.mark.asyncio
-    async def test_error_502_github_api_down(self):
+    async def test_error_502_github_api_down(self) -> None:
         """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
@@ -605,7 +607,7 @@ class TestDeleteArticle:
                 await tools.delete_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_500_generic_http_error(self):
+    async def test_error_500_generic_http_error(self) -> None:
         """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
@@ -616,7 +618,7 @@ class TestDeleteArticle:
                 await tools.delete_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
-    async def test_error_unexpected_exception(self):
+    async def test_error_unexpected_exception(self) -> None:
         """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
             "app.mcp.tools.delete_article_service",

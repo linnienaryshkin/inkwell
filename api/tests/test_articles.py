@@ -9,7 +9,7 @@ from app.models.article import Article, ArticleMeta, ArticleVersion
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     return TestClient(app)
 
 
@@ -23,7 +23,7 @@ COOKIE_HEADER = {"Cookie": f"gh_access_token={TOKEN}"}
 
 
 class TestListArticles:
-    def test_returns_metas_for_authenticated_user(self, client: TestClient):
+    def test_returns_metas_for_authenticated_user(self, client: TestClient) -> None:
         metas = [
             ArticleMeta(
                 slug="hello-world",
@@ -49,7 +49,7 @@ class TestListArticles:
         data = response.json()
         assert len(data) == 2
 
-    def test_returns_401_when_github_token_invalid(self, client: TestClient):
+    def test_returns_401_when_github_token_invalid(self, client: TestClient) -> None:
         """
         When GitHub returns 401, the endpoint returns 401 with a specific message.
         """
@@ -68,12 +68,12 @@ class TestListArticles:
         assert response.status_code == 401
         assert "expired or invalid" in response.json()["detail"]
 
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         response = client.get("/articles")
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_502_on_github_http_error(self, client: TestClient):
+    def test_returns_502_on_github_http_error(self, client: TestClient) -> None:
         github_response = httpx.Response(
             503, request=httpx.Request("GET", "https://api.github.com")
         )
@@ -88,7 +88,7 @@ class TestListArticles:
         assert response.status_code == 502
         assert "503" in response.json()["detail"]
 
-    def test_returns_502_on_unexpected_exception(self, client: TestClient):
+    def test_returns_502_on_unexpected_exception(self, client: TestClient) -> None:
         with patch(
             "app.routers.articles.list_article_metas",
             new=AsyncMock(side_effect=RuntimeError("unexpected")),
@@ -104,7 +104,7 @@ class TestListArticles:
 
 
 class TestGetArticle:
-    def test_returns_article_for_authenticated_user(self, client: TestClient):
+    def test_returns_article_for_authenticated_user(self, client: TestClient) -> None:
         article = Article(
             slug="hello-world",
             content="# Hello\n\nContent.",
@@ -129,12 +129,12 @@ class TestGetArticle:
         assert data["content"] == "# Hello\n\nContent."
         assert "intro" in data["meta"]["tags"]
 
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         response = client.get("/articles/hello-world")
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_404_when_github_returns_404(self, client: TestClient):
+    def test_returns_404_when_github_returns_404(self, client: TestClient) -> None:
         github_response = httpx.Response(
             404, request=httpx.Request("GET", "https://api.github.com")
         )
@@ -149,7 +149,7 @@ class TestGetArticle:
         assert response.status_code == 404
         assert response.json()["detail"] == "Article not found"
 
-    def test_returns_502_on_github_http_error(self, client: TestClient):
+    def test_returns_502_on_github_http_error(self, client: TestClient) -> None:
         github_response = httpx.Response(
             500, request=httpx.Request("GET", "https://api.github.com")
         )
@@ -164,7 +164,7 @@ class TestGetArticle:
         assert response.status_code == 502
         assert "500" in response.json()["detail"]
 
-    def test_returns_502_on_malformed_meta(self, client: TestClient):
+    def test_returns_502_on_malformed_meta(self, client: TestClient) -> None:
         with patch(
             "app.routers.articles.gh_get_article",
             new=AsyncMock(side_effect=ValueError("Invalid meta.json")),
@@ -205,7 +205,7 @@ def _github_502_error() -> httpx.HTTPStatusError:
 
 
 class TestCreateArticleEndpoint:
-    def test_creates_article_returns_201(self, client: TestClient):
+    def test_creates_article_returns_201(self, client: TestClient) -> None:
         """
         POST /articles with valid body returns 201 and the full Article shape.
         """
@@ -234,7 +234,7 @@ class TestCreateArticleEndpoint:
         assert "content" in data
         assert "versions" in data
 
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         """
         POST /articles without auth cookie returns 401.
         """
@@ -245,7 +245,7 @@ class TestCreateArticleEndpoint:
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_409_on_duplicate_slug(self, client: TestClient):
+    def test_returns_409_on_duplicate_slug(self, client: TestClient) -> None:
         """
         When GitHub returns 422 (file exists), the endpoint maps it to 409 with slug in detail.
         """
@@ -269,7 +269,7 @@ class TestCreateArticleEndpoint:
         assert response.status_code == 409
         assert slug in response.json()["detail"]
 
-    def test_returns_422_on_invalid_slug(self, client: TestClient):
+    def test_returns_422_on_invalid_slug(self, client: TestClient) -> None:
         """
         Slug with uppercase letters is rejected with 422.
         """
@@ -281,7 +281,7 @@ class TestCreateArticleEndpoint:
         assert response.status_code == 422
         assert "Slug must be lowercase" in response.json()["detail"]
 
-    def test_returns_422_on_empty_title(self, client: TestClient):
+    def test_returns_422_on_empty_title(self, client: TestClient) -> None:
         """
         Empty title string is rejected with 422.
         """
@@ -293,7 +293,7 @@ class TestCreateArticleEndpoint:
         assert response.status_code == 422
         assert "Title must not be empty" in response.json()["detail"]
 
-    def test_returns_422_on_whitespace_title(self, client: TestClient):
+    def test_returns_422_on_whitespace_title(self, client: TestClient) -> None:
         """
         Whitespace-only title is rejected with 422.
         """
@@ -305,7 +305,7 @@ class TestCreateArticleEndpoint:
         assert response.status_code == 422
         assert "Title must not be empty" in response.json()["detail"]
 
-    def test_returns_502_on_github_error(self, client: TestClient):
+    def test_returns_502_on_github_error(self, client: TestClient) -> None:
         """
         Non-422 GitHub error propagates as 502 from the endpoint.
         """
@@ -329,7 +329,7 @@ class TestCreateArticleEndpoint:
 
 
 class TestSaveArticleEndpoint:
-    def test_saves_article_returns_200(self, client: TestClient):
+    def test_saves_article_returns_200(self, client: TestClient) -> None:
         """
         PATCH /articles/{slug} with valid body returns 200 and the full Article shape.
         """
@@ -358,7 +358,7 @@ class TestSaveArticleEndpoint:
         assert "content" in data
         assert "versions" in data
 
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         """
         PATCH /articles/{slug} without auth cookie returns 401.
         """
@@ -369,7 +369,7 @@ class TestSaveArticleEndpoint:
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_404_when_article_not_found(self, client: TestClient):
+    def test_returns_404_when_article_not_found(self, client: TestClient) -> None:
         """
         When GitHub returns 404 (file does not exist), the endpoint maps it to 404.
         """
@@ -392,7 +392,7 @@ class TestSaveArticleEndpoint:
         assert response.status_code == 404
         assert response.json()["detail"] == "Article not found"
 
-    def test_returns_502_on_github_error(self, client: TestClient):
+    def test_returns_502_on_github_error(self, client: TestClient) -> None:
         """
         Non-404 GitHub error propagates as 502 from the endpoint.
         """
@@ -415,7 +415,7 @@ class TestSaveArticleEndpoint:
         assert response.status_code == 502
         assert "500" in response.json()["detail"]
 
-    def test_default_message_when_omitted(self, client: TestClient):
+    def test_default_message_when_omitted(self, client: TestClient) -> None:
         """
         When 'message' is omitted from the body, the router passes 'update <slug>'
         to gh_save_article.
@@ -435,7 +435,7 @@ class TestSaveArticleEndpoint:
         assert response.status_code == 200
         mock_save.assert_awaited_once_with(TOKEN, slug, "T", [], "c", f"update {slug}")
 
-    def test_returns_422_on_invalid_slug(self, client: TestClient):
+    def test_returns_422_on_invalid_slug(self, client: TestClient) -> None:
         """
         Slug with uppercase letters or invalid characters is rejected with 422 before
         the GitHub API is called.
@@ -456,7 +456,7 @@ class TestSaveArticleEndpoint:
 
 
 class TestDeleteArticleEndpoint:
-    def test_deletes_article_returns_204(self, client: TestClient):
+    def test_deletes_article_returns_204(self, client: TestClient) -> None:
         """
         DELETE /articles/{slug} with valid auth returns 204 (no content).
         """
@@ -474,7 +474,7 @@ class TestDeleteArticleEndpoint:
         mock_delete.assert_awaited_once_with(TOKEN, slug)
         assert response.text == ""
 
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         """
         DELETE /articles/{slug} without auth cookie returns 401.
         """
@@ -482,7 +482,7 @@ class TestDeleteArticleEndpoint:
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_404_when_article_not_found(self, client: TestClient):
+    def test_returns_404_when_article_not_found(self, client: TestClient) -> None:
         """
         When GitHub returns 404, the endpoint returns 404.
         """
@@ -504,7 +504,7 @@ class TestDeleteArticleEndpoint:
         assert response.status_code == 404
         assert response.json()["detail"] == "Article not found"
 
-    def test_returns_502_on_github_error(self, client: TestClient):
+    def test_returns_502_on_github_error(self, client: TestClient) -> None:
         """
         Non-404 GitHub error propagates as 502 from the endpoint.
         """
@@ -526,7 +526,7 @@ class TestDeleteArticleEndpoint:
         assert response.status_code == 502
         assert "500" in response.json()["detail"]
 
-    def test_returns_502_on_unexpected_error(self, client: TestClient):
+    def test_returns_502_on_unexpected_error(self, client: TestClient) -> None:
         """
         Unexpected exceptions during delete are caught and return 502.
         """
@@ -542,7 +542,7 @@ class TestDeleteArticleEndpoint:
         assert response.status_code == 502
         assert "Failed to delete article" in response.json()["detail"]
 
-    def test_returns_422_on_invalid_slug(self, client: TestClient):
+    def test_returns_422_on_invalid_slug(self, client: TestClient) -> None:
         """
         Slug with uppercase letters or invalid characters is rejected with 422.
         """
@@ -561,7 +561,7 @@ class TestDeleteArticleEndpoint:
 
 
 class TestCreateArticleEndpointErrorPaths:
-    def test_returns_502_on_unexpected_error(self, client: TestClient):
+    def test_returns_502_on_unexpected_error(self, client: TestClient) -> None:
         """
         Unexpected exceptions during create are caught and return 502.
         """
@@ -580,7 +580,7 @@ class TestCreateArticleEndpointErrorPaths:
 
 
 class TestSaveArticleEndpointErrorPaths:
-    def test_returns_401_when_no_cookie(self, client: TestClient):
+    def test_returns_401_when_no_cookie(self, client: TestClient) -> None:
         """
         PATCH /articles/{slug} without auth cookie returns 401.
         """
@@ -591,7 +591,7 @@ class TestSaveArticleEndpointErrorPaths:
         assert response.status_code == 401
         assert response.json()["detail"] == "Not authenticated"
 
-    def test_returns_404_when_article_not_found(self, client: TestClient):
+    def test_returns_404_when_article_not_found(self, client: TestClient) -> None:
         """
         When GitHub returns 404, the endpoint returns 404.
         """
@@ -614,7 +614,7 @@ class TestSaveArticleEndpointErrorPaths:
         assert response.status_code == 404
         assert response.json()["detail"] == "Article not found"
 
-    def test_returns_502_on_unexpected_error(self, client: TestClient):
+    def test_returns_502_on_unexpected_error(self, client: TestClient) -> None:
         """
         Unexpected exceptions during save are caught and return 502.
         """

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-def test_main_mcp_imports_successfully():
+def test_main_mcp_imports_successfully() -> None:
     """Test that the main_mcp module imports without errors."""
     # Reload the module to ensure it's fresh
     if "app.main_mcp" in sys.modules:
@@ -17,7 +17,7 @@ def test_main_mcp_imports_successfully():
     import app.main_mcp  # noqa: F401
 
 
-def test_sys_path_setup():
+def test_sys_path_setup() -> None:
     """Test that main_mcp sets up sys.path for api directory."""
     # This test verifies that the sys.path manipulation happens
     # by checking that the api directory can be imported after main_mcp loads
@@ -25,7 +25,7 @@ def test_sys_path_setup():
     assert str(api_dir) in sys.path or "app" in sys.modules
 
 
-def test_mcp_prompts_module_loads():
+def test_mcp_prompts_module_loads() -> None:
     """Test that MCP prompts module loads and registers decorators."""
     # The prompts module should be importable and contain decorated functions
     import app.mcp.prompts
@@ -35,7 +35,7 @@ def test_mcp_prompts_module_loads():
     assert callable(app.mcp.prompts.article_update_report)
 
 
-def test_article_update_report_returns_messages():
+def test_article_update_report_returns_messages() -> None:
     """Test that article_update_report prompt returns properly formatted messages."""
     from mcp.server.fastmcp.prompts import base
 

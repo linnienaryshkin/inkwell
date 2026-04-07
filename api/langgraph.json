@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "inkwell_article_agent": "lab.inkwell_article_agent:graph"
+  },
+  "env": "./.env"
+}

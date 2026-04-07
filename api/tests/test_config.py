@@ -8,7 +8,7 @@ import pytest
 from app.shared.config import get_cors_origins
 
 
-def test_get_cors_origins_strips_paths():
+def test_get_cors_origins_strips_paths() -> None:
     """get_cors_origins extracts scheme + netloc from full URLs."""
     with patch("app.shared.config.config") as mock_config:
         mock_config.allowed_redirect_urls = [
@@ -24,7 +24,7 @@ def test_get_cors_origins_strips_paths():
         assert len(origins) == 3
 
 
-def test_get_cors_origins_deduplicates():
+def test_get_cors_origins_deduplicates() -> None:
     """get_cors_origins removes duplicate origins."""
     with patch("app.shared.config.config") as mock_config:
         mock_config.allowed_redirect_urls = [
@@ -39,7 +39,7 @@ def test_get_cors_origins_deduplicates():
         assert "https://example.com" in origins
 
 
-def test_config_missing_env_raises_runtime_error():
+def test_config_missing_env_raises_runtime_error() -> None:
     """Config._load raises RuntimeError when required env var is missing."""
     with patch.dict(os.environ, {}, clear=True):
         # Clear required env vars
@@ -53,7 +53,7 @@ def test_config_missing_env_raises_runtime_error():
         assert "Missing required environment variable" in str(exc_info.value)
 
 
-def test_setup_mcp_logging_does_not_error():
+def test_setup_mcp_logging_does_not_error() -> None:
     """setup_mcp_logging is callable and doesn't raise errors."""
     from app.shared.config import setup_mcp_logging
 

@@ -94,7 +94,7 @@ When given a GitHub issue URL, you will:
    - If a new shared type is introduced (e.g., change to `Article`), type definition must be sequential first, then API and UI can parallelize
    - Tests should run after the implementation they cover exists
    - git-agent is always the final sequential step
-   - Reference agents/skills by their exact names: `dev-agent`, `git-agent`, `qa-agent`, `architect skill`, `captain skill`, `ui-engineer rule`, `api-engineer rule`, `devops rule`, `code-review skill`, `documentarian-agent`
+   - Reference agents/skills by their exact names: `dev-agent`, `git-agent`, `qa-agent`, `architect skill`, `dev-supervisor skill`, `ui-engineer rule`, `api-engineer rule`, `devops rule`, `code-review skill`, `documentarian-agent`
 
 5. **Decide Whether QA Is Required**
 

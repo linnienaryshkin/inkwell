@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import articles, auth
+from app.routers import articles, auth, health
 from app.shared.config import get_cors_origins
 from app.shared.middleware import setup_error_handlers
 
@@ -20,5 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
 app.include_router(articles.router, prefix="/articles", tags=["articles"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])

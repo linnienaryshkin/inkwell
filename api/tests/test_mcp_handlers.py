@@ -1,12 +1,12 @@
 """
-Tests for app/mcp/handlers.py
+Tests for app/mcp/tools.py
 
-MCP handlers wrap calls to github_articles functions and translate GitHub
+MCP tools wrap calls to github_articles functions and translate GitHub
 HTTP errors into ValueError exceptions with human-readable messages.
 
 Strategy: patch each github_articles function with an AsyncMock and test:
-  1. Success paths (handler calls function, returns result)
-  2. Error paths (handler catches HTTPStatusError, raises ValueError with message)
+  1. Success paths (tool calls function, returns result)
+  2. Error paths (tool catches HTTPStatusError, raises ValueError with message)
   3. Edge cases (empty lists, None values, etc.)
 """
 
@@ -15,13 +15,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from app.mcp.handlers import (
-    handle_create_article,
-    handle_delete_article,
-    handle_get_article,
-    handle_list_articles,
-    handle_save_article,
-)
+from app.mcp import tools
 from app.models.article import Article, ArticleMeta, ArticleVersion
 
 # ---------------------------------------------------------------------------
@@ -99,18 +93,18 @@ def _make_github_error(status_code: int) -> httpx.HTTPStatusError:
 # ---------------------------------------------------------------------------
 
 
-class TestHandleListArticles:
-    """Tests for handle_list_articles handler."""
+class TestListArticles:
+    """Tests for list_articles tool."""
 
     @pytest.mark.asyncio
     async def test_success_returns_article_list(self, sample_article_meta):
-        """Handler returns article list when GitHub call succeeds."""
+        """Tool returns article list when GitHub call succeeds."""
         metas = [sample_article_meta]
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(return_value=metas),
         ) as mock_list:
-            result = await handle_list_articles("valid-token")
+            result = await tools.list_articles("valid-token")
 
         assert len(result) == 1
         assert result[0].slug == "test-article"
@@ -119,12 +113,12 @@ class TestHandleListArticles:
 
     @pytest.mark.asyncio
     async def test_success_with_empty_list(self):
-        """Handler returns empty list when no articles exist."""
+        """Tool returns empty list when no articles exist."""
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(return_value=[]),
         ) as mock_list:
-            result = await handle_list_articles("valid-token")
+            result = await tools.list_articles("valid-token")
 
         assert result == []
         mock_list.assert_awaited_once_with("valid-token")
@@ -133,13 +127,13 @@ class TestHandleListArticles:
     async def test_success_with_multiple_articles(
         self, sample_article_meta, sample_article_meta_no_tags
     ):
-        """Handler returns multiple articles."""
+        """Tool returns multiple articles."""
         metas = [sample_article_meta, sample_article_meta_no_tags]
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(return_value=metas),
         ):
-            result = await handle_list_articles("valid-token")
+            result = await tools.list_articles("valid-token")
 
         assert len(result) == 2
         slugs = {m.slug for m in result}
@@ -148,64 +142,64 @@ class TestHandleListArticles:
 
     @pytest.mark.asyncio
     async def test_error_401_invalid_token(self):
-        """Handler raises ValueError with 'Invalid GitHub token' on 401."""
+        """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Invalid GitHub token"):
-                await handle_list_articles("bad-token")
+                await tools.list_articles("bad-token")
 
     @pytest.mark.asyncio
     async def test_error_502_github_api_down(self):
-        """Handler raises ValueError with 'GitHub API error: 502' on 502."""
+        """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 502"):
-                await handle_list_articles("valid-token")
+                await tools.list_articles("valid-token")
 
     @pytest.mark.asyncio
     async def test_error_503_generic_http_error(self):
-        """Handler translates non-401/502 HTTP errors to generic message."""
+        """Tool translates non-401/502 HTTP errors to generic message."""
         error = _make_github_error(503)
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 503"):
-                await handle_list_articles("valid-token")
+                await tools.list_articles("valid-token")
 
     @pytest.mark.asyncio
     async def test_error_unexpected_exception(self):
-        """Handler catches unexpected exceptions and wraps in ValueError."""
+        """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
-            "app.mcp.handlers.list_article_metas",
+            "app.mcp.tools.list_article_metas",
             new=AsyncMock(side_effect=RuntimeError("Network timeout")),
         ):
             with pytest.raises(ValueError, match="Failed to fetch articles"):
-                await handle_list_articles("valid-token")
+                await tools.list_articles("valid-token")
 
 
 # ---------------------------------------------------------------------------
-# handle_get_article
+# get_article
 # ---------------------------------------------------------------------------
 
 
-class TestHandleGetArticle:
-    """Tests for handle_get_article handler."""
+class TestGetArticle:
+    """Tests for get_article tool."""
 
     @pytest.mark.asyncio
     async def test_success_returns_article(self, sample_article):
-        """Handler returns full article when GitHub call succeeds."""
+        """Tool returns full article when GitHub call succeeds."""
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(return_value=sample_article),
         ) as mock_get:
-            result = await handle_get_article("valid-token", "test-article")
+            result = await tools.get_article("valid-token", "test-article")
 
         assert result.slug == "test-article"
         assert result.meta.title == "Test Article"
@@ -215,86 +209,86 @@ class TestHandleGetArticle:
 
     @pytest.mark.asyncio
     async def test_success_with_no_versions(self, sample_article_no_versions):
-        """Handler returns article with empty versions list."""
+        """Tool returns article with empty versions list."""
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(return_value=sample_article_no_versions),
         ):
-            result = await handle_get_article("valid-token", "test-article")
+            result = await tools.get_article("valid-token", "test-article")
 
         assert result.versions == []
 
     @pytest.mark.asyncio
     async def test_error_401_invalid_token(self):
-        """Handler raises ValueError with 'Invalid GitHub token' on 401."""
+        """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Invalid GitHub token"):
-                await handle_get_article("bad-token", "test-article")
+                await tools.get_article("bad-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_404_article_not_found(self):
-        """Handler raises ValueError with 'Article not found' on 404."""
+        """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Article not found"):
-                await handle_get_article("valid-token", "missing-slug")
+                await tools.get_article("valid-token", "missing-slug")
 
     @pytest.mark.asyncio
     async def test_error_502_github_api_down(self):
-        """Handler raises ValueError with 'GitHub API error: 502' on 502."""
+        """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 502"):
-                await handle_get_article("valid-token", "test-article")
+                await tools.get_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_500_generic_http_error(self):
-        """Handler translates non-401/404/502 HTTP errors to generic message."""
+        """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
-            "app.mcp.handlers.get_article",
+            "app.mcp.tools.get_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 500"):
-                await handle_get_article("valid-token", "test-article")
+                await tools.get_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_unexpected_exception(self):
-        """Handler catches unexpected exceptions and wraps in ValueError."""
+        """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
-            "app.mcp.handlers.get_article",
-            new=AsyncMock(side_effect=ValueError("Malformed meta.json")),
+            "app.mcp.tools.get_article_service",
+            new=AsyncMock(side_effect=RuntimeError("Malformed meta.json")),
         ):
             with pytest.raises(ValueError, match="Failed to fetch article"):
-                await handle_get_article("valid-token", "test-article")
+                await tools.get_article("valid-token", "test-article")
 
 
 # ---------------------------------------------------------------------------
-# handle_create_article
+# create_article
 # ---------------------------------------------------------------------------
 
 
-class TestHandleCreateArticle:
-    """Tests for handle_create_article handler."""
+class TestCreateArticle:
+    """Tests for create_article tool."""
 
     @pytest.mark.asyncio
     async def test_success_creates_article(self, sample_article):
-        """Handler returns created article when GitHub call succeeds."""
+        """Tool returns created article when GitHub call succeeds."""
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article",
             new=AsyncMock(return_value=sample_article),
         ) as mock_create:
-            result = await handle_create_article(
+            result = await tools.create_article(
                 "valid-token",
                 "Test Article",
                 "test-article",
@@ -315,7 +309,7 @@ class TestHandleCreateArticle:
 
     @pytest.mark.asyncio
     async def test_success_with_empty_tags(self, sample_article_meta_no_tags):
-        """Handler creates article with empty tags list."""
+        """Tool creates article with empty tags list."""
         article = Article(
             slug="no-tags",
             content="# Article\n\nContent.",
@@ -323,10 +317,10 @@ class TestHandleCreateArticle:
             versions=[],
         )
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article",
             new=AsyncMock(return_value=article),
         ):
-            result = await handle_create_article(
+            result = await tools.create_article(
                 "valid-token",
                 "Article Without Tags",
                 "no-tags",
@@ -338,7 +332,7 @@ class TestHandleCreateArticle:
 
     @pytest.mark.asyncio
     async def test_success_with_empty_content(self, sample_article_meta):
-        """Handler creates article with empty initial content."""
+        """Tool creates article with empty initial content."""
         article = Article(
             slug="empty-content",
             content="",
@@ -346,10 +340,10 @@ class TestHandleCreateArticle:
             versions=[],
         )
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article",
             new=AsyncMock(return_value=article),
         ):
-            result = await handle_create_article(
+            result = await tools.create_article(
                 "valid-token",
                 "Test Article",
                 "test-article",
@@ -361,75 +355,75 @@ class TestHandleCreateArticle:
 
     @pytest.mark.asyncio
     async def test_error_401_invalid_token(self):
-        """Handler raises ValueError with 'Invalid GitHub token' on 401."""
+        """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Invalid GitHub token"):
-                await handle_create_article("bad-token", "Title", "slug", [], "content")
+                await tools.create_article("bad-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
     async def test_error_409_slug_conflict(self):
-        """Handler raises ValueError with slug conflict message on 409."""
+        """Tool raises ValueError with slug conflict message on 409."""
         error = _make_github_error(409)
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Article with slug 'existing' already exists"):
-                await handle_create_article("valid-token", "Title", "existing", [], "content")
+                await tools.create_article("valid-token", "Title", "existing", [], "content")
 
     @pytest.mark.asyncio
     async def test_error_502_github_api_down(self):
-        """Handler raises ValueError with 'GitHub API error: 502' on 502."""
+        """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 502"):
-                await handle_create_article("valid-token", "Title", "slug", [], "content")
+                await tools.create_article("valid-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
     async def test_error_500_generic_http_error(self):
-        """Handler translates non-401/409/502 HTTP errors to generic message."""
+        """Tool translates non-401/409/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 500"):
-                await handle_create_article("valid-token", "Title", "slug", [], "content")
+                await tools.create_article("valid-token", "Title", "slug", [], "content")
 
     @pytest.mark.asyncio
     async def test_error_unexpected_exception(self):
-        """Handler catches unexpected exceptions and wraps in ValueError."""
+        """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
-            "app.mcp.handlers.create_article",
+            "app.mcp.tools.create_article_service",
             new=AsyncMock(side_effect=RuntimeError("Invalid JSON")),
         ):
             with pytest.raises(ValueError, match="Failed to create article"):
-                await handle_create_article("valid-token", "Title", "slug", [], "content")
+                await tools.create_article("valid-token", "Title", "slug", [], "content")
 
 
 # ---------------------------------------------------------------------------
-# handle_save_article
+# save_article
 # ---------------------------------------------------------------------------
 
 
-class TestHandleSaveArticle:
-    """Tests for handle_save_article handler."""
+class TestSaveArticle:
+    """Tests for save_article tool."""
 
     @pytest.mark.asyncio
     async def test_success_saves_article(self, sample_article):
-        """Handler returns saved article when GitHub call succeeds."""
+        """Tool returns saved article when GitHub call succeeds."""
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article",
             new=AsyncMock(return_value=sample_article),
         ) as mock_save:
-            result = await handle_save_article(
+            result = await tools.save_article(
                 "valid-token",
                 "test-article",
                 "Updated Title",
@@ -451,12 +445,12 @@ class TestHandleSaveArticle:
 
     @pytest.mark.asyncio
     async def test_success_with_none_message_generates_default(self, sample_article):
-        """Handler generates default message when message is None."""
+        """Tool generates default message when message is None."""
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article_service",
             new=AsyncMock(return_value=sample_article),
         ) as mock_save:
-            result = await handle_save_article(
+            result = await tools.save_article(
                 "valid-token",
                 "test-article",
                 "Updated Title",
@@ -478,7 +472,7 @@ class TestHandleSaveArticle:
 
     @pytest.mark.asyncio
     async def test_success_with_empty_tags(self, sample_article_meta_no_tags):
-        """Handler saves article with empty tags list."""
+        """Tool saves article with empty tags list."""
         article = Article(
             slug="test-article",
             content="# Content",
@@ -486,10 +480,10 @@ class TestHandleSaveArticle:
             versions=[],
         )
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article",
             new=AsyncMock(return_value=article),
         ):
-            result = await handle_save_article(
+            result = await tools.save_article(
                 "valid-token",
                 "test-article",
                 "Title",
@@ -502,131 +496,131 @@ class TestHandleSaveArticle:
 
     @pytest.mark.asyncio
     async def test_error_401_invalid_token(self):
-        """Handler raises ValueError with 'Invalid GitHub token' on 401."""
+        """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Invalid GitHub token"):
-                await handle_save_article("bad-token", "slug", "Title", [], "content", "msg")
+                await tools.save_article("bad-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
     async def test_error_404_article_not_found(self):
-        """Handler raises ValueError with 'Article not found' on 404."""
+        """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Article not found"):
-                await handle_save_article(
+                await tools.save_article(
                     "valid-token", "missing-slug", "Title", [], "content", "msg"
                 )
 
     @pytest.mark.asyncio
     async def test_error_502_github_api_down(self):
-        """Handler raises ValueError with 'GitHub API error: 502' on 502."""
+        """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 502"):
-                await handle_save_article("valid-token", "slug", "Title", [], "content", "msg")
+                await tools.save_article("valid-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
     async def test_error_500_generic_http_error(self):
-        """Handler translates non-401/404/502 HTTP errors to generic message."""
+        """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
-            "app.mcp.handlers.save_article",
+            "app.mcp.tools.save_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 500"):
-                await handle_save_article("valid-token", "slug", "Title", [], "content", "msg")
+                await tools.save_article("valid-token", "slug", "Title", [], "content", "msg")
 
     @pytest.mark.asyncio
     async def test_error_unexpected_exception(self):
-        """Handler catches unexpected exceptions and wraps in ValueError."""
+        """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
-            "app.mcp.handlers.save_article",
-            new=AsyncMock(side_effect=ValueError("Malformed data")),
+            "app.mcp.tools.save_article_service",
+            new=AsyncMock(side_effect=RuntimeError("Malformed data")),
         ):
             with pytest.raises(ValueError, match="Failed to save article"):
-                await handle_save_article("valid-token", "slug", "Title", [], "content", "msg")
+                await tools.save_article("valid-token", "slug", "Title", [], "content", "msg")
 
 
 # ---------------------------------------------------------------------------
-# handle_delete_article
+# delete_article
 # ---------------------------------------------------------------------------
 
 
-class TestHandleDeleteArticle:
-    """Tests for handle_delete_article handler."""
+class TestDeleteArticle:
+    """Tests for delete_article tool."""
 
     @pytest.mark.asyncio
     async def test_success_deletes_article(self):
-        """Handler returns None when GitHub call succeeds."""
+        """Tool returns None when GitHub call succeeds."""
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(return_value=None),
         ) as mock_delete:
-            result = await handle_delete_article("valid-token", "test-article")
+            result = await tools.delete_article("valid-token", "test-article")
 
         assert result is None
         mock_delete.assert_awaited_once_with("valid-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_401_invalid_token(self):
-        """Handler raises ValueError with 'Invalid GitHub token' on 401."""
+        """Tool raises ValueError with 'Invalid GitHub token' on 401."""
         error = _make_github_error(401)
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Invalid GitHub token"):
-                await handle_delete_article("bad-token", "test-article")
+                await tools.delete_article("bad-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_404_article_not_found(self):
-        """Handler raises ValueError with 'Article not found' on 404."""
+        """Tool raises ValueError with 'Article not found' on 404."""
         error = _make_github_error(404)
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="Article not found"):
-                await handle_delete_article("valid-token", "missing-slug")
+                await tools.delete_article("valid-token", "missing-slug")
 
     @pytest.mark.asyncio
     async def test_error_502_github_api_down(self):
-        """Handler raises ValueError with 'GitHub API error: 502' on 502."""
+        """Tool raises ValueError with 'GitHub API error: 502' on 502."""
         error = _make_github_error(502)
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 502"):
-                await handle_delete_article("valid-token", "test-article")
+                await tools.delete_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_500_generic_http_error(self):
-        """Handler translates non-401/404/502 HTTP errors to generic message."""
+        """Tool translates non-401/404/502 HTTP errors to generic message."""
         error = _make_github_error(500)
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(side_effect=error),
         ):
             with pytest.raises(ValueError, match="GitHub API error: 500"):
-                await handle_delete_article("valid-token", "test-article")
+                await tools.delete_article("valid-token", "test-article")
 
     @pytest.mark.asyncio
     async def test_error_unexpected_exception(self):
-        """Handler catches unexpected exceptions and wraps in ValueError."""
+        """Tool catches unexpected exceptions and wraps in ValueError."""
         with patch(
-            "app.mcp.handlers.delete_article",
+            "app.mcp.tools.delete_article_service",
             new=AsyncMock(side_effect=RuntimeError("Network error")),
         ):
             with pytest.raises(ValueError, match="Failed to delete article"):
-                await handle_delete_article("valid-token", "test-article")
+                await tools.delete_article("valid-token", "test-article")

@@ -68,7 +68,9 @@ Then run the app to ensure all works:
 task dev
 ```
 
-Visit `http://localhost:8000/docs` to see the API documentation and test the endpoints.
+UI runs on <http://localhost:5173/inkwell/> and API on <http://localhost:8000> by default.
+
+API docs are available at <http://localhost:8000/docs>, and MCP Inspector at <http://localhost:6274>.
 
 ### AI-Native SDLC
 

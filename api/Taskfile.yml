@@ -22,6 +22,11 @@ tasks:
     cmds:
       - uv run --env-file .env.example pytest tests/ -v
 
+  test-coverage:
+    desc: Run pytest tests with 90% coverage threshold
+    cmds:
+      - uv run --env-file .env.example pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=90
+
   lint:
     desc: Lint API code with ruff (auto-fix)
     cmds:
@@ -52,7 +57,7 @@ tasks:
     cmds:
       - task: lint-check
       - task: format-check
-      - task: test
+      - task: test-coverage
       - task: security
 
   lab:

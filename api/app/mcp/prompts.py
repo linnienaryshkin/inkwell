@@ -2,6 +2,18 @@
 
 These prompts are registered with the FastMCP server and provide
 guided interactions for complex tasks like generating article update reports.
+
+**User-controlled: The user decides when to use these.**
+Triggered via slash commands, button clicks, or menu options in the client.
+
+**Prompts provided:**
+- article-update-report: Generate comprehensive report about latest article updates
+
+**Use cases:**
+- Workflows to run based on user input (like a slash command)
+- Guided interactions for complex analytical tasks
+- Structured templates for specific requests
+- Multi-step procedures leveraging tools and resources
 """
 
 from mcp.server.fastmcp.prompts import base

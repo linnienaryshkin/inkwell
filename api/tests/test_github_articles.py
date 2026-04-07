@@ -15,7 +15,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.github_articles import create_article, get_article, list_article_metas, save_article
+from app.github_articles import (
+    create_article,
+    delete_article,
+    get_article,
+    list_article_metas,
+    save_article,
+)
 from app.models.article import Article, ArticleMeta, ArticleVersion
 
 # ---------------------------------------------------------------------------
@@ -862,3 +868,187 @@ class TestSaveArticle:
                 await save_article(TOKEN, slug, title, tags, content, message)
 
         assert exc_info.value.response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# DELETE /articles/{slug} — delete_article
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteArticle:
+    @pytest.mark.asyncio
+    async def test_success_deletes_both_files(self):
+        """
+        Successful delete calls GitHub twice (once per file) and returns None.
+        """
+        slug = "article-to-delete"
+
+        delete_url_meta = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
+        delete_url_content = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/content.md"
+
+        # First get SHA values for both files
+        sha_meta = "abc123"
+        sha_content = "def456"
+
+        get_meta_resp = httpx.Response(
+            200,
+            json={"sha": sha_meta},
+            request=httpx.Request("GET", delete_url_meta),
+        )
+        get_content_resp = httpx.Response(
+            200,
+            json={"sha": sha_content},
+            request=httpx.Request("GET", delete_url_content),
+        )
+        delete_meta_resp = httpx.Response(
+            200, json={}, request=httpx.Request("DELETE", delete_url_meta)
+        )
+        delete_content_resp = httpx.Response(
+            200, json={}, request=httpx.Request("DELETE", delete_url_content)
+        )
+
+        # Mock AsyncClient
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        # Setup .get() to return appropriate responses
+        async def get_side_effect(url, **kwargs):
+            if "meta.json" in url:
+                return get_meta_resp
+            elif "content.md" in url:
+                return get_content_resp
+            raise ValueError(f"Unexpected GET URL: {url}")
+
+        # Setup .request() for DELETE calls
+        async def request_side_effect(method, url, **kwargs):
+            if method == "DELETE":
+                if "meta.json" in url:
+                    return delete_meta_resp
+                elif "content.md" in url:
+                    return delete_content_resp
+            raise ValueError(f"Unexpected request: {method} {url}")
+
+        mock_client.get = AsyncMock(side_effect=get_side_effect)
+        mock_client.request = AsyncMock(side_effect=request_side_effect)
+
+        with patch("app.github_articles.httpx.AsyncClient", return_value=mock_client):
+            result = await delete_article(TOKEN, slug)
+
+        assert result is None
+        # Verify get was called twice (for both SHAs)
+        assert mock_client.get.call_count == 2
+        # Verify request was called twice (for both deletes)
+        assert mock_client.request.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_meta_json_404_raises_http_status_error(self):
+        """
+        If GET meta.json returns 404, HTTPStatusError propagates.
+        """
+        slug = "missing-article"
+
+        meta_url = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
+        error_resp = _error_response(404, "GET", meta_url)
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.get = AsyncMock(
+            side_effect=httpx.HTTPStatusError(
+                "not found", request=error_resp.request, response=error_resp
+            )
+        )
+
+        with patch("app.github_articles.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await delete_article(TOKEN, slug)
+
+        assert exc_info.value.response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_content_md_404_raises_http_status_error(self):
+        """
+        If GET content.md returns 404 (after getting meta.json), HTTPStatusError propagates.
+        """
+        slug = "missing-content"
+
+        meta_url = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
+        content_url = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/content.md"
+
+        get_meta_resp = httpx.Response(
+            200,
+            json={"sha": "abc123"},
+            request=httpx.Request("GET", meta_url),
+        )
+        error_resp = _error_response(404, "GET", content_url)
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        async def get_side_effect(url, **kwargs):
+            if "meta.json" in url:
+                return get_meta_resp
+            elif "content.md" in url:
+                raise httpx.HTTPStatusError(
+                    "not found", request=error_resp.request, response=error_resp
+                )
+            raise ValueError(f"Unexpected GET URL: {url}")
+
+        mock_client.get = AsyncMock(side_effect=get_side_effect)
+
+        with patch("app.github_articles.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await delete_article(TOKEN, slug)
+
+        assert exc_info.value.response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_meta_json_failure_raises_http_status_error(self):
+        """
+        If DELETE meta.json returns 500, HTTPStatusError propagates.
+        """
+        slug = "delete-meta-error"
+
+        meta_url = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/meta.json"
+        content_url = f"{GITHUB_API_BASE}/repos/{REPO}/contents/articles/{slug}/content.md"
+
+        get_meta_resp = httpx.Response(
+            200,
+            json={"sha": "abc123"},
+            request=httpx.Request("GET", meta_url),
+        )
+        get_content_resp = httpx.Response(
+            200,
+            json={"sha": "def456"},
+            request=httpx.Request("GET", content_url),
+        )
+        delete_error = _error_response(500, "DELETE", meta_url)
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        async def get_side_effect(url, **kwargs):
+            if "meta.json" in url:
+                return get_meta_resp
+            elif "content.md" in url:
+                return get_content_resp
+            raise ValueError(f"Unexpected GET URL: {url}")
+
+        async def request_side_effect(method, url, **kwargs):
+            if method == "DELETE" and "meta.json" in url:
+                raise httpx.HTTPStatusError(
+                    "server error", request=delete_error.request, response=delete_error
+                )
+            raise ValueError(f"Unexpected request: {method} {url}")
+
+        mock_client.get = AsyncMock(side_effect=get_side_effect)
+        mock_client.request = AsyncMock(side_effect=request_side_effect)
+
+        with patch("app.github_articles.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await delete_article(TOKEN, slug)
+
+        assert exc_info.value.response.status_code == 500

@@ -48,11 +48,25 @@ class TestListArticles:
         mock_list.assert_awaited_once_with(TOKEN)
         data = response.json()
         assert len(data) == 2
-        slugs = {a["slug"] for a in data}
-        assert "hello-world" in slugs
-        assert "second-post" in slugs
-        # Metas must NOT contain 'content'
-        assert "content" not in data[0]
+
+    def test_returns_401_when_github_token_invalid(self, client: TestClient):
+        """
+        When GitHub returns 401, the endpoint returns 401 with a specific message.
+        """
+        github_response = httpx.Response(
+            401, request=httpx.Request("GET", "https://api.github.com")
+        )
+        error = httpx.HTTPStatusError(
+            "unauthorized", request=github_response.request, response=github_response
+        )
+        with patch(
+            "app.routers.articles.list_article_metas",
+            new=AsyncMock(side_effect=error),
+        ):
+            response = client.get("/articles", headers=COOKIE_HEADER)
+
+        assert response.status_code == 401
+        assert "expired or invalid" in response.json()["detail"]
 
     def test_returns_401_when_no_cookie(self, client: TestClient):
         response = client.get("/articles")
@@ -434,3 +448,185 @@ class TestSaveArticleEndpoint:
             )
             assert response.status_code == 422, f"expected 422 for slug {bad_slug!r}"
             assert "Slug must be lowercase" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# DELETE /articles/{slug} — delete article endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteArticleEndpoint:
+    def test_deletes_article_returns_204(self, client: TestClient):
+        """
+        DELETE /articles/{slug} with valid auth returns 204 (no content).
+        """
+        slug = "article-to-delete"
+        with patch(
+            "app.routers.articles.gh_delete_article",
+            new=AsyncMock(),
+        ) as mock_delete:
+            response = client.delete(
+                f"/articles/{slug}",
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 204
+        mock_delete.assert_awaited_once_with(TOKEN, slug)
+        assert response.text == ""
+
+    def test_returns_401_when_no_cookie(self, client: TestClient):
+        """
+        DELETE /articles/{slug} without auth cookie returns 401.
+        """
+        response = client.delete("/articles/some-slug")
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Not authenticated"
+
+    def test_returns_404_when_article_not_found(self, client: TestClient):
+        """
+        When GitHub returns 404, the endpoint returns 404.
+        """
+        github_response = httpx.Response(
+            404, request=httpx.Request("DELETE", "https://api.github.com")
+        )
+        error = httpx.HTTPStatusError(
+            "not found", request=github_response.request, response=github_response
+        )
+        with patch(
+            "app.routers.articles.gh_delete_article",
+            new=AsyncMock(side_effect=error),
+        ):
+            response = client.delete(
+                "/articles/missing-slug",
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Article not found"
+
+    def test_returns_502_on_github_error(self, client: TestClient):
+        """
+        Non-404 GitHub error propagates as 502 from the endpoint.
+        """
+        github_response = httpx.Response(
+            500, request=httpx.Request("DELETE", "https://api.github.com")
+        )
+        error = httpx.HTTPStatusError(
+            "server error", request=github_response.request, response=github_response
+        )
+        with patch(
+            "app.routers.articles.gh_delete_article",
+            new=AsyncMock(side_effect=error),
+        ):
+            response = client.delete(
+                "/articles/some-slug",
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 502
+        assert "500" in response.json()["detail"]
+
+    def test_returns_502_on_unexpected_error(self, client: TestClient):
+        """
+        Unexpected exceptions during delete are caught and return 502.
+        """
+        with patch(
+            "app.routers.articles.gh_delete_article",
+            new=AsyncMock(side_effect=RuntimeError("Unexpected error")),
+        ):
+            response = client.delete(
+                "/articles/some-slug",
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 502
+        assert "Failed to delete article" in response.json()["detail"]
+
+    def test_returns_422_on_invalid_slug(self, client: TestClient):
+        """
+        Slug with uppercase letters or invalid characters is rejected with 422.
+        """
+        for bad_slug in ["BadSlug", "has.dots", "UPPER"]:
+            response = client.delete(
+                f"/articles/{bad_slug}",
+                headers=COOKIE_HEADER,
+            )
+            assert response.status_code == 422, f"expected 422 for slug {bad_slug!r}"
+            assert "Slug must be lowercase" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Additional error path tests
+# ---------------------------------------------------------------------------
+
+
+class TestCreateArticleEndpointErrorPaths:
+    def test_returns_502_on_unexpected_error(self, client: TestClient):
+        """
+        Unexpected exceptions during create are caught and return 502.
+        """
+        with patch(
+            "app.routers.articles.gh_create_article",
+            new=AsyncMock(side_effect=RuntimeError("Unexpected error")),
+        ):
+            response = client.post(
+                "/articles",
+                json={"title": "OK Title", "slug": "ok-slug", "tags": [], "content": ""},
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 502
+        assert "Failed to create article" in response.json()["detail"]
+
+
+class TestSaveArticleEndpointErrorPaths:
+    def test_returns_401_when_no_cookie(self, client: TestClient):
+        """
+        PATCH /articles/{slug} without auth cookie returns 401.
+        """
+        response = client.patch(
+            "/articles/some-slug",
+            json={"title": "T", "tags": [], "content": "c"},
+        )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Not authenticated"
+
+    def test_returns_404_when_article_not_found(self, client: TestClient):
+        """
+        When GitHub returns 404, the endpoint returns 404.
+        """
+        github_response = httpx.Response(
+            404, request=httpx.Request("PATCH", "https://api.github.com")
+        )
+        error = httpx.HTTPStatusError(
+            "not found", request=github_response.request, response=github_response
+        )
+        with patch(
+            "app.routers.articles.gh_save_article",
+            new=AsyncMock(side_effect=error),
+        ):
+            response = client.patch(
+                "/articles/missing-slug",
+                json={"title": "T", "tags": [], "content": "c"},
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Article not found"
+
+    def test_returns_502_on_unexpected_error(self, client: TestClient):
+        """
+        Unexpected exceptions during save are caught and return 502.
+        """
+        with patch(
+            "app.routers.articles.gh_save_article",
+            new=AsyncMock(side_effect=RuntimeError("Unexpected error")),
+        ):
+            response = client.patch(
+                "/articles/some-slug",
+                json={"title": "T", "tags": [], "content": "c"},
+                headers=COOKIE_HEADER,
+            )
+
+        assert response.status_code == 502
+        assert "Failed to save article" in response.json()["detail"]

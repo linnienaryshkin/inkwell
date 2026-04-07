@@ -2,6 +2,21 @@
 
 These resources are registered with the FastMCP server and provide
 access to article schema definitions and metadata information.
+
+**App-controlled: Our app decides when to call these.**
+Results are used primarily by our app to understand the API contract.
+
+**Resources provided:**
+- inkwell://article-schemas: List all available schema definitions
+- inkwell://article-schemas/{schema_name}: Get a specific schema
+- inkwell://article-statuses: List valid article status values
+- inkwell://article-constants: Provide field metadata and validation rules
+
+**Use cases:**
+- Getting data into our app (schema inspection)
+- Adding context to messages (API contract documentation)
+- Dynamic UI generation based on schema constraints
+- Validation rule enforcement in frontend
 """
 
 from app.mcp.server import mcp

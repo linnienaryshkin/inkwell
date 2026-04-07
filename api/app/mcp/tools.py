@@ -2,6 +2,22 @@
 
 These tools are registered with the FastMCP server and handle article
 management operations (list, get, create, save, delete).
+
+**Model-controlled: Claude decides when to call these.**
+Results are used by Claude for its reasoning and responses.
+
+**Tools provided:**
+- list_articles: Fetch all articles with metadata
+- get_article: Retrieve a specific article with full content and version history
+- create_article: Create a new article with title, slug, tags, and content
+- save_article: Update an existing article (full save)
+- delete_article: Remove an article
+
+**Use cases:**
+- Article CRUD operations
+- Analyzing article content
+- Managing article metadata
+- Accessing version history and commit information
 """
 
 import httpx

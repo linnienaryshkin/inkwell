@@ -153,7 +153,7 @@ jobs:
         run: task format-check
 
       - name: Test
-        run: task test
+        run: task test-coverage
 
       - name: Security audit
         run: task security

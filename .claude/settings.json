@@ -48,6 +48,7 @@
   "alwaysThinkingEnabled": false,
   "effortLevel": "low",
   "autoMemoryEnabled": false,
+  "plansDirectory": "./.claude/plans",
   "statusLine": {
     "type": "command",
     "command": "sh \"$(git rev-parse --show-toplevel)/.claude/statusline-command.sh\""

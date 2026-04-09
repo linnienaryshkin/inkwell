@@ -3,6 +3,7 @@ description: GitHub CI/CD workflows, branch protection, deployment environments,
 paths:
   - ".github/**"
   - ".husky/**"
+  - "scripts/git-lint.sh"
   - "Taskfile.yml"
   - "ui/Taskfile.yml"
   - "api/Taskfile.yml"
@@ -13,8 +14,9 @@ paths:
 This rule enforces synchronization between:
 1. **Workflow definitions** (`.github/workflows/*.yml`) — CI/CD trigger logic
 2. **Task definitions** (`ui/Taskfile.yml`, `api/Taskfile.yml`) — quality gate steps
-3. **Pre-commit hooks** (`.husky/pre-commit`) — local validation
-4. **GitHub settings** (branch protection, environments, secrets)
+3. **Pre-commit hooks** (`.husky/pre-commit`, `.husky/commit-msg`) — local validation
+4. **Git lint validator** (`scripts/git-lint.sh`) — commit message and branch name validation
+5. **GitHub settings** (branch protection, environments, secrets)
 
 **Source of truth:** Always edit the relevant Taskfile first, then update the workflow to call the task.
 
@@ -136,13 +138,106 @@ task api:quality-gate
 
 ---
 
+## 3.5. Git Lint Validation
+
+### Local Hook: `.husky/commit-msg`
+
+The `.husky/commit-msg` hook validates commit messages and is run by Git before every commit:
+
+```sh
+./scripts/git-lint.sh commit-msg "$1"
+```
+
+Validates that the commit message matches the format: `#ISSUE: description` (e.g., `#42: add dark mode`).
+
+### Validator Script: `scripts/git-lint.sh`
+
+Central script with three validation modes:
+
+| Mode | Usage | Purpose |
+|------|-------|---------|
+| `commit-msg <msg-file>` | Called by `.husky/commit-msg` locally; by CI job in batch mode | Validates a single commit message file |
+| `branch <branch-name>` | Called by CI job + `task git-lint` locally | Validates a branch name |
+| `pr-commits <base> <head>` | Called by CI `git-lint` job on PR merge | Validates all commits in a range |
+
+**Commit message rules:**
+- Format: `^#[0-9]+: .+$` (must start with issue number)
+- Max header length: 72 characters (git convention)
+- No period at end of header
+- Examples: `#42: add dark mode`, `#0: fix typo in README`
+
+**Branch name rules:**
+- Format: `^(main|(feature|bugfix|hotfix|article|chore)/#[0-9]+/[a-z0-9][a-z0-9-]*)$`
+- Allowed prefixes: `feature/#`, `bugfix/#`, `hotfix/#`, `article/#`, `chore/#`
+- Issue number: 1+ digits after the `#`
+- Slug must be lowercase alphanumeric with hyphens
+- `main` branch requires no prefix
+- Examples: `feature/#149/git-lint-rules`, `bugfix/#137/editor-crash`, `hotfix/#140/security-patch`
+
+### CI Job: `git-lint` (unconditional)
+
+The `git-lint` job runs on all PRs and pushes to `main`, independent of `detect-changes`. It validates:
+
+1. **Branch name:** Checked from `github.head_ref` (PR) or `github.ref_name` (push)
+2. **All commits in range:**
+   - For PRs: `origin/base..HEAD`
+   - For pushes: `github.event.before..HEAD` (or just `HEAD` if before is all zeros)
+
+```yaml
+git-lint:
+  name: git-lint
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history required for commit validation
+    - uses: arduino/setup-task@v2
+    - name: Validate branch name
+      run: task git-lint BRANCH="${{ github.head_ref || github.ref_name }}"
+    - name: Validate commit messages
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          task git-lint-pr BASE="origin/${{ github.base_ref }}" HEAD="HEAD"
+        else
+          task git-lint-pr BASE="${{ github.event.before }}" HEAD="HEAD"
+        fi
+```
+
+### Taskfile Tasks
+
+Three tasks support git linting:
+
+```yaml
+git-lint:           # Validate current branch
+  desc: Validate branch name (current branch)
+
+git-lint-commit:    # Validate single message file (MSG=path)
+  desc: Validate a single commit message file
+
+git-lint-pr:        # Validate PR commits (BASE=... HEAD=...)
+  desc: Validate all commit messages in a PR range
+```
+
+### How to Modify Git Lint Rules
+
+The rules are defined in `scripts/git-lint.sh`:
+
+1. **To change commit message format:** Edit the `COMMIT_MSG_REGEX` variable (line ~20)
+2. **To change branch naming rules:** Edit the `BRANCH_NAME_REGEX` variable (line ~26)
+3. **Propagation:** Changes to `scripts/git-lint.sh` apply automatically to:
+   - Local commits (`.husky/commit-msg` hook)
+   - CI (all `git-lint` task calls)
+4. **Testing:** Run `task git-lint BRANCH=<name>` locally or `git commit --allow-empty -m "<msg>"` to test the hook
+
+---
+
 ## 4. Branch Protection (main)
 
 ### Current Configuration
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
-| **Required status checks** | `ui-quality-gate`, `api-quality-gate` | Both gates must pass before merge (unless merged by admin with bypass) |
+| **Required status checks** | `git-lint`, `ui-quality-gate`, `api-quality-gate` | All must pass before merge (unless merged by admin with bypass) |
 | **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
 | **Enforce for admins** | ✗ Disabled | Admins can push directly to main and merge PRs without waiting for checks |
 | **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
@@ -355,8 +450,11 @@ gh run list --repo linnienaryshkin/inkwell --branch main --limit 10
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/cicd.yml` | Consolidated CI/CD workflow (detect-changes, ui-quality-gate, api-quality-gate, ui-deploy jobs); includes comprehensive inline documentation explaining the job flow |
+| `.github/workflows/cicd.yml` | Consolidated CI/CD workflow (git-lint, detect-changes, ui-quality-gate, api-quality-gate, ui-deploy jobs); includes comprehensive inline documentation |
 | `.github/workflows/claude.yml` | Claude Code Action responder |
 | `ui/Taskfile.yml` | UI task definitions (quality-gate source, called from cicd.yml) |
 | `api/Taskfile.yml` | API task definitions (quality-gate source, called from cicd.yml) |
 | `.husky/pre-commit` | Local pre-commit hook (runs both quality-gates) |
+| `.husky/commit-msg` | Local commit-msg hook (validates commit message format) |
+| `scripts/git-lint.sh` | Canonical git lint validator (commit message + branch name rules) |
+| `Taskfile.yml` | Root tasks: git-lint, git-lint-commit, git-lint-pr |

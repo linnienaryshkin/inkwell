@@ -14,6 +14,8 @@ tasks:
     cmds:
       - task: ui:install
       - chmod +x .husky/pre-commit
+      - chmod +x .husky/commit-msg
+      - chmod +x scripts/git-lint.sh
       - task: api:install
 
   dev:
@@ -28,7 +30,27 @@ tasks:
     cmds:
       - task: ui:quality-gate
       - task: api:quality-gate
-  
+
+  git-lint:
+    desc: Validate branch name (current branch, or use BRANCH=<name>)
+    cmds:
+      - |
+        BRANCH={{.BRANCH}}
+        if [ -z "$BRANCH" ]; then
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        fi
+        ./scripts/git-lint.sh branch "$BRANCH"
+
+  git-lint-commit:
+    desc: Validate a single commit message file (MSG=<path>)
+    cmds:
+      - ./scripts/git-lint.sh commit-msg "{{.MSG}}"
+
+  git-lint-pr:
+    desc: Validate all commits in PR range (BASE=<commit> HEAD=<commit>)
+    cmds:
+      - ./scripts/git-lint.sh pr-commits "{{.BASE}}" "{{.HEAD}}"
+
   claude:
     desc: Run AI code assistant
     cmds:

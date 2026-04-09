@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+./scripts/git-lint.sh commit-msg "$1"

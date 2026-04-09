@@ -21,12 +21,20 @@ Monorepo with two packages:
 
 ```bash
 task install       # Install all deps (ui + api)
-task dev           # Start both dev servers concurrently
+task dev           # Start all dev servers: REST API, MCP server, UI (concurrently)
 task test          # Run all tests (ui + api)
 task quality-gate  # Run all quality checks in sequence (ui then api)
+task git-lint      # Validate current branch name
 ```
 
-Package-specific commands are in `.claude/rules/ui.md` and `.claude/rules/api.md`.
+Individual servers (if you only need one):
+```bash
+task api:rest-dev  # FastAPI REST server only (localhost:8000)
+task api:mcp-dev   # FastMCP server only (stdio protocol)
+task ui:dev        # Vite frontend only (localhost:5173)
+```
+
+Package-specific commands (lint, format, types, test, build) are in `.claude/rules/ui.md` and `.claude/rules/api.md`. Git validation commands are documented under [Git Workflow](#git-workflow).
 
 ## Architecture
 
@@ -60,12 +68,17 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 ### API (`api/`)
 
-FastAPI REST API backed by GitHub repo file storage via `app/github_articles.py` (GitHub Contents API for reads, Git Data API for writes). All article routes require authentication. Configuration is centralized in `app/config.py`.
+Two entry points backed by the same GitHub layer (`app/github_articles.py`):
+1. **REST API** (`app/main_rest.py`) — HTTP server for the web UI (localhost:8000)
+2. **MCP Server** (`app/main_mcp.py`) — stdio protocol server for Claude Code integration
 
-**Endpoints:**
+Both reuse: `app/github_articles.py` (GitHub API layer), `app/models/` (Pydantic schemas), `app/config.py` (OAuth secrets), `app/shared/` (middleware, config utilities).
+
+**REST API Endpoints:**
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
+| `GET`  | `/` | Health check |
 | `GET`  | `/articles` | List all articles (401 if not authenticated, 502 on GitHub error) |
 | `GET`  | `/articles/{slug}` | Get article by slug (401, 404) |
 | `POST` | `/articles` | Create article (401, 409 on slug conflict) |
@@ -78,39 +91,43 @@ FastAPI REST API backed by GitHub repo file storage via `app/github_articles.py`
 
 **Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h max age) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. `POST /auth/logout` deletes both cookies and validates the request `Origin` header against the allowlist (403 if not allowed). Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `ALLOWED_REDIRECT_URLS` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
-**Module structure:** `app/main.py` (entry), `app/routers/articles.py`, `app/routers/auth.py`, `app/models/article.py`, `app/models/auth.py`, `app/github_articles.py` (GitHub-backed storage layer), `app/config.py` (env config), `app/ai/` (reserved for LangChain).
+**REST API Module structure:**
+- `app/main_rest.py` — Flask/FastAPI entry point and server initialization
+- `app/routers/articles.py`, `app/routers/auth.py` — Endpoint implementations
+- `app/models/article.py` — Pydantic schemas (Article, ArticleMeta, ArticleVersion)
+- `app/github_articles.py` — GitHub API layer (reads via Contents API, writes via Git Data API)
+- `app/config.py` — OAuth configuration from environment
+- `app/shared/config.py`, `app/shared/middleware.py` — Shared utilities for both REST and MCP
+- `app/ai/` — Reserved for LangChain integration
 
 **CORS:** Allows `http://localhost:5173` and `https://linnienaryshkin.github.io` with `allow_credentials=True`.
 
 ### MCP Server (`api/app/mcp/`)
 
-FastMCP server that mirrors REST API endpoints, enabling Claude Code and other MCP clients to access article management via the Model Context Protocol.
+FastMCP server enabling Claude Code and other MCP clients to access article management via the Model Context Protocol. Transport is stdio (message-based, no HTTP ports). Tools are called with per-call authentication (GitHub access token passed on each call).
 
-**Transport:** stdio (message-based, no HTTP ports)
+**Tools (6 total):**
 
-**Tools (5 total):**
+| Tool | Parameters | Returns | Description |
+|------|-----------|---------|-------------|
+| `health_check` | (none) | `{"status": "ok"}` | Verify server is running |
+| `list_articles` | `access_token: str` | `ArticleMeta[]` | List all articles (401, 502) |
+| `get_article` | `access_token: str`, `slug: str` | `Article` | Fetch article by slug (401, 404, 502) |
+| `create_article` | `access_token: str`, `title`, `slug`, `tags`, `content` | `Article` | Create new article (401, 409, 502) |
+| `save_article` | `access_token: str`, `slug`, `title`, `tags`, `content`, `message?` | `Article` | Update article (401, 404, 502) |
+| `delete_article` | `access_token: str`, `slug` | `null` | Delete article (401, 404, 502) |
 
-| Tool | Parameters | Returns | Errors |
-|------|-----------|---------|--------|
-| `list_articles` | `access_token: str` | `ArticleMeta[]` | 401, 502 |
-| `get_article` | `access_token: str`, `slug: str` | `Article` | 401, 404, 502 |
-| `create_article` | `access_token: str`, `title`, `slug`, `tags`, `content` | `Article` | 401, 409, 502 |
-| `save_article` | `access_token: str`, `slug`, `title`, `tags`, `content`, `message?` | `Article` | 401, 404, 502 |
-| `delete_article` | `access_token: str`, `slug` | `null` | 401, 404, 502 |
-
-**Authentication:** Pass GitHub access token as `access_token` parameter on each tool call (per-call auth, not stored server-side).
+**Resources:** Documentation and schema definitions (browsable via MCP Inspector or Claude Code):
+- `inkwell://article-schemas` — Available article field types
+- `inkwell://article-constants` — Predefined values (categories, status codes)
 
 **Module structure:**
-- `app/mcp/tools.py` — Tool definitions with input schemas
-- `app/mcp/handlers.py` — Tool implementations; call `github_articles.py` functions
-- `app/main_mcp.py` — FastMCP entrypoint; registers all tools
+- `app/main_mcp.py` — FastMCP entrypoint; registers all tools and resources
+- `app/mcp/tools.py` — Tool definitions with input schemas and handlers
+- `app/mcp/resources.py` — Resource definitions (schemas, constants)
+- Reuses: `github_articles.py` (GitHub API), `app/models/` (Pydantic schemas), `app/shared/` (error handling)
 
-**Shared infrastructure:**
-- Reuses `github_articles.py` (GitHub API layer)
-- Reuses `app/models/` (Pydantic schemas)
-- Reuses error handling from `app/shared/middleware.py`
-
-**Development:** Start with `task api:mcp-dev` or `task dev` (which spawns all servers).
+**Development:** Start with `task api:mcp-dev` or `task dev` (starts REST API + MCP + UI concurrently).
 
 ## Testing
 
@@ -123,18 +140,40 @@ Full testing rules are in `.claude/rules/unit-test.md`. Both packages follow the
 
 **All git operations (commit, push, branch, merge, PR) are restricted to the `git-agent`.** Direct `git commit`, `git push`, `gh pr create`, etc. are denied by project permissions. Always delegate to the git-agent after code changes are complete.
 
-Commit format: `#ISSUE: description` (e.g. `#42: add user authentication`). Use `#0` when no issue applies.
+**Commit format:** `#ISSUE: description` (e.g. `#42: add user authentication`). Use `#0` when no issue applies. Validated locally by `.husky/commit-msg` hook and in CI by `git-lint` job.
+
+**Branch naming convention:** Use a prefix with issue number and lowercase kebab-case slug:
+
+| Flow | Branch format | Example |
+|------|---------------|---------|
+| New feature | `feature/#ISSUE/slug` | `feature/#149/git-lint-rules` |
+| Bugfix | `bugfix/#ISSUE/slug` | `bugfix/#137/editor-crash` |
+| Hotfix | `hotfix/#ISSUE/slug` | `hotfix/#140/security-patch` |
+| Article writing | `article/#ISSUE/slug` | `article/#151/rust-guide` |
+| Infrastructure / docs | `chore/#ISSUE/slug` | `chore/#148/update-deps` |
+| Main branch | `main` (bare) | `main` |
+
+Branch names are validated locally by `task git-lint` and in CI by the `git-lint` job. Only `main` requires no prefix.
+
+**Local validation:** Run `git commit` — the `commit-msg` hook validates the message. Or manually check: `task git-lint` (validates current branch), `task git-lint-commit MSG=<path>` (validates a message file).
 
 ## Skills & Agents
 
-- **architect skill** — fetches a GitHub issue, asks clarifying questions, writes a technical spec with a Team Execution Plan, posts it as a GitHub comment, and labels the issue `refined`
-- **dev-supervisor skill** — coordinates sub-agents; decomposes tasks, assigns agents, runs parallel batches, tracks progress, and reports results. Never implements anything directly
+**Agents** (specialized workers for complex tasks):
 - **dev-agent** — primary implementation agent; handles feature development from GitHub issues, bug fixes, code reviews, and architectural questions following all CLAUDE.md conventions
-- **documentarian-agent** — documentation owner and synchronizer; knows where every doc file lives, cross-checks docs against actual code, and updates stale entries. Run via `/init` at session start or after code changes. Also answers "where is X?" questions about the codebase
-- **qa-agent** — manual-only QA agent; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs found, and delegates fixes to the appropriate engineer
-- **git-agent** — invoked after code changes to run quality gates, create commits with `#ISSUE: description` format, and open PRs. **Only agent with git permissions.**
-- **ui rule** (see `.claude/rules/ui.md`) — applied automatically for UI changes; enforces state ownership, styling rules, and development conventions
-- **api rule** (see `.claude/rules/api.md`) — applied automatically for API changes; enforces API conventions, schema sync, testing, and docstring requirements
-- **unit-test rule** (see `.claude/rules/unit-test.md`) — applied automatically for test changes; enforces BDD approach and 90% coverage
-- **github rule** (see `.claude/rules/github.md`) — applied automatically for CI/CD changes; is the single source of truth for workflow files, branch protection, deployment environment, Pages config, secrets, and re-running jobs
-- **code-review skill** — `/code-review <PR URL or number>`; runs four focused review passes (correctness, security, conventions, tests) and posts inline GitHub comments
+- **documentarian-agent** — documentation owner; audits and syncs all `.claude/` files and `CLAUDE.md`. Run via `/init` at session start or after code changes to verify docs match the codebase
+- **qa-agent** — manual QA; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs, delegates fixes to dev-agent
+- **git-agent** — git operations only; runs quality gates, commits with `#ISSUE: description` format, creates PRs. **Only agent with git permissions.**
+- **plan-agent** (internal) — used by `/architect` and `/plan-mode-extend` skills to design implementation plans
+
+**Skills** (user-invoked commands):
+- **architect skill** (`/architect <issue-url>`) — fetches GitHub issue, asks clarifying questions, writes technical spec with Team Execution Plan, posts as comment, labels issue `refined`
+- **dev-supervisor skill** (`/dev-supervisor <issue-url>`) — coordinates sub-agents; decomposes work, assigns agents, runs parallel batches, tracks progress, reports results
+- **code-review skill** (`/code-review <PR-url-or-number>`) — runs four review passes (correctness, security, conventions, tests), posts inline GitHub comments
+- **plan-mode-extend skill** (`/plan-mode-extend <issue-url>`) — combines Plan agent with GitHub posting; creates dev plan and publishes to issue
+
+**Rules** (applied automatically based on files changed):
+- **ui rule** (`.claude/rules/ui.md`) — UI changes; enforces state ownership, styling conventions, component patterns
+- **api rule** (`.claude/rules/api.md`) — API changes; enforces endpoint patterns, schema sync, testing, docstring requirements
+- **unit-test rule** (`.claude/rules/unit-test.md`) — test changes; enforces BDD approach, 90% coverage minimum
+- **github rule** (`.claude/rules/github.md`) — CI/CD changes; single source of truth for workflows, branch protection, deployment, secrets, git lint. See Section 3.5 for git lint validation rules

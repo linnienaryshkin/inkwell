@@ -28,9 +28,10 @@
 # - Single source of truth for change detection
 #
 # Required Status Checks (branch protection):
-# - ui-quality-gate
-# - api-quality-gate
-# These must pass before merging, but only run if their code changed.
+# - git-lint (unconditional — git hygiene always checked)
+# - ui-quality-gate (runs only if ui/ code changed)
+# - api-quality-gate (runs only if api/ code changed)
+# These must pass before merging. git-lint always runs; quality gates run conditionally.
 #
 # To modify:
 # 1. For new checks: Add step to job, update ui/Taskfile.yml or api/Taskfile.yml
@@ -46,6 +47,28 @@ on:
     branches: [main]
 
 jobs:
+  git-lint:
+    name: git-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Task
+        uses: arduino/setup-task@v2
+
+      - name: Validate branch name
+        run: task git-lint BRANCH="${{ github.head_ref || github.ref_name }}"
+
+      - name: Validate commit messages
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            task git-lint-pr BASE="origin/${{ github.base_ref }}" HEAD="HEAD"
+          else
+            task git-lint-pr BASE="${{ github.event.before }}" HEAD="HEAD"
+          fi
+
   detect-changes:
     name: Detect changes
     runs-on: ubuntu-latest

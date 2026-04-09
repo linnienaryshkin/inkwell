@@ -1,9 +1,9 @@
 ---
 description: Apply when writing or reviewing tests for any part of the codebase (UI components or API endpoints).
 paths:
-  - "ui/src/**/*.{ts,tsx}"
+  - "ui/src/**/*.test.{ts,tsx}"
+  - "ui/src/**/*.spec.{ts,tsx}"
   - "api/tests/**/*.py"
-  - "api/app/**/*.py"
 ---
 
 # Testing Rules

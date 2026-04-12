@@ -1,0 +1,3 @@
+- always gap in meaning between any term/activity
+- only way is to reduce risk, not remove it
+- 

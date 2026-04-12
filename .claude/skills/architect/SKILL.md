@@ -41,7 +41,6 @@ When given a GitHub issue URL, you will:
 3. **Write the Technical Specification**
 
    Cover all relevant sections:
-
    - **Overview** — problem and solution in 2–3 sentences
    - **Architecture & Design**
      - For UI: component hierarchy diagram, prop contracts, state ownership location, styling approach
@@ -94,7 +93,7 @@ When given a GitHub issue URL, you will:
    - If a new shared type is introduced (e.g., change to `Article`), type definition must be sequential first, then API and UI can parallelize
    - Tests should run after the implementation they cover exists
    - git-agent is always the final sequential step
-   - Reference agents/skills by their exact names: `dev-agent`, `git-agent`, `qa-agent`, `architect skill`, `dev-supervisor skill`, `ui-engineer rule`, `api-engineer rule`, `devops rule`, `code-review skill`, `documentarian-agent`
+   - Reference agents/skills by their exact names: `dev-agent`, `git-agent`, `qa-agent`, `architect skill`, `dev-coordinator skill`, `ui-engineer rule`, `api-engineer rule`, `devops rule`, `code-review skill`, `documentarian-agent`
 
 5. **Decide Whether QA Is Required**
 
@@ -128,7 +127,7 @@ When given a GitHub issue URL, you will:
    - Output to the user: "Spec saved to `.claude/plans/issue-<number>.md`. Reply **publish** to post it as a GitHub comment and label the issue `refined`, or edit the file first and then reply **publish**."
    - **Stop and wait.** Do not post to GitHub until the user replies with **publish** (or equivalent confirmation).
 
-7. **Post as GitHub Comment & Label** *(only after user confirms)*
+7. **Post as GitHub Comment & Label** _(only after user confirms)_
    - Post the spec using `gh issue comment <ISSUE_NUMBER> --body "$(cat .claude/plans/issue-<number>.md)"`
    - Add the `refined` label using `gh issue edit <ISSUE_NUMBER> --add-label refined`
    - If QA was requested, also add the `qa` label with `gh issue edit <ISSUE_NUMBER> --add-label qa`
@@ -148,6 +147,7 @@ When given a GitHub issue URL, you will:
    - **Path alias**: `@/` resolves to `src/`
 
 10. **Handle Errors Gracefully**
-   - If the GitHub URL is invalid or cannot be fetched, explain the error and ask for a valid URL
-   - If required context is ambiguous, ask follow-up questions before writing the spec
-   - If the issue is already labeled `refined`, confirm with the user before proceeding
+
+- If the GitHub URL is invalid or cannot be fetched, explain the error and ask for a valid URL
+- If required context is ambiguous, ask follow-up questions before writing the spec
+- If the issue is already labeled `refined`, confirm with the user before proceeding

@@ -28,6 +28,7 @@ task git-lint      # Validate current branch name
 ```
 
 Individual servers (if you only need one):
+
 ```bash
 task api:rest-dev  # FastAPI REST server only (localhost:8000)
 task api:mcp-dev   # FastMCP server only (stdio protocol)
@@ -69,6 +70,7 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 ### API (`api/`)
 
 Two entry points backed by the same GitHub layer (`app/github_articles.py`):
+
 1. **REST API** (`app/main_rest.py`) — HTTP server for the web UI (localhost:8000)
 2. **MCP Server** (`app/main_mcp.py`) — stdio protocol server for Claude Code integration
 
@@ -92,6 +94,7 @@ Both reuse: `app/github_articles.py` (GitHub API layer), `app/models/` (Pydantic
 **Auth:** Plain httponly cookies — `gh_access_token` (session, 8 h max age) and `gh_oauth_state` (CSRF, 10 min). The access token is stored directly in the cookie, never server-side. CSRF protection uses a state token pipe-delimited with the redirect URL; redirect URLs validated against `ALLOWED_REDIRECT_URLS` allowlist. `POST /auth/logout` deletes both cookies and validates the request `Origin` header against the allowlist (403 if not allowed). Requires `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_CALLBACK_URL`, `ALLOWED_REDIRECT_URLS` env vars — server raises `RuntimeError` at startup if any are missing. See `api/.env.example` for placeholder values used in CI/tests.
 
 **REST API Module structure:**
+
 - `app/main_rest.py` — Flask/FastAPI entry point and server initialization
 - `app/routers/articles.py`, `app/routers/auth.py` — Endpoint implementations
 - `app/models/article.py` — Pydantic schemas (Article, ArticleMeta, ArticleVersion)
@@ -118,10 +121,12 @@ FastMCP server enabling Claude Code and other MCP clients to access article mana
 | `delete_article` | `access_token: str`, `slug` | `null` | Delete article (401, 404, 502) |
 
 **Resources:** Documentation and schema definitions (browsable via MCP Inspector or Claude Code):
+
 - `inkwell://article-schemas` — Available article field types
 - `inkwell://article-constants` — Predefined values (categories, status codes)
 
 **Module structure:**
+
 - `app/main_mcp.py` — FastMCP entrypoint; registers all tools and resources
 - `app/mcp/tools.py` — Tool definitions with input schemas and handlers
 - `app/mcp/resources.py` — Resource definitions (schemas, constants)
@@ -160,6 +165,7 @@ Branch names are validated locally by `task git-lint` and in CI by the `git-lint
 ## Skills & Agents
 
 **Agents** (specialized workers for complex tasks):
+
 - **dev-agent** — primary implementation agent; handles feature development from GitHub issues, bug fixes, code reviews, and architectural questions following all CLAUDE.md conventions
 - **documentarian-agent** — documentation owner; audits and syncs all `.claude/` files and `CLAUDE.md`. Run via `/init` at session start or after code changes to verify docs match the codebase
 - **qa-agent** — manual QA; verifies test coverage, runs browser tests via Playwright, writes failing tests for bugs, delegates fixes to dev-agent
@@ -167,12 +173,14 @@ Branch names are validated locally by `task git-lint` and in CI by the `git-lint
 - **plan-agent** (internal) — used by `/architect` and `/plan-mode-extend` skills to design implementation plans
 
 **Skills** (user-invoked commands):
+
 - **architect skill** (`/architect <issue-url>`) — fetches GitHub issue, asks clarifying questions, writes technical spec with Team Execution Plan, posts as comment, labels issue `refined`
-- **dev-supervisor skill** (`/dev-supervisor <issue-url>`) — coordinates sub-agents; decomposes work, assigns agents, runs parallel batches, tracks progress, reports results
+- **dev-coordinator skill** (`/dev-coordinator <issue-url>`) — coordinates sub-agents; decomposes work, assigns agents, runs parallel batches, tracks progress, reports results
 - **code-review skill** (`/code-review <PR-url-or-number>`) — runs four review passes (correctness, security, conventions, tests), posts inline GitHub comments
 - **plan-mode-extend skill** (`/plan-mode-extend <issue-url>`) — combines Plan agent with GitHub posting; creates dev plan and publishes to issue
 
 **Rules** (applied automatically based on files changed):
+
 - **ui rule** (`.claude/rules/ui.md`) — UI changes; enforces state ownership, styling conventions, component patterns
 - **api rule** (`.claude/rules/api.md`) — API changes; enforces endpoint patterns, schema sync, testing, docstring requirements
 - **unit-test rule** (`.claude/rules/unit-test.md`) — test changes; enforces BDD approach, 90% coverage minimum

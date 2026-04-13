@@ -3,7 +3,8 @@
 A ReAct-style agent that manages Inkwell articles using LangGraph and Anthropic.
 This agent can list, create, update, and delete articles.
 
-Run with: uv run langgraph dev api/lab/inkwell_article_agent.py:graph
+Run with:
+uv run langgraph dev api/lab/inkwell_article_agent.py:graph
 """
 
 from typing import Annotated, Any, Literal

@@ -74,7 +74,7 @@ API docs are available at <http://localhost:8000/docs>, and MCP Inspector at <ht
 
 LangSmith tracing could be found at <https://eu.smith.langchain.com/o/9ae609b5-c06d-4a4e-99e0-20626e7a8d68/projects/p/a1360a2d-dfa6-49bf-9719-a2622f52c44d?timeModel=%7B%22duration%22%3A%221d%22%7D>.
 
-#### LangGraph Agent
+#### LangSmith Studio
 
 ```bash
 task api:agent

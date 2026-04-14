@@ -26,11 +26,11 @@ else
   NC=''
 fi
 
-# Commit message regex: #ISSUE: description (POSIX basic regex for grep)
-# - Must start with # followed by digits
-# - Colon-space separator
-# - At least one character of description
-COMMIT_MSG_REGEX='^#[0-9]\+: ..\+'
+# Commit message regexes (extended regex for grep -E)
+# Code commits: (feature|bugfix|hotfix|chore)/#ISSUE: description
+COMMIT_MSG_CODE_REGEX='^(feature|bugfix|hotfix|chore)/#[0-9]+: .+$'
+# Article commits: article/slug: (draft|revise|publish)[ optional description]
+COMMIT_MSG_ARTICLE_REGEX='^article/[a-z0-9][a-z0-9-]*: (draft|revise|publish)( .+)?$'
 
 # Branch name regex: main | (feature|bugfix|hotfix|article|chore)/#ISSUE/slug (extended regex for grep -E)
 # - main (bare)
@@ -59,13 +59,37 @@ validate_commit_msg() {
     return 0
   fi
 
-  # Validate format: #ISSUE: description
-  if ! echo "$header" | grep -q "$COMMIT_MSG_REGEX"; then
-    echo "${RED}Error: invalid commit message format${NC}" >&2
-    echo "${YELLOW}Expected: #ISSUE: description${NC}" >&2
-    echo "${YELLOW}Example:  #42: add dark mode${NC}" >&2
-    echo "${YELLOW}Got:      $header${NC}" >&2
-    return 1
+  # Determine if this is an article or code commit
+  local is_article=0
+  if echo "$header" | grep -q "^article/"; then
+    is_article=1
+  fi
+
+  # Validate format based on commit type
+  if [ "$is_article" -eq 1 ]; then
+    # Article format: article/slug: (draft|revise|publish)[ description]
+    if ! echo "$header" | grep -E "$COMMIT_MSG_ARTICLE_REGEX" > /dev/null; then
+      echo "${RED}Error: invalid article commit message format${NC}" >&2
+      echo "${YELLOW}Expected: article/slug: (draft|revise|publish)[ description]${NC}" >&2
+      echo "${YELLOW}Examples:${NC}" >&2
+      echo "  - article/rust-guide: draft introduction" >&2
+      echo "  - article/rust-guide: revise ownership" >&2
+      echo "  - article/rust-guide: publish" >&2
+      echo "${YELLOW}Got:      $header${NC}" >&2
+      return 1
+    fi
+  else
+    # Code format: (feature|bugfix|hotfix|chore)/#ISSUE: description
+    if ! echo "$header" | grep -E "$COMMIT_MSG_CODE_REGEX" > /dev/null; then
+      echo "${RED}Error: invalid code commit message format${NC}" >&2
+      echo "${YELLOW}Expected: (feature|bugfix|hotfix|chore)/#ISSUE: description${NC}" >&2
+      echo "${YELLOW}Examples:${NC}" >&2
+      echo "  - feature/#42: add dark mode" >&2
+      echo "  - bugfix/#137: fix editor crash" >&2
+      echo "  - chore/#149: update dependencies" >&2
+      echo "${YELLOW}Got:      $header${NC}" >&2
+      return 1
+    fi
   fi
 
   # Check header max length (72 chars, git standard)

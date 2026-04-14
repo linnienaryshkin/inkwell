@@ -145,7 +145,16 @@ Full testing rules are in `.claude/rules/unit-test.md`. Both packages follow the
 
 **All git operations (commit, push, branch, merge, PR) are restricted to the `git-agent`.** Direct `git commit`, `git push`, `gh pr create`, etc. are denied by project permissions. Always delegate to the git-agent after code changes are complete.
 
-**Commit format:** `#ISSUE: description` (e.g. `#42: add user authentication`). Use `#0` when no issue applies. Validated locally by `.husky/commit-msg` hook and in CI by `git-lint` job.
+**Commit format:** Two formats depending on branch type:
+
+| Type | Format | Example |
+|------|--------|---------|
+| Code (feature/bugfix/hotfix/chore) | `type/#ISSUE: description` | `feature/#42: add user authentication` |
+| Article | `article/slug: verb[ description]` | `article/rust-guide: draft introduction` |
+
+Article verbs: `draft`, `revise`, `publish` (e.g., `article/rust-guide: publish` is valid alone).
+
+Validated locally by `.husky/commit-msg` hook and in CI by `git-lint` job.
 
 **Branch naming convention:** Use a prefix with issue number and lowercase kebab-case slug:
 

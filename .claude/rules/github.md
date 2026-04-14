@@ -12,6 +12,7 @@ paths:
 # GitHub Rule
 
 This rule enforces synchronization between:
+
 1. **Workflow definitions** (`.github/workflows/*.yml`) — CI/CD trigger logic
 2. **Task definitions** (`ui/Taskfile.yml`, `api/Taskfile.yml`) — quality gate steps
 3. **Pre-commit hooks** (`.husky/pre-commit`, `.husky/commit-msg`) — local validation
@@ -28,11 +29,12 @@ This rule enforces synchronization between:
 
 A single consolidated workflow (`.github/workflows/cicd.yml`) enforces code quality before merge to `main`. The workflow uses intelligent change detection to run only the relevant quality gates:
 
-| Workflow | Jobs | Trigger | Enforced By |
-|----------|------|---------|------------|
+| Workflow     | Jobs                                                                                                                                                                                 | Trigger                             | Enforced By       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | ----------------- |
 | **cicd.yml** | `detect-changes` (determine what changed) → conditional `ui-quality-gate` / `api-quality-gate` (only if their code changed) → conditional `ui-deploy` (only on main with UI changes) | `push` and `pull_request` to `main` | Branch protection |
 
 The gate jobs become required status checks, meaning:
+
 - **Pushes to main** must pass the gates corresponding to changed code
 - **PRs** must pass the gates corresponding to changed code before merge
 - **Admins CAN bypass** status checks and merge directly (enforce_admins = false)
@@ -57,6 +59,7 @@ detect-changes:
 ```
 
 **Conditional Jobs:**
+
 - `ui-quality-gate` runs only if `detect-changes.outputs.ui == 'true'`
 - `api-quality-gate` runs only if `detect-changes.outputs.api == 'true'`
 - `ui-deploy` runs only if `github.ref == 'refs/heads/main'` AND `detect-changes.outputs.ui == 'true'`
@@ -88,15 +91,15 @@ quality-gate:
 
 Each subtask corresponds to a step in `.github/workflows/cicd.yml` (ui-quality-gate job):
 
-| Task | Workflow Step | Command |
-|------|---------------|---------|
-| `install` | Install dependencies | `npm ci && npx husky install` |
-| `lint-check` | Check ESLint | `npx eslint . --report-unused-disable-directives --max-warnings 0` |
-| `format-check` | Check Prettier | `npx prettier . --check` |
-| `types-check` | Check TypeScript | `tsc --noEmit` |
-| `test-coverage` | Run tests | `jest --coverage --coverageThreshold='{"lines":90,"functions":90,"branches":90,"statements":90}'` |
-| `security` | Audit dependencies | `npm audit --audit-level=high` |
-| `build` | Build | `vite build` |
+| Task            | Workflow Step        | Command                                                                                           |
+| --------------- | -------------------- | ------------------------------------------------------------------------------------------------- |
+| `install`       | Install dependencies | `npm ci && npx husky install`                                                                     |
+| `lint-check`    | Check ESLint         | `npx eslint . --report-unused-disable-directives --max-warnings 0`                                |
+| `format-check`  | Check Prettier       | `npx prettier . --check`                                                                          |
+| `types-check`   | Check TypeScript     | `tsc --noEmit`                                                                                    |
+| `test-coverage` | Run tests            | `jest --coverage --coverageThreshold='{"lines":90,"functions":90,"branches":90,"statements":90}'` |
+| `security`      | Audit dependencies   | `npm audit --audit-level=high`                                                                    |
+| `build`         | Build                | `vite build`                                                                                      |
 
 #### api/Taskfile.yml (`quality-gate` task)
 
@@ -113,13 +116,13 @@ quality-gate:
 
 Each subtask corresponds to a step in `.github/workflows/cicd.yml` (api-quality-gate job):
 
-| Task | Workflow Step | Command |
-|------|---------------|---------|
-| `install` | Install dependencies | `uv sync --extra dev` |
-| `lint-check` | Lint | `ruff check .` |
-| `format-check` | Format check | `ruff format --check .` |
-| `test` | Test | `pytest tests/` |
-| `security` | Security audit | `pip-audit` |
+| Task           | Workflow Step        | Command                 |
+| -------------- | -------------------- | ----------------------- |
+| `install`      | Install dependencies | `uv sync --extra dev`   |
+| `lint-check`   | Lint                 | `ruff check .`          |
+| `format-check` | Format check         | `ruff format --check .` |
+| `test`         | Test                 | `pytest tests/`         |
+| `security`     | Security audit       | `pip-audit`             |
 
 ---
 
@@ -148,25 +151,37 @@ The `.husky/commit-msg` hook validates commit messages and is run by Git before 
 ./scripts/git-lint.sh commit-msg "$1"
 ```
 
-Validates that the commit message matches the format: `#ISSUE: description` (e.g., `#42: add dark mode`).
+Validates that the commit message matches one of two formats (see rules below).
 
 ### Validator Script: `scripts/git-lint.sh`
 
 Central script with three validation modes:
 
-| Mode | Usage | Purpose |
-|------|-------|---------|
-| `commit-msg <msg-file>` | Called by `.husky/commit-msg` locally; by CI job in batch mode | Validates a single commit message file |
-| `branch <branch-name>` | Called by CI job + `task git-lint` locally | Validates a branch name |
-| `pr-commits <base> <head>` | Called by CI `git-lint` job on PR merge | Validates all commits in a range |
+| Mode                       | Usage                                                          | Purpose                                |
+| -------------------------- | -------------------------------------------------------------- | -------------------------------------- |
+| `commit-msg <msg-file>`    | Called by `.husky/commit-msg` locally; by CI job in batch mode | Validates a single commit message file |
+| `branch <branch-name>`     | Called by CI job + `task git-lint` locally                     | Validates a branch name                |
+| `pr-commits <base> <head>` | Called by CI `git-lint` job on PR merge                        | Validates all commits in a range       |
 
 **Commit message rules:**
-- Format: `^#[0-9]+: .+$` (must start with issue number)
+
+Code commits (feature/bugfix/hotfix/chore):
+
+- Format: `^(feature|bugfix|hotfix|chore)/#[0-9]+: .+$`
 - Max header length: 72 characters (git convention)
 - No period at end of header
-- Examples: `#42: add dark mode`, `#0: fix typo in README`
+- Examples: `feature/#42: add dark mode`, `bugfix/#137: fix editor crash`, `chore/#149: update deps`
+
+Article commits:
+
+- Format: `^article/[a-z0-9][a-z0-9-]*: (draft|revise|publish)( .+)?$`
+- Verb must be: `draft`, `revise`, or `publish`
+- Slug must be lowercase alphanumeric with hyphens
+- Optional description after verb
+- Examples: `article/rust-guide: draft introduction`, `article/rust-guide: revise`, `article/rust-guide: publish`
 
 **Branch name rules:**
+
 - Format: `^(main|(feature|bugfix|hotfix|article|chore)/#[0-9]+/[a-z0-9][a-z0-9-]*)$`
 - Allowed prefixes: `feature/#`, `bugfix/#`, `hotfix/#`, `article/#`, `chore/#`
 - Issue number: 1+ digits after the `#`
@@ -190,7 +205,7 @@ git-lint:
   steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Full history required for commit validation
+        fetch-depth: 0 # Full history required for commit validation
     - uses: arduino/setup-task@v2
     - name: Validate branch name
       run: task git-lint BRANCH="${{ github.head_ref || github.ref_name }}"
@@ -208,13 +223,13 @@ git-lint:
 Three tasks support git linting:
 
 ```yaml
-git-lint:           # Validate current branch
+git-lint: # Validate current branch
   desc: Validate branch name (current branch)
 
-git-lint-commit:    # Validate single message file (MSG=path)
+git-lint-commit: # Validate single message file (MSG=path)
   desc: Validate a single commit message file
 
-git-lint-pr:        # Validate PR commits (BASE=... HEAD=...)
+git-lint-pr: # Validate PR commits (BASE=... HEAD=...)
   desc: Validate all commit messages in a PR range
 ```
 
@@ -222,12 +237,14 @@ git-lint-pr:        # Validate PR commits (BASE=... HEAD=...)
 
 The rules are defined in `scripts/git-lint.sh`:
 
-1. **To change commit message format:** Edit the `COMMIT_MSG_REGEX` variable (line ~20)
-2. **To change branch naming rules:** Edit the `BRANCH_NAME_REGEX` variable (line ~26)
-3. **Propagation:** Changes to `scripts/git-lint.sh` apply automatically to:
+1. **To change code commit message format:** Edit the `COMMIT_MSG_CODE_REGEX` variable (line ~30)
+2. **To change article commit message format:** Edit the `COMMIT_MSG_ARTICLE_REGEX` variable (line ~32)
+3. **To change article verbs:** Update the list in `COMMIT_MSG_ARTICLE_REGEX` (e.g., add `finalize` to `(draft|revise|publish|finalize)`)
+4. **To change branch naming rules:** Edit the `BRANCH_NAME_REGEX` variable (line ~26)
+5. **Propagation:** Changes to `scripts/git-lint.sh` apply automatically to:
    - Local commits (`.husky/commit-msg` hook)
    - CI (all `git-lint` task calls)
-4. **Testing:** Run `task git-lint BRANCH=<name>` locally or `git commit --allow-empty -m "<msg>"` to test the hook
+6. **Testing:** Run `task git-lint BRANCH=<name>` locally or test messages with `./scripts/git-lint.sh commit-msg <file>`
 
 ---
 
@@ -235,13 +252,13 @@ The rules are defined in `scripts/git-lint.sh`:
 
 ### Current Configuration
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| **Required status checks** | `git-lint`, `ui-quality-gate`, `api-quality-gate` | All must pass before merge (unless merged by admin with bypass) |
-| **Strict mode** | ✓ Enabled | PR must be up to date with base before merge |
-| **Enforce for admins** | ✗ Disabled | Admins can push directly to main and merge PRs without waiting for checks |
-| **Allow force pushes** | ✗ Disabled | Prevent rewriting history |
-| **Allow deletions** | ✗ Disabled | Protect against accidental deletes |
+| Setting                    | Value                                             | Purpose                                                                   |
+| -------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Required status checks** | `git-lint`, `ui-quality-gate`, `api-quality-gate` | All must pass before merge (unless merged by admin with bypass)           |
+| **Strict mode**            | ✓ Enabled                                         | PR must be up to date with base before merge                              |
+| **Enforce for admins**     | ✗ Disabled                                        | Admins can push directly to main and merge PRs without waiting for checks |
+| **Allow force pushes**     | ✗ Disabled                                        | Prevent rewriting history                                                 |
+| **Allow deletions**        | ✗ Disabled                                        | Protect against accidental deletes                                        |
 
 ### How to Modify
 
@@ -258,11 +275,11 @@ To add a new required status check:
 
 ### Current Configuration
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| **Deployment branch policy** | Custom branch policies (enabled) | Only specific branches can deploy |
-| **Allowed branches** | `main` (1 policy) | Only main deploys |
-| **Require admin approval** | ✗ Disabled | Automatic deployment on push to main |
+| Setting                      | Value                            | Purpose                              |
+| ---------------------------- | -------------------------------- | ------------------------------------ |
+| **Deployment branch policy** | Custom branch policies (enabled) | Only specific branches can deploy    |
+| **Allowed branches**         | `main` (1 policy)                | Only main deploys                    |
+| **Require admin approval**   | ✗ Disabled                       | Automatic deployment on push to main |
 
 ### Deployment Flow
 
@@ -277,23 +294,23 @@ To add a new required status check:
 
 ## 6. GitHub Pages
 
-| Setting | Value |
-|---------|-------|
-| **Source** | GitHub Actions (workflow) |
-| **Build status** | ✓ Published |
-| **Live URL** | <https://linnienaryshkin.github.io/inkwell/> |
+| Setting          | Value                                        |
+| ---------------- | -------------------------------------------- |
+| **Source**       | GitHub Actions (workflow)                    |
+| **Build status** | ✓ Published                                  |
+| **Live URL**     | <https://linnienaryshkin.github.io/inkwell/> |
 
 ---
 
 ## 7. GitHub Actions Secrets
 
-| Secret Name | Used By | Purpose |
-|------------|---------|---------|
-| `ALLOWED_REDIRECT_URLS` | `api/` (FastAPI) | Comma-separated OAuth redirect URL allowlist and CORS origin |
-| `ANTHROPIC_API_KEY` | `.github/workflows/claude.yml` | Claude API authentication for AI workflows |
-| `OAUTH_CLIENT_ID` | `api/` (FastAPI) | GitHub OAuth app client ID |
-| `OAUTH_CLIENT_SECRET` | `api/` (FastAPI) | GitHub OAuth app client secret |
-| `OAUTH_CALLBACK_URL` | `api/` (FastAPI) | GitHub OAuth callback URL |
+| Secret Name             | Used By                        | Purpose                                                      |
+| ----------------------- | ------------------------------ | ------------------------------------------------------------ |
+| `ALLOWED_REDIRECT_URLS` | `api/` (FastAPI)               | Comma-separated OAuth redirect URL allowlist and CORS origin |
+| `ANTHROPIC_API_KEY`     | `.github/workflows/claude.yml` | Claude API authentication for AI workflows                   |
+| `OAUTH_CLIENT_ID`       | `api/` (FastAPI)               | GitHub OAuth app client ID                                   |
+| `OAUTH_CLIENT_SECRET`   | `api/` (FastAPI)               | GitHub OAuth app client secret                               |
+| `OAUTH_CALLBACK_URL`    | `api/` (FastAPI)               | GitHub OAuth callback URL                                    |
 
 **How to add a new secret:**
 
@@ -304,13 +321,13 @@ gh secret list  # Verify
 
 ### Environment Variable Source of Truth
 
-| File | Purpose | Committed? |
-|------|---------|-----------|
-| `api/.env.example` | Documents all API secrets/vars with placeholders | ✓ Yes |
-| `ui/.env.example` | Documents all UI env vars with placeholders | ✓ Yes |
-| `api/.env` (gitignored) | Local dev; developer fills in real values | ✗ No |
-| `ui/.env` (gitignored) | Local dev; developer fills in real values | ✗ No |
-| GitHub Actions Secrets | CI/CD with real values | Encrypted |
+| File                    | Purpose                                          | Committed? |
+| ----------------------- | ------------------------------------------------ | ---------- |
+| `api/.env.example`      | Documents all API secrets/vars with placeholders | ✓ Yes      |
+| `ui/.env.example`       | Documents all UI env vars with placeholders      | ✓ Yes      |
+| `api/.env` (gitignored) | Local dev; developer fills in real values        | ✗ No       |
+| `ui/.env` (gitignored)  | Local dev; developer fills in real values        | ✗ No       |
+| GitHub Actions Secrets  | CI/CD with real values                           | Encrypted  |
 
 ---
 
@@ -325,12 +342,14 @@ When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui
    gh workflow disable old-workflow-name --repo owner/repo
    ```
 4. **Update branch protection** to reference the new job names (if different):
+
    ```bash
    # View current config
    gh api repos/owner/repo/branches/main/protection
 
    # Jobs on PRs against main will now reference the new workflow's job names
    ```
+
 5. **Delete old workflow files** from the repository to avoid confusion (optional but recommended)
 
 **Why this matters:** GitHub only recognizes workflows committed to `main`. Workflow files on feature branches won't trigger and won't appear in the Actions UI, even if correctly written. This can cause "checks awaiting conflict resolution" without any actual workflow runs.
@@ -342,11 +361,12 @@ When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui
 ### Adding a New Quality Check to UI
 
 1. **Edit `ui/Taskfile.yml`:**
+
    ```yaml
    quality-gate:
      cmds:
        - task: lint-check
-       - task: new-check  # Add here
+       - task: new-check # Add here
 
    new-check:
      cmds:
@@ -354,6 +374,7 @@ When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui
    ```
 
 2. **Edit `.github/workflows/cicd.yml` (ui-quality-gate job):**
+
    ```yaml
    - name: Run new check
      run: task new-check
@@ -448,13 +469,13 @@ gh run list --repo linnienaryshkin/inkwell --branch main --limit 10
 
 ## 11. Quick Reference: File Locations
 
-| File | Purpose |
-|------|---------|
-| `.github/workflows/cicd.yml` | Consolidated CI/CD workflow (git-lint, detect-changes, ui-quality-gate, api-quality-gate, ui-deploy jobs); includes comprehensive inline documentation |
-| `.github/workflows/claude.yml` | Claude Code Action responder |
-| `ui/Taskfile.yml` | UI task definitions (quality-gate source, called from cicd.yml) |
-| `api/Taskfile.yml` | API task definitions (quality-gate source, called from cicd.yml) |
-| `.husky/pre-commit` | Local pre-commit hook (runs both quality-gates) |
-| `.husky/commit-msg` | Local commit-msg hook (validates commit message format) |
-| `scripts/git-lint.sh` | Canonical git lint validator (commit message + branch name rules) |
-| `Taskfile.yml` | Root tasks: git-lint, git-lint-commit, git-lint-pr |
+| File                           | Purpose                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.github/workflows/cicd.yml`   | Consolidated CI/CD workflow (git-lint, detect-changes, ui-quality-gate, api-quality-gate, ui-deploy jobs); includes comprehensive inline documentation |
+| `.github/workflows/claude.yml` | Claude Code Action responder                                                                                                                           |
+| `ui/Taskfile.yml`              | UI task definitions (quality-gate source, called from cicd.yml)                                                                                        |
+| `api/Taskfile.yml`             | API task definitions (quality-gate source, called from cicd.yml)                                                                                       |
+| `.husky/pre-commit`            | Local pre-commit hook (runs both quality-gates)                                                                                                        |
+| `.husky/commit-msg`            | Local commit-msg hook (validates commit message format)                                                                                                |
+| `scripts/git-lint.sh`          | Canonical git lint validator (commit message + branch name rules)                                                                                      |
+| `Taskfile.yml`                 | Root tasks: git-lint, git-lint-commit, git-lint-pr                                                                                                     |

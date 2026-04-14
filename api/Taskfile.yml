@@ -47,6 +47,11 @@ tasks:
     cmds:
       - uv run ruff format --check app/ tests/ lab/
 
+  file-naming-check:
+    desc: Check Python file and folder names follow snake_case/lowercase conventions
+    cmds:
+      - sh ../scripts/file-lint.sh api
+
   security:
     desc: Audit Python dependencies for known vulnerabilities
     cmds:
@@ -57,6 +62,7 @@ tasks:
     cmds:
       - task: lint-check
       - task: format-check
+      - task: file-naming-check
       - task: test-coverage
       - task: security
 

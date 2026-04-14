@@ -65,7 +65,7 @@ tasks:
     cmds:
       - uv run jupyter lab
 
-  agent:
-    desc: Start LangGraph Inkwell article agent with IDE support
+  langgraph-studio:
+    desc: Start Web-based LangGraph Studio for visual agent development and debugging
     cmds:
       - uv run langgraph dev --no-browser

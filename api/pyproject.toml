@@ -75,7 +75,8 @@ convention = "google"
 # Lab notebooks are educational/interactive artifacts. We still enforce syntax,
 # imports, naming, and annotations, but relax docstring/bugbear strictness to
 # avoid notebook-specific noise blocking the quality gate.
-"lab/**/*.ipynb" = ["D", "B"]
+# E402: module level import not at top — inherent in interactive notebooks.
+"lab/**/*.ipynb" = ["D", "B", "E402"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

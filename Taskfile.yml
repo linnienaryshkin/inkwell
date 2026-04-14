@@ -16,6 +16,7 @@ tasks:
       - chmod +x .husky/pre-commit
       - chmod +x .husky/commit-msg
       - chmod +x scripts/git-lint.sh
+      - chmod +x scripts/file-lint.sh
       - task: api:install
 
   dev:

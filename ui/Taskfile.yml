@@ -53,6 +53,11 @@ tasks:
     cmds:
       - npm run format:check
 
+  file-naming-check:
+    desc: Check TypeScript file and folder names follow project naming conventions
+    cmds:
+      - sh ../scripts/file-lint.sh ui
+
   types-check:
     desc: TypeScript type-check without emitting
     cmds:
@@ -68,6 +73,7 @@ tasks:
     cmds:
       - task: format-check
       - task: lint-check
+      - task: file-naming-check
       - task: types-check
       - task: test-coverage
       - task: security

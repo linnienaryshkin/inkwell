@@ -1,2 +1,1 @@
-task ui:quality-gate
-task api:quality-gate
+npx lint-staged

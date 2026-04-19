@@ -60,11 +60,13 @@ detect-changes:
 
 **Conditional Jobs:**
 
-- `ui-quality-gate` runs only if `detect-changes.outputs.ui == 'true'`
-- `api-quality-gate` runs only if `detect-changes.outputs.api == 'true'`
+- `ui-quality-gate` runs only if `detect-changes.outputs.ui == 'true'` — **delegates to `task ui:quality-gate`**
+- `api-quality-gate` runs only if `detect-changes.outputs.api == 'true'` — **delegates to `task api:quality-gate`**
 - `ui-deploy` runs only if `github.ref == 'refs/heads/main'` AND `detect-changes.outputs.ui == 'true'`
 
 This prevents unnecessary quality gate runs and delays. If a PR only changes API files, ui-quality-gate doesn't trigger at all.
+
+**Single Source of Truth:** The workflow delegates to Taskfile `quality-gate` tasks. All actual checks are defined in `ui/Taskfile.yml` and `api/Taskfile.yml`. When you add a new check, add it to the corresponding Taskfile — the CI workflow automatically inherits it.
 
 ---
 
@@ -72,72 +74,78 @@ This prevents unnecessary quality gate runs and delays. If a PR only changes API
 
 ### Source of Truth: Taskfiles
 
-Each Taskfile contains a `quality-gate` task that mirrors the corresponding workflow steps.
+Each Taskfile contains a `quality-gate` task that is invoked directly by the CI workflow. **CI delegates to these tasks — no duplication of steps in the workflow.**
 
 #### ui/Taskfile.yml (`quality-gate` task)
 
 ```yaml
 quality-gate:
-  deps:
-    - install
+  desc: Run all UI quality checks in sequence
   cmds:
-    - task: lint-check
     - task: format-check
+    - task: lint-check
+    - task: file-naming-check
     - task: types-check
     - task: test-coverage
     - task: security
     - task: build
 ```
 
-Each subtask corresponds to a step in `.github/workflows/cicd.yml` (ui-quality-gate job):
-
-| Task            | Workflow Step        | Command                                                                                           |
-| --------------- | -------------------- | ------------------------------------------------------------------------------------------------- |
-| `install`       | Install dependencies | `npm ci && npx husky install`                                                                     |
-| `lint-check`    | Check ESLint         | `npx eslint . --report-unused-disable-directives --max-warnings 0`                                |
-| `format-check`  | Check Prettier       | `npx prettier . --check`                                                                          |
-| `types-check`   | Check TypeScript     | `tsc --noEmit`                                                                                    |
-| `test-coverage` | Run tests            | `jest --coverage --coverageThreshold='{"lines":90,"functions":90,"branches":90,"statements":90}'` |
-| `security`      | Audit dependencies   | `npm audit --audit-level=high`                                                                    |
-| `build`         | Build                | `vite build`                                                                                      |
+**Workflow invocation:**
+```yaml
+ui-quality-gate:
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+        cache: "npm"
+    - name: Run quality-gate    # ← Single step that delegates
+      run: task quality-gate
+```
 
 #### api/Taskfile.yml (`quality-gate` task)
 
 ```yaml
 quality-gate:
-  deps:
-    - install
+  desc: Run all API quality checks in sequence
   cmds:
     - task: lint-check
     - task: format-check
-    - task: test
+    - task: file-naming-check
+    - task: test-coverage
     - task: security
 ```
 
-Each subtask corresponds to a step in `.github/workflows/cicd.yml` (api-quality-gate job):
-
-| Task           | Workflow Step        | Command                 |
-| -------------- | -------------------- | ----------------------- |
-| `install`      | Install dependencies | `uv sync --extra dev`   |
-| `lint-check`   | Lint                 | `ruff check .`          |
-| `format-check` | Format check         | `ruff format --check .` |
-| `test`         | Test                 | `pytest tests/`         |
-| `security`     | Security audit       | `pip-audit`             |
+**Workflow invocation:**
+```yaml
+api-quality-gate:
+  steps:
+    - name: Setup Python
+      run: uv python install
+    - name: Run quality-gate    # ← Single step that delegates
+      run: task quality-gate
+```
 
 ---
 
 ## 3. Pre-commit Hook Sync
 
-The `.husky/pre-commit` hook runs quality-gate tasks locally before commit:
+The `.husky/pre-commit` hook runs quality-gate tasks **only on staged files** before commit:
 
 ```sh
-task ui:quality-gate
-task api:quality-gate
+# Detect which packages have staged changes
+if staged files in ui/: task ui:quality-gate
+if staged files in api/: task api:quality-gate
 ```
 
-**Rule:** The hook runs both gates on every commit. This catches issues before they reach CI and prevents unnecessary CI runs.
+**Rule:** The hook runs quality-gate only for packages with staged changes. This ensures staged files are ready to commit and will pass CI.
 
-**Why both tasks?** Because the cost of running both locally (~20s total) is much lower than pushing to CI and getting blocked. The workflow path filters then optimize CI runs.
+**Why this approach?** 
+- Catches issues before they reach CI
+- Avoids blocking commits for unrelated code
+- Same quality checks locally as in CI (single source of truth)
+- Only processes what's being committed (staged files)
 
 ---
 
@@ -360,29 +368,25 @@ When consolidating or reorganizing CI/CD workflows (e.g., replacing separate `ui
 
 ### Adding a New Quality Check to UI
 
-1. **Edit `ui/Taskfile.yml`:**
+1. **Edit `ui/Taskfile.yml` — add the new task and include it in `quality-gate`:**
 
    ```yaml
    quality-gate:
      cmds:
        - task: lint-check
-       - task: new-check # Add here
+       - task: new-check     # ← Add here
 
    new-check:
+     desc: Description of what the check does
      cmds:
        - new-command
    ```
 
-2. **Edit `.github/workflows/cicd.yml` (ui-quality-gate job):**
+2. **CI automatically inherits the change** — no modification needed to `cicd.yml`
 
-   ```yaml
-   - name: Run new check
-     run: task new-check
-   ```
+3. **The pre-commit hook automatically picks up the Taskfile change**
 
-3. **Update this rule's section 2** with the new step
-
-4. **The pre-commit hook automatically picks up the Taskfile change**
+**Why no workflow changes?** The `cicd.yml` delegates to `task quality-gate`, which reads the Taskfile at runtime. Adding a task to the Taskfile is all that's needed.
 
 ### Adding a New Required Status Check
 

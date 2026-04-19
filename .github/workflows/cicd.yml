@@ -12,20 +12,21 @@
 #
 # 2. Conditional Gates (run in parallel if needed):
 #    - ui-quality-gate: Runs only if ui/ code changed
-#      Steps: install → lint → format → types → test → security → build
+#      Delegates to: task quality-gate (runs all checks from ui/Taskfile.yml)
 #      On main: Also uploads dist/ artifact for deployment
 #
 #    - api-quality-gate: Runs only if api/ code changed
-#      Steps: install → lint → format → test → security
+#      Delegates to: task quality-gate (runs all checks from api/Taskfile.yml)
 #
 # 3. Deployment (main branch only with UI changes):
 #    - ui-deploy: Waits for ui-quality-gate, deploys to GitHub Pages
 #
 # Why this approach:
+# - Single source of truth: ui/Taskfile.yml and api/Taskfile.yml define all quality checks
+# - CI inherits check order from Taskfiles (no duplication)
 # - Avoids running unnecessary jobs (API changes don't trigger UI tests)
 # - Works reliably for both PRs and pushes
 # - Handles initial commits and force pushes correctly
-# - Single source of truth for change detection
 #
 # Required Status Checks (branch protection):
 # - git-lint (unconditional — git hygiene always checked)
@@ -34,9 +35,10 @@
 # These must pass before merging. git-lint always runs; quality gates run conditionally.
 #
 # To modify:
-# 1. For new checks: Add step to job, update ui/Taskfile.yml or api/Taskfile.yml
+# 1. For new checks: Add to quality-gate task in ui/Taskfile.yml or api/Taskfile.yml
 # 2. For new required checks: Add job here, add to branch protection
 # 3. For deployment: Edit ui-deploy job conditions and dependencies
+# NOTE: CI workflow automatically inherits Taskfile changes — no need to duplicate steps
 
 name: cicd
 
@@ -119,26 +121,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: ui/package-lock.json
 
-      - name: Install dependencies
-        run: task install
-
-      - name: Check ESLint
-        run: task lint-check
-
-      - name: Check Prettier formatting
-        run: task format-check
-
-      - name: Check TypeScript
-        run: task types-check
-
-      - name: Run tests
-        run: task test-coverage
-
-      - name: Audit dependencies
-        run: task security
-
-      - name: Build
-        run: task build
+      - name: Run quality-gate
+        run: task quality-gate
 
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'
@@ -166,20 +150,8 @@ jobs:
       - name: Setup Python
         run: uv python install
 
-      - name: Install dependencies
-        run: task install
-
-      - name: Lint
-        run: task lint-check
-
-      - name: Format check
-        run: task format-check
-
-      - name: Test
-        run: task test-coverage
-
-      - name: Security audit
-        run: task security
+      - name: Run quality-gate
+        run: task quality-gate
 
   ui-deploy:
     name: ui-deploy

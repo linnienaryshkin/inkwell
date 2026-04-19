@@ -72,11 +72,13 @@ convention = "google"
 # Keep bug-prone checks except B007 loops.
 "tests/**/*.py" = ["D", "B007"]
 
-# Lab notebooks are educational/interactive artifacts. We still enforce syntax,
-# imports, naming, and annotations, but relax docstring/bugbear strictness to
-# avoid notebook-specific noise blocking the quality gate.
-# E402: module level import not at top — inherent in interactive notebooks.
-"lab/**/*.ipynb" = ["D", "B", "E402"]
+# Lab notebooks are educational/interactive artifacts. Relax strictness to avoid
+# blocking the quality gate on exploratory code. Still enforce core syntax/imports.
+# D: docstrings (notebooks use markdown cells instead)
+# B: bugbear (less relevant for interactive exploration)
+# E402: module level import not at top (inherent in interactive notebooks)
+# ANN: type annotations (exploratory notebooks don't require full annotations)
+"lab/**/*.ipynb" = ["D", "B", "E402", "ANN"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,1 +1,27 @@
-npx lint-staged
+#!/usr/bin/env sh
+# Pre-commit hook: Run full quality-gate on staged files only
+# This ensures staged files are ready to commit and will pass CI
+
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+exit_code=0
+
+# Run quality-gate if UI files are staged
+if echo "$STAGED_FILES" | grep -q "^ui/"; then
+  task ui:quality-gate || exit_code=1
+fi
+
+# Run quality-gate if API files are staged
+if echo "$STAGED_FILES" | grep -q "^api/"; then
+  task api:quality-gate || exit_code=1
+fi
+
+if [ "$exit_code" -ne 0 ]; then
+  echo ""
+  echo "❌ Quality-gate failed on staged files. Fix errors and re-stage before committing."
+  exit 1
+fi

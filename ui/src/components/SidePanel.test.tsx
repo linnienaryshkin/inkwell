@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SidePanel } from "./SidePanel";
+import * as exportUtils from "@/utils/exportUtils";
 import type { Article } from "@/app/studio/page";
+
+jest.mock("@/utils/exportUtils", () => ({
+  exportToPdf: jest.fn(),
+  exportToMarkdown: jest.fn(),
+}));
 
 describe("SidePanel", () => {
   const mockArticle: Article = {
@@ -375,6 +381,197 @@ describe("SidePanel", () => {
       fireEvent.click(publishTab);
 
       expect(handleTabChange).toHaveBeenCalled();
+    });
+  });
+
+  describe("Publish Tab - Export section", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should display Export section header when publish tab is active", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByText("Export")).toBeInTheDocument();
+    });
+
+    it("should render Export as PDF button", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByRole("button", { name: /Export as PDF/ })).toBeInTheDocument();
+    });
+
+    it("should render Export as .md button", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByRole("button", { name: /Export as .md/ })).toBeInTheDocument();
+    });
+
+    it("should render font size input with default value 14", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const fontSizeInput = screen.getByRole("spinbutton") as HTMLInputElement;
+      expect(fontSizeInput).toBeInTheDocument();
+      expect(fontSizeInput.value).toBe("14");
+    });
+
+    it("should display font size label and current value", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByText(/Font size:/)).toBeInTheDocument();
+      expect(screen.getByText("14px")).toBeInTheDocument();
+    });
+
+    it("should render color scheme radio options", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const lightRadio = screen.getByDisplayValue("light") as HTMLInputElement;
+      const darkRadio = screen.getByDisplayValue("dark") as HTMLInputElement;
+
+      expect(lightRadio).toBeInTheDocument();
+      expect(darkRadio).toBeInTheDocument();
+    });
+
+    it("should have dark color scheme selected by default", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const darkRadio = screen.getByDisplayValue("dark") as HTMLInputElement;
+      expect(darkRadio.checked).toBe(true);
+    });
+
+    it("should display Color label", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByText("Color")).toBeInTheDocument();
+    });
+
+    it("should disable both export buttons when article is null", () => {
+      render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+
+      expect(pdfButton).toBeDisabled();
+      expect(mdButton).toBeDisabled();
+    });
+
+    it("should enable export buttons when article is provided", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+
+      expect(pdfButton).not.toBeDisabled();
+      expect(mdButton).not.toBeDisabled();
+    });
+
+    it("should call exportToMarkdown with article on .md button click", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+      fireEvent.click(mdButton);
+
+      expect(exportUtils.exportToMarkdown).toHaveBeenCalledWith(mockArticle);
+    });
+
+    it("should call exportToPdf with article and current settings on PDF button click", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      fireEvent.click(pdfButton);
+
+      expect(exportUtils.exportToPdf).toHaveBeenCalledWith(
+        mockArticle,
+        expect.objectContaining({
+          fontSize: 14,
+          colorScheme: "dark",
+        })
+      );
+    });
+
+    it("should update font size when input changes", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const fontSizeInput = screen.getByRole("spinbutton") as HTMLInputElement;
+      fireEvent.change(fontSizeInput, { target: { value: "18" } });
+
+      expect(fontSizeInput.value).toBe("18");
+      expect(screen.getByText("18px")).toBeInTheDocument();
+    });
+
+    it("should call exportToPdf with updated font size", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const fontSizeInput = screen.getByRole("spinbutton") as HTMLInputElement;
+      fireEvent.change(fontSizeInput, { target: { value: "18" } });
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      fireEvent.click(pdfButton);
+
+      expect(exportUtils.exportToPdf).toHaveBeenCalledWith(
+        mockArticle,
+        expect.objectContaining({
+          fontSize: 18,
+          colorScheme: "dark",
+        })
+      );
+    });
+
+    it("should toggle color scheme when radio is clicked", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const lightRadio = screen.getByDisplayValue("light") as HTMLInputElement;
+      fireEvent.click(lightRadio);
+
+      expect(lightRadio.checked).toBe(true);
+    });
+
+    it("should call exportToPdf with light color scheme when selected", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const lightRadio = screen.getByDisplayValue("light") as HTMLInputElement;
+      fireEvent.click(lightRadio);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      fireEvent.click(pdfButton);
+
+      expect(exportUtils.exportToPdf).toHaveBeenCalledWith(
+        mockArticle,
+        expect.objectContaining({
+          fontSize: 14,
+          colorScheme: "light",
+        })
+      );
+    });
+
+    it("should show loading state on PDF button while exporting", async () => {
+      (exportUtils.exportToPdf as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(resolve, 100);
+          })
+      );
+
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      fireEvent.click(pdfButton);
+
+      // Button should show "Exporting..." while the promise is pending
+      expect(screen.getByRole("button", { name: /Exporting.../ })).toBeInTheDocument();
+    });
+
+    it("should not call export function when article is null", () => {
+      render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
+
+      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
+      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+
+      fireEvent.click(pdfButton);
+      fireEvent.click(mdButton);
+
+      expect(exportUtils.exportToPdf).not.toHaveBeenCalled();
+      expect(exportUtils.exportToMarkdown).not.toHaveBeenCalled();
     });
   });
 });

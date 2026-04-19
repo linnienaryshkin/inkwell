@@ -70,6 +70,8 @@ tasks:
 
   quality-gate:
     desc: Run all UI quality checks in sequence
+    deps:
+      - install
     cmds:
       - task: format-check
       - task: lint-check

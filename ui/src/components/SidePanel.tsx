@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Article } from "@/app/studio/page";
 import { TocTab } from "./TocTab";
+import { exportToPdf, exportToMarkdown } from "@/utils/exportUtils";
 
 type Props = {
   article: Article | null;
@@ -26,6 +27,10 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     issues: { line: number; message: string }[];
   }>(null);
 
+  const [fontSize, setFontSize] = useState(14);
+  const [colorScheme, setColorScheme] = useState<"light" | "dark">("dark");
+  const [exporting, setExporting] = useState(false);
+
   const runLint = () => {
     setLintResults({
       readability: "B+",
@@ -36,6 +41,23 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
         { line: 12, message: "Consider active voice here" },
       ],
     });
+  };
+
+  const handleExportPdf = async () => {
+    if (!article) return;
+    setExporting(true);
+    try {
+      await exportToPdf(article, { fontSize, colorScheme });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportMarkdown = () => {
+    if (!article) return;
+    exportToMarkdown(article);
   };
 
   return (
@@ -176,6 +198,87 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
           <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
             Publishing logs which commit SHA was sent to each platform.
           </p>
+
+          {/* Export section */}
+          <div className="mt-6 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+            <h3
+              className="text-xs font-semibold uppercase tracking-wider mb-3"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Export
+            </h3>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs block mb-2" style={{ color: "var(--text-secondary)" }}>
+                  Font size: <span style={{ color: "var(--text-primary)" }}>{fontSize}px</span>
+                </label>
+                <input
+                  type="number"
+                  min="10"
+                  max="24"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(parseInt(e.target.value) || 14)}
+                  className="w-full px-2 py-1 text-xs rounded"
+                  style={{
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border)",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs block mb-2" style={{ color: "var(--text-secondary)" }}>
+                  Color
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name="colorScheme"
+                      value="light"
+                      checked={colorScheme === "light"}
+                      onChange={(e) => setColorScheme(e.target.value as "light" | "dark")}
+                    />
+                    <span>Light</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      name="colorScheme"
+                      value="dark"
+                      checked={colorScheme === "dark"}
+                      onChange={(e) => setColorScheme(e.target.value as "light" | "dark")}
+                    />
+                    <span>Dark</span>
+                  </label>
+                </div>
+              </div>
+
+              <button
+                onClick={handleExportPdf}
+                disabled={!article || exporting}
+                className="w-full py-2 text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
+              >
+                {exporting ? "Exporting..." : "Export as PDF"}
+              </button>
+
+              <button
+                onClick={handleExportMarkdown}
+                disabled={!article}
+                className="w-full py-2 text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: "transparent",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                Export as .md
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -27,8 +27,6 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     issues: { line: number; message: string }[];
   }>(null);
 
-  const [fontSize, setFontSize] = useState(14);
-  const [colorScheme, setColorScheme] = useState<"light" | "dark">("dark");
   const [exporting, setExporting] = useState(false);
 
   const runLint = () => {
@@ -47,7 +45,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     if (!article) return;
     setExporting(true);
     try {
-      await exportToPdf(article, { fontSize, colorScheme });
+      await exportToPdf(article, { fontSize: 14, colorScheme: "dark" });
     } catch (error) {
       console.error("PDF export failed:", error);
     } finally {
@@ -200,84 +198,31 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
           </p>
 
           {/* Export section */}
-          <div className="mt-6 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
-            <h3
-              className="text-xs font-semibold uppercase tracking-wider mb-3"
-              style={{ color: "var(--text-secondary)" }}
+          <div
+            className="mt-6 pt-4 border-t flex flex-col gap-3"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <button
+              onClick={handleExportPdf}
+              disabled={!article || exporting}
+              className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
+              style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
             >
-              Export
-            </h3>
+              {exporting ? "Exporting..." : "Export as PDF"}
+            </button>
 
-            <div className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs block mb-2" style={{ color: "var(--text-secondary)" }}>
-                  Font size: <span style={{ color: "var(--text-primary)" }}>{fontSize}px</span>
-                </label>
-                <input
-                  type="number"
-                  min="10"
-                  max="24"
-                  value={fontSize}
-                  onChange={(e) => setFontSize(parseInt(e.target.value) || 14)}
-                  className="w-full px-2 py-1 text-xs rounded"
-                  style={{
-                    background: "var(--bg-tertiary)",
-                    color: "var(--text-primary)",
-                    border: "1px solid var(--border)",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs block mb-2" style={{ color: "var(--text-secondary)" }}>
-                  Color
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input
-                      type="radio"
-                      name="colorScheme"
-                      value="light"
-                      checked={colorScheme === "light"}
-                      onChange={(e) => setColorScheme(e.target.value as "light" | "dark")}
-                    />
-                    <span>Light</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input
-                      type="radio"
-                      name="colorScheme"
-                      value="dark"
-                      checked={colorScheme === "dark"}
-                      onChange={(e) => setColorScheme(e.target.value as "light" | "dark")}
-                    />
-                    <span>Dark</span>
-                  </label>
-                </div>
-              </div>
-
-              <button
-                onClick={handleExportPdf}
-                disabled={!article || exporting}
-                className="w-full py-2 text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
-              >
-                {exporting ? "Exporting..." : "Export as PDF"}
-              </button>
-
-              <button
-                onClick={handleExportMarkdown}
-                disabled={!article}
-                className="w-full py-2 text-sm rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  background: "transparent",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                Export as .md
-              </button>
-            </div>
+            <button
+              onClick={handleExportMarkdown}
+              disabled={!article}
+              className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
+              style={{
+                background: "transparent",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              Export as .md
+            </button>
           </div>
         </div>
       )}

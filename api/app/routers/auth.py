@@ -43,6 +43,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from app.config import config
 from app.models.auth import UserProfile
+from app.shared.middleware import get_authenticated_user_login
 
 ALLOWED_REDIRECT_URLS: list[str] = config.allowed_redirect_urls
 
@@ -191,21 +192,19 @@ async def me(gh_access_token: str | None = Cookie(default=None)) -> UserProfile:
     Raises:
         HTTPException: 401 if no valid access token is present or if GitHub auth fails.
     """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Validate token and get login (reuses the shared auth middleware)
+    await get_authenticated_user_login(gh_access_token)
 
+    # Fetch full profile from GitHub
     async with httpx.AsyncClient() as http:
-        try:
-            resp = await http.get(
-                "https://api.github.com/user",
-                headers={
-                    "Authorization": f"Bearer {gh_access_token}",
-                    "Accept": "application/json",
-                },
-            )
-            resp.raise_for_status()
-        except httpx.HTTPStatusError:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+        resp = await http.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {gh_access_token}",
+                "Accept": "application/json",
+            },
+        )
+        resp.raise_for_status()
 
     data = resp.json()
     return UserProfile(login=data["login"], name=data.get("name"), avatar_url=data["avatar_url"])

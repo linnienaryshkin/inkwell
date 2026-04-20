@@ -1,49 +1,21 @@
-"""Chat assistant endpoints with in-memory thread storage and LangGraph backend."""
+"""Chat assistant endpoints with LangGraph backend."""
 
 import uuid
 from datetime import UTC, datetime
 
-import httpx
 from fastapi import APIRouter, Cookie, HTTPException
-from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.ai.graph import graph
+from app.ai.graph import memory
+from app.ai.service import invoke_thread
 from app.models.chat import ChatResponse, Message, MessageCreate, Thread, ThreadCreate, ThreadDetail
+from app.shared.middleware import get_authenticated_user_login
 
-# In-memory thread store: key = (user_login, thread_id), value = Thread with history
-# We also maintain a list of threads per user for quick listing
-_threads: dict[
-    tuple[str, str], dict
-] = {}  # (user, thread_id) -> {thread: Thread, history: list[Message]}
-_user_threads: dict[str, list[str]] = {}  # user_login -> list of thread_ids
+# Minimal thread metadata store: only title + created_at for list endpoints
+# Keys are composite: (user_login, thread_id)
+# MemorySaver stores message history via graph checkpoints
+_thread_metadata: dict[tuple[str, str], dict[str, str]] = {}
 
 router = APIRouter()
-
-
-async def get_user_login(gh_access_token: str) -> str:
-    """Fetch the authenticated user's login from GitHub API.
-
-    Args:
-        gh_access_token: GitHub access token from httponly cookie.
-
-    Returns:
-        str: GitHub user login.
-
-    Raises:
-        HTTPException: 401 if the token is invalid or 502 if GitHub API fails.
-    """
-    async with httpx.AsyncClient() as http:
-        try:
-            resp = await http.get(
-                "https://api.github.com/user",
-                headers={"Authorization": f"Bearer {gh_access_token}"},
-            )
-            resp.raise_for_status()
-            return resp.json()["login"]
-        except httpx.HTTPStatusError:
-            raise HTTPException(status_code=401, detail="Invalid access token")
-        except httpx.RequestError:
-            raise HTTPException(status_code=502, detail="GitHub API error")
 
 
 @router.get("/threads", response_model=list[Thread])
@@ -51,6 +23,9 @@ async def list_threads(
     gh_access_token: str | None = Cookie(default=None),
 ) -> list[Thread]:
     """List all chat threads for the current user.
+
+    Returns thread metadata (title, created_at). Full message history
+    is fetched separately via GET /threads/{thread_id}.
 
     Args:
         gh_access_token: GitHub access token from httponly cookie.
@@ -61,16 +36,20 @@ async def list_threads(
     Raises:
         HTTPException: 401 if not authenticated.
     """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user_login = await get_user_login(gh_access_token)
-    thread_ids = _user_threads.get(user_login, [])
+    user_login = await get_authenticated_user_login(gh_access_token)
     threads = []
-    for thread_id in thread_ids:
-        key = (user_login, thread_id)
-        if key in _threads:
-            threads.append(_threads[key]["thread"])
+
+    # Iterate metadata store to get all threads for this user
+    for (user, thread_id), metadata in _thread_metadata.items():
+        if user == user_login:
+            threads.append(
+                Thread(
+                    thread_id=thread_id,
+                    title=metadata["title"],
+                    created_at=metadata["created_at"],
+                )
+            )
+
     return threads
 
 
@@ -81,67 +60,46 @@ async def create_thread(
 ) -> Thread:
     """Create a new thread with an initial message.
 
-    The initial message is sent to the graph, and the thread is created with the response.
+    Invokes the LangGraph with the user's message and stores minimal metadata.
+    Message history is stored in MemorySaver via the graph.
 
     Args:
-        req: Request body with content and article_content.
+        req: Request body with initial message content.
         gh_access_token: GitHub access token from httponly cookie.
 
     Returns:
-        Thread: Newly created thread.
+        Thread: Newly created thread metadata.
 
     Raises:
         HTTPException: 401 if not authenticated.
     """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user_login = await get_user_login(gh_access_token)
+    user_login = await get_authenticated_user_login(gh_access_token)
     thread_id = str(uuid.uuid4())
+    full_thread_id = f"{user_login}:{thread_id}"
 
-    # Build system prompt
-    system_prompt = (
-        "You are a co-writer assistant. The article the user is working on:\n\n"
-        "---\n"
-        f"{req.article_content}\n"
-        "---\n\n"
-        "Help the user improve, expand, or discuss this article."
-    )
-
-    # Invoke the graph with the initial message
-    messages = [SystemMessage(content=system_prompt), HumanMessage(content=req.content)]
-    result = graph.invoke(
-        {"messages": messages},
-        config={"configurable": {"thread_id": thread_id}},
-    )
-
-    # Extract AI response
-    ai_message = result["messages"][-1]
-    reply = ai_message.content
-
-    # Create thread title from first message
+    # Create thread title
     title = req.content[:60]
     if len(req.content) > 60:
         title += "..."
 
-    # Create thread and store
+    created_at = datetime.now(UTC).isoformat()
+
+    # Invoke the AI graph for the initial response
+    # This creates a checkpoint in MemorySaver
+    ai_response, _ = invoke_thread(full_thread_id, req.content, is_new=True)
+
+    # Store minimal metadata (for fast list_threads without iterating MemorySaver)
+    key = (user_login, thread_id)
+    _thread_metadata[key] = {
+        "title": title,
+        "created_at": created_at,
+    }
+
     thread = Thread(
         thread_id=thread_id,
         title=title,
-        created_at=datetime.now(UTC).isoformat(),
+        created_at=created_at,
     )
-
-    history = [
-        Message(role="human", content=req.content),
-        Message(role="ai", content=reply),
-    ]
-
-    key = (user_login, thread_id)
-    _threads[key] = {"thread": thread, "history": history}
-
-    if user_login not in _user_threads:
-        _user_threads[user_login] = []
-    _user_threads[user_login].append(thread_id)
 
     return thread
 
@@ -153,6 +111,9 @@ async def get_thread(
 ) -> ThreadDetail:
     """Get a thread with its full message history.
 
+    Message history is fetched from MemorySaver checkpoints created by the graph.
+    Metadata (title, created_at) comes from the minimal metadata store.
+
     Args:
         thread_id: ID of the thread to retrieve.
         gh_access_token: GitHub access token from httponly cookie.
@@ -163,23 +124,35 @@ async def get_thread(
     Raises:
         HTTPException: 401 if not authenticated; 404 if thread not found.
     """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user_login = await get_user_login(gh_access_token)
+    user_login = await get_authenticated_user_login(gh_access_token)
     key = (user_login, thread_id)
 
-    if key not in _threads:
+    # Check metadata exists
+    if key not in _thread_metadata:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    data = _threads[key]
-    thread = data["thread"]
-    history = data["history"]
+    metadata = _thread_metadata[key]
+    full_thread_id = f"{user_login}:{thread_id}"
+
+    # Fetch messages from MemorySaver
+    checkpoint_tuple = memory.get_tuple({"configurable": {"thread_id": full_thread_id}})
+    messages = []
+    if checkpoint_tuple:
+        messages = checkpoint_tuple.checkpoint.get("channel_values", {}).get("messages", [])
+
+    # Convert to Message objects
+    history = [
+        Message(
+            role="human" if msg.__class__.__name__ == "HumanMessage" else "ai",
+            content=msg.content,
+        )
+        for msg in messages
+    ]
 
     return ThreadDetail(
-        thread_id=thread.thread_id,
-        title=thread.title,
-        created_at=thread.created_at,
+        thread_id=thread_id,
+        title=metadata["title"],
+        created_at=metadata["created_at"],
         history=history,
     )
 
@@ -192,9 +165,11 @@ async def send_message(
 ) -> ChatResponse:
     """Send a message to an existing thread and receive AI response.
 
+    Invokes the graph which updates the MemorySaver checkpoint with new messages.
+
     Args:
         thread_id: ID of the thread to message.
-        req: Request body with content and article_content.
+        req: Request body with message content.
         gh_access_token: GitHub access token from httponly cookie.
 
     Returns:
@@ -203,43 +178,35 @@ async def send_message(
     Raises:
         HTTPException: 401 if not authenticated; 404 if thread not found.
     """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    user_login = await get_user_login(gh_access_token)
+    user_login = await get_authenticated_user_login(gh_access_token)
     key = (user_login, thread_id)
+    full_thread_id = f"{user_login}:{thread_id}"
 
-    if key not in _threads:
+    # Verify thread exists (check metadata)
+    if key not in _thread_metadata:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    # Build system prompt
-    system_prompt = (
-        "You are a co-writer assistant. The article the user is working on:\n\n"
-        "---\n"
-        f"{req.article_content}\n"
-        "---\n\n"
-        "Help the user improve, expand, or discuss this article."
-    )
+    # Invoke the AI graph with the new message
+    # This updates the MemorySaver checkpoint
+    ai_response, _ = invoke_thread(full_thread_id, req.content, is_new=False)
 
-    # Invoke graph with new message
-    messages = [SystemMessage(content=system_prompt), HumanMessage(content=req.content)]
-    result = graph.invoke(
-        {"messages": messages},
-        config={"configurable": {"thread_id": thread_id}},
-    )
+    # Fetch updated history from MemorySaver
+    checkpoint_tuple = memory.get_tuple({"configurable": {"thread_id": full_thread_id}})
+    messages = []
+    if checkpoint_tuple:
+        messages = checkpoint_tuple.checkpoint.get("channel_values", {}).get("messages", [])
 
-    # Extract AI response
-    ai_message = result["messages"][-1]
-    reply = ai_message.content
-
-    # Update thread history
-    data = _threads[key]
-    history = data["history"]
-    history.append(Message(role="human", content=req.content))
-    history.append(Message(role="ai", content=reply))
+    # Convert to Message objects
+    history = [
+        Message(
+            role="human" if msg.__class__.__name__ == "HumanMessage" else "ai",
+            content=msg.content,
+        )
+        for msg in messages
+    ]
 
     return ChatResponse(
         thread_id=thread_id,
-        reply=reply,
+        reply=ai_response,
         history=history,
     )

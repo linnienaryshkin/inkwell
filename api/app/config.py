@@ -13,6 +13,7 @@ _REQUIRED_ENV = [
     "OAUTH_CLIENT_SECRET",
     "OAUTH_CALLBACK_URL",
     "ALLOWED_REDIRECT_URLS",
+    "ANTHROPIC_API_KEY",
 ]
 
 
@@ -25,6 +26,7 @@ class Config:
         oauth_client_secret: GitHub OAuth application client secret.
         oauth_callback_url: URL where GitHub redirects after authorization.
         allowed_redirect_urls: Comma-separated list of frontend URLs allowed for OAuth redirect.
+        anthropic_api_key: Anthropic API key for Claude access.
     """
 
     oauth_client_id: str
@@ -32,6 +34,7 @@ class Config:
     oauth_callback_url: str
     # Parsed from a comma-separated env var; used for both OAuth redirect validation and CORS
     allowed_redirect_urls: list[str]
+    anthropic_api_key: str
 
 
 def _load() -> Config:
@@ -53,6 +56,7 @@ def _load() -> Config:
         allowed_redirect_urls=[
             u.strip() for u in os.environ["ALLOWED_REDIRECT_URLS"].split(",") if u.strip()
         ],
+        anthropic_api_key=os.environ["ANTHROPIC_API_KEY"],
     )
 
 

@@ -24,14 +24,12 @@ class ThreadCreate(BaseModel):
     """Request to create a new thread with initial message."""
 
     content: str = Field(..., description="Initial message content")
-    article_content: str = Field(..., description="Article content for system prompt")
 
 
 class MessageCreate(BaseModel):
     """Request to send a message to an existing thread."""
 
     content: str = Field(..., description="Message content")
-    article_content: str = Field(..., description="Current article content for system prompt")
 
 
 class ChatResponse(BaseModel):

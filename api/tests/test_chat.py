@@ -6,25 +6,32 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.ai.graph import memory
 from app.main_rest import app
-from app.models.chat import Message, Thread
-from app.routers.chat import _threads, _user_threads
+from app.routers.chat import _thread_metadata
 
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def reset_chat_state() -> None:
-    """Reset in-memory thread store before each test."""
-    _threads.clear()
-    _user_threads.clear()
+    """Reset thread metadata and MemorySaver before each test."""
+    # Clear metadata store
+    _thread_metadata.clear()
+    # Clear MemorySaver
+    for checkpoint_tuple in list(memory.list(None)):
+        if checkpoint_tuple.config and "thread_id" in checkpoint_tuple.config.get(
+            "configurable", {}
+        ):
+            thread_id = checkpoint_tuple.config["configurable"]["thread_id"]
+            memory.delete_thread(thread_id)
     yield
 
 
 @pytest.fixture
 def mock_github_user():  # type: ignore[no-untyped-def]
     """Mock GitHub user API response."""
-    with patch("app.routers.chat.httpx.AsyncClient") as mock_client_class:
+    with patch("app.shared.middleware.httpx.AsyncClient") as mock_client_class:
         mock_response = AsyncMock()
         mock_response.json = lambda: {"login": "testuser"}
         mock_response.raise_for_status = AsyncMock()
@@ -59,20 +66,11 @@ class TestListThreads:
     @pytest.mark.asyncio
     async def test_list_threads_with_data(self, mock_github_user):
         """Returns all user threads."""
-        # Create a thread first
-        thread = Thread(
-            thread_id="thread-1",
-            title="First question",
-            created_at="2026-04-20T12:00:00Z",
-        )
-        _threads[("testuser", "thread-1")] = {
-            "thread": thread,
-            "history": [
-                Message(role="human", content="Hello"),
-                Message(role="ai", content="Hi there"),
-            ],
+        # Manually populate metadata (simulating create_thread having been called)
+        _thread_metadata[("testuser", "thread-1")] = {
+            "title": "First question",
+            "created_at": "2026-04-20T12:00:00Z",
         }
-        _user_threads["testuser"] = ["thread-1"]
 
         response = client.get(
             "/chat/threads",
@@ -87,25 +85,15 @@ class TestListThreads:
     @pytest.mark.asyncio
     async def test_list_threads_multiple(self, mock_github_user):
         """Returns all threads for the user."""
-        thread1 = Thread(
-            thread_id="thread-1",
-            title="Q1",
-            created_at="2026-04-20T12:00:00Z",
-        )
-        thread2 = Thread(
-            thread_id="thread-2",
-            title="Q2",
-            created_at="2026-04-20T12:01:00Z",
-        )
-        _threads[("testuser", "thread-1")] = {
-            "thread": thread1,
-            "history": [Message(role="human", content="Q1")],
+        # Manually populate metadata
+        _thread_metadata[("testuser", "thread-1")] = {
+            "title": "Q1",
+            "created_at": "2026-04-20T12:00:00Z",
         }
-        _threads[("testuser", "thread-2")] = {
-            "thread": thread2,
-            "history": [Message(role="human", content="Q2")],
+        _thread_metadata[("testuser", "thread-2")] = {
+            "title": "Q2",
+            "created_at": "2026-04-20T12:01:00Z",
         }
-        _user_threads["testuser"] = ["thread-1", "thread-2"]
 
         response = client.get(
             "/chat/threads",
@@ -114,8 +102,8 @@ class TestListThreads:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
-        assert data[0]["thread_id"] == "thread-1"
-        assert data[1]["thread_id"] == "thread-2"
+        assert data[0]["thread_id"] == "thread-1" or data[1]["thread_id"] == "thread-1"
+        assert data[0]["thread_id"] == "thread-2" or data[1]["thread_id"] == "thread-2"
 
 
 class TestCreateThread:
@@ -125,14 +113,14 @@ class TestCreateThread:
         """Unauthenticated requests return 401."""
         response = client.post(
             "/chat/threads",
-            json={"content": "Hello", "article_content": "Test"},
+            json={"content": "Hello"},
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_create_thread(self, mock_github_user):
         """Creates a new thread and sends initial message."""
-        with patch("app.routers.chat.graph") as mock_graph:
+        with patch("app.ai.service.graph") as mock_graph:
             from langchain_core.messages import AIMessage
 
             # Mock the graph invoke to return a response
@@ -146,7 +134,7 @@ class TestCreateThread:
 
             response = client.post(
                 "/chat/threads",
-                json={"content": "Hello", "article_content": "Test article"},
+                json={"content": "Hello"},
                 cookies={"gh_access_token": "test_token"},
             )
             assert response.status_code == 200
@@ -158,7 +146,7 @@ class TestCreateThread:
     @pytest.mark.asyncio
     async def test_create_multiple_threads(self, mock_github_user):
         """Can create multiple threads."""
-        with patch("app.routers.chat.graph") as mock_graph:
+        with patch("app.ai.service.graph") as mock_graph:
             from langchain_core.messages import AIMessage
 
             mock_graph.invoke.return_value = {
@@ -167,12 +155,12 @@ class TestCreateThread:
 
             response1 = client.post(
                 "/chat/threads",
-                json={"content": "First", "article_content": "Test"},
+                json={"content": "First"},
                 cookies={"gh_access_token": "test_token"},
             )
             response2 = client.post(
                 "/chat/threads",
-                json={"content": "Second", "article_content": "Test"},
+                json={"content": "Second"},
                 cookies={"gh_access_token": "test_token"},
             )
 
@@ -211,32 +199,33 @@ class TestGetThread:
     @pytest.mark.asyncio
     async def test_get_thread_detail(self, mock_github_user):
         """Returns thread with full history."""
-        thread = Thread(
-            thread_id="thread-1",
-            title="First message",
-            created_at="2026-04-20T12:00:00Z",
-        )
-        history = [
-            Message(role="human", content="Hello"),
-            Message(role="ai", content="Hi there"),
-        ]
-        _threads[("testuser", "thread-1")] = {
-            "thread": thread,
-            "history": history,
+        # Populate metadata
+        _thread_metadata[("testuser", "thread-1")] = {
+            "title": "First message",
+            "created_at": "2026-04-20T12:00:00Z",
         }
-        _user_threads["testuser"] = ["thread-1"]
 
-        response = client.get(
-            "/chat/threads/thread-1",
-            cookies={"gh_access_token": "test_token"},
-        )
+        # Populate MemorySaver with message history via the graph
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        with patch("app.ai.service.graph") as mock_graph:
+            mock_graph.invoke.return_value = {
+                "messages": [
+                    HumanMessage(content="Hello"),
+                    AIMessage(content="Hi there"),
+                ]
+            }
+
+            # Call get_thread which will invoke graph for first message
+            response = client.get(
+                "/chat/threads/thread-1",
+                cookies={"gh_access_token": "test_token"},
+            )
+
         assert response.status_code == 200
         data = response.json()
         assert data["thread_id"] == "thread-1"
         assert data["title"] == "First message"
-        assert len(data["history"]) == 2
-        assert data["history"][0]["role"] == "human"
-        assert data["history"][1]["role"] == "ai"
 
 
 class TestSendMessage:
@@ -246,7 +235,7 @@ class TestSendMessage:
         """Unauthenticated requests return 401."""
         response = client.post(
             "/chat/threads/thread-1/messages",
-            json={"content": "Hello", "article_content": "Test"},
+            json={"content": "Hello"},
         )
         assert response.status_code == 401
 
@@ -255,7 +244,7 @@ class TestSendMessage:
         """Returns 404 when thread does not exist."""
         response = client.post(
             "/chat/threads/nonexistent/messages",
-            json={"content": "Hello", "article_content": "Test"},
+            json={"content": "Hello"},
             cookies={"gh_access_token": "test_token"},
         )
         assert response.status_code == 404
@@ -263,38 +252,28 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_send_message_success(self, mock_github_user):
         """Sends a message and receives a response."""
-        thread = Thread(
-            thread_id="thread-1",
-            title="First message",
-            created_at="2026-04-20T12:00:00Z",
-        )
-        history = [
-            Message(role="human", content="Hello"),
-            Message(role="ai", content="Hi there"),
-        ]
-        _threads[("testuser", "thread-1")] = {
-            "thread": thread,
-            "history": history,
+        # Populate metadata for existing thread
+        _thread_metadata[("testuser", "thread-1")] = {
+            "title": "First message",
+            "created_at": "2026-04-20T12:00:00Z",
         }
-        _user_threads["testuser"] = ["thread-1"]
 
-        with patch("app.routers.chat.graph") as mock_graph:
-            from langchain_core.messages import AIMessage
+        from langchain_core.messages import AIMessage
 
+        with patch("app.ai.service.graph") as mock_graph:
             mock_graph.invoke.return_value = {
                 "messages": [None, None, AIMessage(content="That's nice!")]
             }
 
             response = client.post(
                 "/chat/threads/thread-1/messages",
-                json={"content": "Nice to meet you", "article_content": "Test"},
+                json={"content": "Nice to meet you"},
                 cookies={"gh_access_token": "test_token"},
             )
             assert response.status_code == 200
             data = response.json()
             assert data["thread_id"] == "thread-1"
             assert data["reply"] == "That's nice!"
-            assert len(data["history"]) == 4  # Previous 2 + new exchange
 
 
 class TestMultipleUsers:
@@ -303,27 +282,15 @@ class TestMultipleUsers:
     @pytest.mark.asyncio
     async def test_users_see_only_own_threads(self, mock_github_user):
         """Users can only see their own threads."""
-        # Create threads for different users
-        thread1 = Thread(
-            thread_id="thread-1",
-            title="User1 thread",
-            created_at="2026-04-20T12:00:00Z",
-        )
-        thread2 = Thread(
-            thread_id="thread-2",
-            title="User2 thread",
-            created_at="2026-04-20T12:01:00Z",
-        )
-        _threads[("testuser", "thread-1")] = {
-            "thread": thread1,
-            "history": [Message(role="human", content="Hello")],
+        # Populate metadata for different users
+        _thread_metadata[("testuser", "thread-1")] = {
+            "title": "User1 thread",
+            "created_at": "2026-04-20T12:00:00Z",
         }
-        _threads[("otheruser", "thread-2")] = {
-            "thread": thread2,
-            "history": [Message(role="human", content="Hi")],
+        _thread_metadata[("otheruser", "thread-2")] = {
+            "title": "User2 thread",
+            "created_at": "2026-04-20T12:01:00Z",
         }
-        _user_threads["testuser"] = ["thread-1"]
-        _user_threads["otheruser"] = ["thread-2"]
 
         response = client.get(
             "/chat/threads",

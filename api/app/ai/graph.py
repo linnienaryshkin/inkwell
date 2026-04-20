@@ -4,15 +4,22 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
 
+from app.config import config
+
 # Module-level singleton: MemorySaver for in-memory thread history
 memory = MemorySaver()
+
+# Module-level singleton: Claude Haiku LLM client (API key from config)
+_llm = ChatAnthropic(
+    model="claude-haiku-4-5-20251001",
+    api_key=config.anthropic_api_key,
+)
 
 
 def call_llm(state: MessagesState) -> MessagesState:
     """Call Claude Haiku with the current message state."""
-    llm = ChatAnthropic(model="claude-haiku-4-5-20251001")
     messages = state["messages"]
-    response = llm.invoke(messages)
+    response = _llm.invoke(messages)
     return {"messages": [response]}
 
 

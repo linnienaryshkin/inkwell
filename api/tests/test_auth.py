@@ -156,7 +156,7 @@ def test_me_no_cookie_returns_401(client: TestClient) -> None:
     assert response.json()["detail"] == "Not authenticated"
 
 
-@patch("app.routers.auth.httpx.AsyncClient")
+@patch("app.shared.middleware.httpx.AsyncClient")
 def test_me_valid_cookie_returns_profile(mock_async_client: MagicMock, client: TestClient) -> None:
     mock_async_client.return_value = _mock_github_user()
     client.cookies.set(SESSION_COOKIE, "gho_test_token")
@@ -168,13 +168,13 @@ def test_me_valid_cookie_returns_profile(mock_async_client: MagicMock, client: T
     assert "avatar_url" in data
 
 
-@patch("app.routers.auth.httpx.AsyncClient")
+@patch("app.shared.middleware.httpx.AsyncClient")
 def test_me_invalid_token_returns_401(mock_async_client: MagicMock, client: TestClient) -> None:
     mock_async_client.return_value = _mock_github_user(status_code=401)
     client.cookies.set(SESSION_COOKIE, "gho_expired_token")
     response = client.get("/auth/me")
     assert response.status_code == 401
-    assert response.json()["detail"] == "Not authenticated"
+    assert response.json()["detail"] == "Invalid access token"
 
 
 # --- /auth/logout ---

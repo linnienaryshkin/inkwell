@@ -1,3 +1,13 @@
+jest.mock("mermaid", () => ({
+  __esModule: true,
+  default: {
+    initialize: jest.fn(),
+    render: jest.fn().mockResolvedValue({
+      svg: "<svg><text>test</text></svg>",
+    }),
+  },
+}));
+
 import { exportToMarkdown, exportToPdf, type PdfOptions } from "./exportUtils";
 import type { Article } from "@/app/studio/page";
 
@@ -92,30 +102,32 @@ describe("exportUtils", () => {
 
   describe("exportToPdf", () => {
     beforeEach(() => {
-      // Mock mermaid
-      const mermaidMock = {
-        render: jest.fn().mockResolvedValue({
-          svg: "<svg><text>test</text></svg>",
-        }),
+      // Mock document.createElement for iframe
+      const mockIframe = {
+        style: {},
+        contentDocument: {
+          open: jest.fn(),
+          write: jest.fn(),
+          close: jest.fn(),
+        },
+        contentWindow: {
+          document: {
+            readyState: "complete",
+          },
+          print: jest.fn(),
+        },
       };
-      (window as unknown as { mermaid: typeof mermaidMock }).mermaid = mermaidMock;
+      jest.spyOn(document, "createElement").mockReturnValue(mockIframe as unknown as HTMLElement);
+      jest
+        .spyOn(document.body, "appendChild")
+        .mockReturnValue(mockIframe as unknown as HTMLElement);
+      jest
+        .spyOn(document.body, "removeChild")
+        .mockReturnValue(mockIframe as unknown as HTMLElement);
+    });
 
-      // Mock html2pdf
-      jest.mock("html2pdf.js", () => ({
-        default: jest.fn(() => ({
-          set: jest.fn().mockReturnThis(),
-          from: jest.fn().mockReturnThis(),
-          save: jest.fn(),
-        })),
-      }));
-
-      // Mock ReactDOM
-      jest.mock("react-dom/client", () => ({
-        createRoot: jest.fn(() => ({
-          render: jest.fn(),
-          unmount: jest.fn(),
-        })),
-      }));
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     it("should resolve without error for article with no mermaid blocks", async () => {

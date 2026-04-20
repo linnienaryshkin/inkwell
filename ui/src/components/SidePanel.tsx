@@ -41,7 +41,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     });
   };
 
-  const handleExportPdf = async () => {
+  const handlePrint = async () => {
     if (!article) return;
     setExporting(true);
     try {
@@ -53,7 +53,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     }
   };
 
-  const handleExportMarkdown = () => {
+  const handleDownloadMarkdown = () => {
     if (!article) return;
     exportToMarkdown(article);
   };
@@ -203,16 +203,16 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
             style={{ borderColor: "var(--border)" }}
           >
             <button
-              onClick={handleExportPdf}
+              onClick={handlePrint}
               disabled={!article || exporting}
               className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
               style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
             >
-              {exporting ? "Exporting..." : "Export as PDF"}
+              {exporting ? "Printing..." : "Print"}
             </button>
 
             <button
-              onClick={handleExportMarkdown}
+              onClick={handleDownloadMarkdown}
               disabled={!article}
               className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
               style={{
@@ -221,7 +221,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
                 border: "1px solid var(--border)",
               }}
             >
-              Export as .md
+              Download
             </button>
           </div>
         </div>

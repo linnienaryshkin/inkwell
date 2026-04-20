@@ -1,3 +1,4 @@
+import mermaid from "mermaid";
 import type { Article } from "@/app/studio/page";
 
 export type PdfOptions = {
@@ -25,16 +26,17 @@ export function exportToMarkdown(article: Article): void {
  */
 export async function exportToPdf(article: Article, _options: PdfOptions): Promise<void> {
   try {
+    // Initialize mermaid if not already done
+    mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+
     // Render mermaid diagrams first
     const mermaidFences = extractMermaidFences(article.content);
     const mermaidSvgs: Record<number, string> = {};
 
     for (let i = 0; i < mermaidFences.length; i++) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mermaidWindow = window as any;
-        const { svg } = await mermaidWindow.mermaid.render(`mermaid-export-${i}`, mermaidFences[i]);
-        mermaidSvgs[i] = svg;
+        const result = await mermaid.render(`mermaid-export-${i}`, mermaidFences[i]);
+        mermaidSvgs[i] = result.svg;
       } catch (error) {
         console.error(`Failed to render mermaid diagram ${i}:`, error);
       }
@@ -59,10 +61,21 @@ export async function exportToPdf(article: Article, _options: PdfOptions): Promi
     iframeDoc.write(htmlContent);
     iframeDoc.close();
 
-    // Wait for content to render, then trigger print
-    iframe.onload = () => {
-      iframe.contentWindow?.print();
-    };
+    // Wait for the document to be ready, then trigger print
+    await new Promise((resolve) => {
+      if (iframe.contentWindow?.document.readyState === "complete") {
+        resolve(null);
+      } else {
+        iframe.onload = () => {
+          resolve(null);
+        };
+      }
+    });
+
+    // Give the browser a moment to render the SVGs
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    iframe.contentWindow?.print();
 
     // Cleanup after a delay
     setTimeout(() => {
@@ -108,10 +121,7 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
   // Replace mermaid markers with SVGs
   Object.entries(mermaidSvgs).forEach(([index, svg]) => {
     const marker = `__MERMAID_${index}__`;
-    // Replace in paragraph tags first, then any remaining markers
-    html = html
-      .replace(new RegExp(`<p>${marker}</p>`, "g"), `<div class="mermaid-diagram">${svg}</div>`)
-      .replace(new RegExp(`${marker}`, "g"), `<div class="mermaid-diagram">${svg}</div>`);
+    html = html.split(marker).join(svg);
   });
 
   return `<!DOCTYPE html>
@@ -217,17 +227,12 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
       font-weight: 600;
       background-color: #f6f8fa;
     }
-    .mermaid-diagram {
-      margin: 20px 0;
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: center;
-      page-break-inside: avoid;
-    }
-    .mermaid-diagram svg {
+    svg {
       max-width: 100%;
       height: auto;
-      display: inline-block;
+      display: block;
+      margin: 24px 0;
+      page-break-inside: avoid;
     }
     @media print {
       body {
@@ -247,6 +252,16 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
  */
 function convertMarkdownToHtml(markdown: string): string {
   let html = markdown;
+
+  // Protect mermaid markers from markdown processing
+  const mermaidMarkers: Record<string, string> = {};
+  let markerIndex = 0;
+  html = html.replace(/__MERMAID_\d+__/g, (match) => {
+    const placeholder = `MERMAIDPLACEHOLDER${markerIndex}MERMAIDPLACEHOLDER`;
+    mermaidMarkers[placeholder] = match;
+    markerIndex++;
+    return placeholder;
+  });
 
   // Process headings first
   html = html
@@ -275,6 +290,11 @@ function convertMarkdownToHtml(markdown: string): string {
 
   // Process line breaks and paragraphs
   html = processParagraphs(html);
+
+  // Restore mermaid markers
+  Object.entries(mermaidMarkers).forEach(([placeholder, original]) => {
+    html = html.split(placeholder).join(original);
+  });
 
   return html;
 }
@@ -358,8 +378,11 @@ function processParagraphs(html: string): string {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Check if line is a block element
-    if (trimmed.match(/^<(h[1-3]|div|pre|ul|ol|table|blockquote)/)) {
+    // Check if line is a block element or a mermaid marker
+    if (
+      trimmed.match(/^<(h[1-3]|div|pre|ul|ol|table|blockquote)/) ||
+      trimmed.match(/^__MERMAID_\d+__$/)
+    ) {
       if (currentPara) {
         result.push(`<p>${currentPara}</p>`);
         currentPara = "";

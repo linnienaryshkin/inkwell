@@ -389,52 +389,52 @@ describe("SidePanel", () => {
       jest.clearAllMocks();
     });
 
-    it("should render Export as PDF button", () => {
+    it("should render Print button", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      expect(screen.getByRole("button", { name: /Export as PDF/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Print/ })).toBeInTheDocument();
     });
 
-    it("should render Export as .md button", () => {
+    it("should render Download button", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      expect(screen.getByRole("button", { name: /Export as .md/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Download/ })).toBeInTheDocument();
     });
 
     it("should disable both export buttons when article is null", () => {
       render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
 
-      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
-      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
 
-      expect(pdfButton).toBeDisabled();
-      expect(mdButton).toBeDisabled();
+      expect(printButton).toBeDisabled();
+      expect(downloadButton).toBeDisabled();
     });
 
     it("should enable export buttons when article is provided", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
-      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
 
-      expect(pdfButton).not.toBeDisabled();
-      expect(mdButton).not.toBeDisabled();
+      expect(printButton).not.toBeDisabled();
+      expect(downloadButton).not.toBeDisabled();
     });
 
-    it("should call exportToMarkdown with article on .md button click", () => {
+    it("should call exportToMarkdown with article on Download button click", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
-      fireEvent.click(mdButton);
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
+      fireEvent.click(downloadButton);
 
       expect(exportUtils.exportToMarkdown).toHaveBeenCalledWith(mockArticle);
     });
 
-    it("should call exportToPdf with article and default settings on PDF button click", () => {
+    it("should call exportToPdf with article and default settings on Print button click", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
-      fireEvent.click(pdfButton);
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      fireEvent.click(printButton);
 
       expect(exportUtils.exportToPdf).toHaveBeenCalledWith(
         mockArticle,
@@ -445,7 +445,7 @@ describe("SidePanel", () => {
       );
     });
 
-    it("should show loading state on PDF button while exporting", async () => {
+    it("should show loading state on Print button while exporting", async () => {
       (exportUtils.exportToPdf as jest.Mock).mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -455,21 +455,21 @@ describe("SidePanel", () => {
 
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
-      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
-      fireEvent.click(pdfButton);
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      fireEvent.click(printButton);
 
-      // Button should show "Exporting..." while the promise is pending
-      expect(screen.getByRole("button", { name: /Exporting.../ })).toBeInTheDocument();
+      // Button should show "Printing..." while the promise is pending
+      expect(screen.getByRole("button", { name: /Printing.../ })).toBeInTheDocument();
     });
 
     it("should not call export function when article is null", () => {
       render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
 
-      const pdfButton = screen.getByRole("button", { name: /Export as PDF/ });
-      const mdButton = screen.getByRole("button", { name: /Export as .md/ });
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
 
-      fireEvent.click(pdfButton);
-      fireEvent.click(mdButton);
+      fireEvent.click(printButton);
+      fireEvent.click(downloadButton);
 
       expect(exportUtils.exportToPdf).not.toHaveBeenCalled();
       expect(exportUtils.exportToMarkdown).not.toHaveBeenCalled();

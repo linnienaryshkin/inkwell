@@ -59,6 +59,8 @@ tasks:
 
   quality-gate:
     desc: Run all API quality checks in sequence
+    deps:
+      - install
     cmds:
       - task: lint-check
       - task: format-check

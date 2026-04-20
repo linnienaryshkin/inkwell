@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Article } from "@/app/studio/page";
 import { TocTab } from "./TocTab";
+import { exportToPdf, exportToMarkdown } from "@/utils/exportUtils";
 
 type Props = {
   article: Article | null;
@@ -26,6 +27,8 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     issues: { line: number; message: string }[];
   }>(null);
 
+  const [exporting, setExporting] = useState(false);
+
   const runLint = () => {
     setLintResults({
       readability: "B+",
@@ -36,6 +39,23 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
         { line: 12, message: "Consider active voice here" },
       ],
     });
+  };
+
+  const handlePrint = async () => {
+    if (!article) return;
+    setExporting(true);
+    try {
+      await exportToPdf(article, { fontSize: 14 });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDownloadMarkdown = () => {
+    if (!article) return;
+    exportToMarkdown(article);
   };
 
   return (
@@ -176,6 +196,34 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
           <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
             Publishing logs which commit SHA was sent to each platform.
           </p>
+
+          {/* Export section */}
+          <div
+            className="mt-6 pt-4 border-t flex flex-col gap-3"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <button
+              onClick={handlePrint}
+              disabled={!article || exporting}
+              className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
+              style={{ background: "var(--accent)", color: "var(--bg-primary)" }}
+            >
+              {exporting ? "Printing..." : "Print"}
+            </button>
+
+            <button
+              onClick={handleDownloadMarkdown}
+              disabled={!article}
+              className="w-full py-2 text-sm rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 cursor-pointer"
+              style={{
+                background: "transparent",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              Download
+            </button>
+          </div>
         </div>
       )}
 

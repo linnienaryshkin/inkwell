@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SidePanel } from "./SidePanel";
+import * as exportUtils from "@/utils/exportUtils";
 import type { Article } from "@/app/studio/page";
+
+jest.mock("@/utils/exportUtils", () => ({
+  exportToPdf: jest.fn(),
+  exportToMarkdown: jest.fn(),
+}));
 
 describe("SidePanel", () => {
   const mockArticle: Article = {
@@ -375,6 +381,97 @@ describe("SidePanel", () => {
       fireEvent.click(publishTab);
 
       expect(handleTabChange).toHaveBeenCalled();
+    });
+  });
+
+  describe("Publish Tab - Export section", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should render Print button", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByRole("button", { name: /Print/ })).toBeInTheDocument();
+    });
+
+    it("should render Download button", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      expect(screen.getByRole("button", { name: /Download/ })).toBeInTheDocument();
+    });
+
+    it("should disable both export buttons when article is null", () => {
+      render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
+
+      expect(printButton).toBeDisabled();
+      expect(downloadButton).toBeDisabled();
+    });
+
+    it("should enable export buttons when article is provided", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
+
+      expect(printButton).not.toBeDisabled();
+      expect(downloadButton).not.toBeDisabled();
+    });
+
+    it("should call exportToMarkdown with article on Download button click", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
+      fireEvent.click(downloadButton);
+
+      expect(exportUtils.exportToMarkdown).toHaveBeenCalledWith(mockArticle);
+    });
+
+    it("should call exportToPdf with article and default font size on Print button click", () => {
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      fireEvent.click(printButton);
+
+      expect(exportUtils.exportToPdf).toHaveBeenCalledWith(
+        mockArticle,
+        expect.objectContaining({
+          fontSize: 14,
+        })
+      );
+    });
+
+    it("should show loading state on Print button while exporting", async () => {
+      (exportUtils.exportToPdf as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(resolve, 100);
+          })
+      );
+
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      fireEvent.click(printButton);
+
+      // Button should show "Printing..." while the promise is pending
+      expect(screen.getByRole("button", { name: /Printing.../ })).toBeInTheDocument();
+    });
+
+    it("should not call export function when article is null", () => {
+      render(<SidePanel article={null} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      const downloadButton = screen.getByRole("button", { name: /Download/ });
+
+      fireEvent.click(printButton);
+      fireEvent.click(downloadButton);
+
+      expect(exportUtils.exportToPdf).not.toHaveBeenCalled();
+      expect(exportUtils.exportToMarkdown).not.toHaveBeenCalled();
     });
   });
 });

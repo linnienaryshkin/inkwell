@@ -45,7 +45,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     if (!article) return;
     setExporting(true);
     try {
-      await exportToPdf(article, { fontSize: 14, colorScheme: "dark" });
+      await exportToPdf(article, { fontSize: 14 });
     } catch (error) {
       console.error("PDF export failed:", error);
     } finally {

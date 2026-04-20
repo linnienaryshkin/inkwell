@@ -1,9 +1,9 @@
 import mermaid from "mermaid";
+import DOMPurify from "dompurify";
 import type { Article } from "@/app/studio/page";
 
 export type PdfOptions = {
   fontSize: number;
-  colorScheme: "light" | "dark";
 };
 
 /**
@@ -24,10 +24,10 @@ export function exportToMarkdown(article: Article): void {
 /**
  * Export article as PDF with Mermaid diagrams rendered
  */
-export async function exportToPdf(article: Article, _options: PdfOptions): Promise<void> {
+export async function exportToPdf(article: Article, options: PdfOptions): Promise<void> {
   try {
-    // Initialize mermaid if not already done
-    mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+    // Initialize mermaid with strict security level and light theme for PDF
+    mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "strict" });
 
     // Render mermaid diagrams first
     const mermaidFences = extractMermaidFences(article.content);
@@ -36,7 +36,26 @@ export async function exportToPdf(article: Article, _options: PdfOptions): Promi
     for (let i = 0; i < mermaidFences.length; i++) {
       try {
         const result = await mermaid.render(`mermaid-export-${i}`, mermaidFences[i]);
-        mermaidSvgs[i] = result.svg;
+        // Sanitize SVG with DOMPurify
+        mermaidSvgs[i] = DOMPurify.sanitize(result.svg, {
+          ALLOWED_TAGS: [
+            "svg",
+            "g",
+            "path",
+            "text",
+            "rect",
+            "circle",
+            "line",
+            "polygon",
+            "use",
+            "tspan",
+            "defs",
+            "style",
+            "marker",
+            "linearGradient",
+            "stop",
+          ],
+        });
       } catch (error) {
         console.error(`Failed to render mermaid diagram ${i}:`, error);
       }
@@ -52,9 +71,12 @@ export async function exportToPdf(article: Article, _options: PdfOptions): Promi
     document.body.appendChild(iframe);
 
     const iframeDoc = iframe.contentDocument || (iframe.contentWindow?.document as Document);
+    if (!iframeDoc) {
+      throw new Error("Failed to access iframe document");
+    }
 
     // Build HTML content
-    const htmlContent = buildPdfHtml(article.content, mermaidSvgs);
+    const htmlContent = buildPdfHtml(article.content, mermaidSvgs, options);
 
     // Write to iframe
     iframeDoc.open();
@@ -105,7 +127,11 @@ function extractMermaidFences(content: string): string[] {
 /**
  * Build PDF HTML with rich markdown formatting (tables, lists, etc.)
  */
-function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): string {
+function buildPdfHtml(
+  markdown: string,
+  mermaidSvgs: Record<number, string>,
+  options: PdfOptions
+): string {
   // Replace mermaid code blocks with markers first
   let content = markdown;
 
@@ -124,6 +150,13 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
     html = html.split(marker).join(svg);
   });
 
+  // Use light color scheme for PDF (standard for printing)
+  const textColor = "#24292e";
+  const bgColor = "#fff";
+  const borderColor = "#eaecef";
+  const codeBlockBg = "#f6f8fa";
+  const codeBg = "rgba(27,31,35,0.05)";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -136,10 +169,10 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
+      font-size: ${options.fontSize}px;
       line-height: 1.6;
-      color: #24292e;
-      background: #fff;
+      color: ${textColor};
+      background: ${bgColor};
       padding: 2cm;
     }
     h1 {
@@ -147,14 +180,14 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
       font-weight: 600;
       margin: 24px 0 16px 0;
       padding-bottom: 0.3em;
-      border-bottom: 1px solid #eaecef;
+      border-bottom: 1px solid ${borderColor};
     }
     h2 {
       font-size: 1.5em;
       font-weight: 600;
       margin: 24px 0 16px 0;
       padding-bottom: 0.3em;
-      border-bottom: 1px solid #eaecef;
+      border-bottom: 1px solid ${borderColor};
     }
     h3 {
       font-size: 1.25em;
@@ -175,7 +208,7 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
       padding: 0.2em 0.4em;
       margin: 0;
       font-size: 85%;
-      background-color: rgba(27,31,35,0.05);
+      background-color: ${codeBg};
       border-radius: 3px;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     }
@@ -184,7 +217,7 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
       overflow: auto;
       font-size: 85%;
       line-height: 1.45;
-      background-color: #f6f8fa;
+      background-color: ${codeBlockBg};
       border-radius: 6px;
       margin: 16px 0;
       word-wrap: break-word;
@@ -211,8 +244,8 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
       margin: 16px 0;
     }
     table tr {
-      background-color: #fff;
-      border-top-color: #dfe2e5;
+      background-color: ${bgColor};
+      border-top-color: ${borderColor};
     }
     table tr:nth-child(2n) {
       background-color: #f6f8fa;
@@ -220,7 +253,7 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
     table th,
     table td {
       padding: 6px 13px;
-      border: 1px solid #dfe2e5;
+      border: 1px solid ${borderColor};
       text-align: left;
     }
     table th {
@@ -245,6 +278,20 @@ function buildPdfHtml(markdown: string, mermaidSvgs: Record<number, string>): st
   ${html}
 </body>
 </html>`;
+}
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char]);
 }
 
 /**
@@ -318,7 +365,7 @@ function processTableMarkdown(html: string): string {
 
     let table = "<table><thead><tr>";
     headerCells.forEach((cell) => {
-      table += `<th>${cell}</th>`;
+      table += `<th>${escapeHtml(cell)}</th>`;
     });
     table += "</tr></thead><tbody>";
 
@@ -330,7 +377,7 @@ function processTableMarkdown(html: string): string {
           .filter((cell) => cell);
         table += "<tr>";
         cells.forEach((cell) => {
-          table += `<td>${cell}</td>`;
+          table += `<td>${escapeHtml(cell)}</td>`;
         });
         table += "</tr>";
       }
@@ -350,7 +397,7 @@ function processListMarkdown(html: string): string {
     const items = match
       .split("\n")
       .filter((line) => line.trim().match(/^[-*] /))
-      .map((line) => `<li>${line.replace(/^[-*] /, "")}</li>`);
+      .map((line) => `<li>${escapeHtml(line.replace(/^[-*] /, ""))}</li>`);
     return items.length ? `<ul>${items.join("")}</ul>` : match;
   });
 
@@ -359,7 +406,7 @@ function processListMarkdown(html: string): string {
     const items = match
       .split("\n")
       .filter((line) => line.trim().match(/^\d+\. /))
-      .map((line) => `<li>${line.replace(/^\d+\. /, "")}</li>`);
+      .map((line) => `<li>${escapeHtml(line.replace(/^\d+\. /, ""))}</li>`);
     return items.length ? `<ol>${items.join("")}</ol>` : match;
   });
 
@@ -384,14 +431,14 @@ function processParagraphs(html: string): string {
       trimmed.match(/^__MERMAID_\d+__$/)
     ) {
       if (currentPara) {
-        result.push(`<p>${currentPara}</p>`);
+        result.push(`<p>${escapeHtml(currentPara)}</p>`);
         currentPara = "";
       }
       result.push(line);
       inBlock = true;
     } else if (trimmed === "") {
       if (currentPara) {
-        result.push(`<p>${currentPara}</p>`);
+        result.push(`<p>${escapeHtml(currentPara)}</p>`);
         currentPara = "";
       }
       inBlock = false;
@@ -405,7 +452,7 @@ function processParagraphs(html: string): string {
   }
 
   if (currentPara) {
-    result.push(`<p>${currentPara}</p>`);
+    result.push(`<p>${escapeHtml(currentPara)}</p>`);
   }
 
   return result.join("\n");

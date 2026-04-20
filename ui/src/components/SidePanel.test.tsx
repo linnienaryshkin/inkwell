@@ -430,7 +430,7 @@ describe("SidePanel", () => {
       expect(exportUtils.exportToMarkdown).toHaveBeenCalledWith(mockArticle);
     });
 
-    it("should call exportToPdf with article and default settings on Print button click", () => {
+    it("should call exportToPdf with article and default font size on Print button click", () => {
       render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
 
       const printButton = screen.getByRole("button", { name: /Print/ });
@@ -440,7 +440,6 @@ describe("SidePanel", () => {
         mockArticle,
         expect.objectContaining({
           fontSize: 14,
-          colorScheme: "dark",
         })
       );
     });

@@ -4,12 +4,26 @@ jest.mock("mermaid", () => ({
     initialize: jest.fn(),
     render: jest.fn().mockResolvedValue({
       svg: "<svg><text>test</text></svg>",
+      map: {},
+      bindFunctions: jest.fn(),
     }),
+  },
+}));
+
+jest.mock("dompurify", () => ({
+  __esModule: true,
+  default: {
+    sanitize: jest.fn((input: string) => input),
   },
 }));
 
 import { exportToMarkdown, exportToPdf, type PdfOptions } from "./exportUtils";
 import type { Article } from "@/app/studio/page";
+import mermaid from "mermaid";
+import DOMPurify from "dompurify";
+
+const mockMermaid = jest.mocked(mermaid);
+const mockDOMPurify = jest.mocked(DOMPurify);
 
 const mockArticle: Article = {
   slug: "test-article",
@@ -136,26 +150,185 @@ describe("exportUtils", () => {
         content: "# No diagrams\n\nJust text.",
       };
 
-      const options: PdfOptions = { fontSize: 14, colorScheme: "dark" };
+      const options: PdfOptions = { fontSize: 14 };
 
-      // This test mainly checks that the function completes without throwing
-      // We can't fully test the PDF generation without more complex mocking
-      expect(() => {
-        // The function is async, but we're just checking it doesn't immediately error
-        const result = exportToPdf(articleNoMermaid, options);
-        expect(result).toBeInstanceOf(Promise);
-      }).not.toThrow();
+      await expect(exportToPdf(articleNoMermaid, options)).resolves.not.toThrow();
     });
 
     it("should call mermaid.render for each mermaid fence", async () => {
-      const options: PdfOptions = { fontSize: 14, colorScheme: "dark" };
+      const options: PdfOptions = { fontSize: 14 };
 
-      // This test verifies the function attempts to render mermaid
-      // We can't fully test async mermaid rendering without complex mocking
-      expect(() => {
-        const result = exportToPdf(mockArticle, options);
-        expect(result).toBeInstanceOf(Promise);
-      }).not.toThrow();
+      await exportToPdf(mockArticle, options);
+
+      expect(mockMermaid.render).toHaveBeenCalled();
+    });
+
+    it("should sanitize mermaid SVG output", async () => {
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(mockArticle, options);
+
+      expect(mockDOMPurify.sanitize).toHaveBeenCalled();
+    });
+
+    it("should throw error when iframe document is inaccessible", async () => {
+      const mockIframe = {
+        style: {},
+        contentDocument: null,
+        contentWindow: {
+          document: null,
+        },
+      };
+      jest.spyOn(document, "createElement").mockReturnValue(mockIframe as unknown as HTMLElement);
+      jest
+        .spyOn(document.body, "appendChild")
+        .mockReturnValue(mockIframe as unknown as HTMLElement);
+
+      const options: PdfOptions = { fontSize: 14 };
+
+      await expect(exportToPdf(mockArticle, options)).rejects.toThrow(
+        "Failed to access iframe document"
+      );
+    });
+  });
+
+  describe("Markdown Conversion", () => {
+    beforeEach(() => {
+      // Mock document.createElement for iframe
+      const mockIframe = {
+        style: {},
+        contentDocument: {
+          open: jest.fn(),
+          write: jest.fn(),
+          close: jest.fn(),
+        },
+        contentWindow: {
+          document: {
+            readyState: "complete",
+          },
+          print: jest.fn(),
+        },
+      };
+      jest.spyOn(document, "createElement").mockReturnValue(mockIframe as unknown as HTMLElement);
+      jest
+        .spyOn(document.body, "appendChild")
+        .mockReturnValue(mockIframe as unknown as HTMLElement);
+      jest
+        .spyOn(document.body, "removeChild")
+        .mockReturnValue(mockIframe as unknown as HTMLElement);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should escape HTML special characters in tables", async () => {
+      const articleWithTable: Article = {
+        ...mockArticle,
+        content: `| Header |
+| <script>alert(1)</script> |
+| --- |
+| <img src=x onerror=alert(1)> |`,
+      };
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(articleWithTable, options);
+
+      // Verify the export completed (escaped content is safe)
+      expect(document.body.appendChild).toHaveBeenCalled();
+    });
+
+    it("should escape HTML in unordered lists", async () => {
+      const articleWithList: Article = {
+        ...mockArticle,
+        content: `- Item with <script>alert(1)</script>
+- Normal item
+- Another item`,
+      };
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(articleWithList, options);
+
+      expect(document.body.appendChild).toHaveBeenCalled();
+    });
+
+    it("should escape HTML in ordered lists", async () => {
+      const articleWithList: Article = {
+        ...mockArticle,
+        content: `1. Item with <img src=x onerror=alert(1)>
+2. Normal item
+3. Another item`,
+      };
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(articleWithList, options);
+
+      expect(document.body.appendChild).toHaveBeenCalled();
+    });
+
+    it("should escape HTML in paragraphs", async () => {
+      const articleWithHtml: Article = {
+        ...mockArticle,
+        content: `Normal paragraph with <script>alert(1)</script> injected code.
+
+Another paragraph with <img src=x onerror=alert(1)>.`,
+      };
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(articleWithHtml, options);
+
+      expect(document.body.appendChild).toHaveBeenCalled();
+    });
+
+    it("should handle code blocks with backticks", async () => {
+      const articleWithCode: Article = {
+        ...mockArticle,
+        content: `\`\`\`javascript
+const x = "<script>alert(1)</script>";
+\`\`\``,
+      };
+      const options: PdfOptions = { fontSize: 14 };
+
+      await exportToPdf(articleWithCode, options);
+
+      expect(document.body.appendChild).toHaveBeenCalled();
+    });
+
+    it("should apply font size to PDF output", async () => {
+      const articleSimple: Article = {
+        ...mockArticle,
+        content: "# Test",
+      };
+      const options: PdfOptions = { fontSize: 18 };
+
+      const writeFn = jest.fn();
+      const mockIframe = {
+        style: {},
+        contentDocument: {
+          open: jest.fn(),
+          write: writeFn,
+          close: jest.fn(),
+        },
+        contentWindow: {
+          document: {
+            readyState: "complete",
+          },
+          print: jest.fn(),
+        },
+      };
+
+      (document.createElement as jest.Mock).mockReturnValue(mockIframe as unknown as HTMLElement);
+      (document.body.appendChild as jest.Mock).mockReturnValue(
+        mockIframe as unknown as HTMLElement
+      );
+      (document.body.removeChild as jest.Mock).mockReturnValue(
+        mockIframe as unknown as HTMLElement
+      );
+
+      await exportToPdf(articleSimple, options);
+
+      const writtenHtml = writeFn.mock.calls[0][0] as string;
+      expect(writtenHtml).toContain("font-size: 18px");
     });
   });
 });

@@ -28,7 +28,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(3);
+      expect(buttons).toHaveLength(4);
     });
 
     it("should highlight the active lint tab", () => {
@@ -352,7 +352,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(3);
+      expect(buttons).toHaveLength(4);
     });
   });
 

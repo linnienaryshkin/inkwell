@@ -2,10 +2,15 @@ import type { Article, ArticleMeta } from "@/app/studio/page";
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const TIMEOUT_MS = 3000;
+const TIMEOUT_MS_CHAT = 30000;
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  options?: RequestInit,
+  timeoutMs: number = TIMEOUT_MS
+): Promise<Response> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
@@ -112,4 +117,58 @@ export async function saveArticle(
     throw new Error((body as { detail?: string }).detail ?? "Failed to save article");
   }
   return response.json() as Promise<Article>;
+}
+
+export type ChatMessage = { role: "human" | "ai"; content: string };
+
+export type ChatThread = {
+  thread_id: string;
+  article_slug: string;
+  title: string;
+  created_at: string;
+};
+
+export type ChatResponse = {
+  thread_id: string;
+  reply: string;
+  history: ChatMessage[];
+};
+
+export async function fetchChatThreads(articleSlug: string): Promise<ChatThread[]> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/chat/threads?article_slug=${encodeURIComponent(articleSlug)}`,
+    { credentials: "include" }
+  );
+  if (!response.ok) throw new Error(`Failed to fetch threads: ${response.status}`);
+  return response.json() as Promise<ChatThread[]>;
+}
+
+export async function createChatThread(articleSlug: string): Promise<ChatThread> {
+  const response = await fetchWithTimeout(`${API_BASE}/chat/threads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ article_slug: articleSlug }),
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error(`Failed to create thread: ${response.status}`);
+  return response.json() as Promise<ChatThread>;
+}
+
+export async function sendChatMessage(
+  threadId: string,
+  content: string,
+  articleContent: string
+): Promise<ChatResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, article_content: articleContent }),
+      credentials: "include",
+    },
+    TIMEOUT_MS_CHAT
+  );
+  if (!response.ok) throw new Error(`Failed to send message: ${response.status}`);
+  return response.json() as Promise<ChatResponse>;
 }

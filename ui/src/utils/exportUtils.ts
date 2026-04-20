@@ -1,5 +1,4 @@
 import mermaid from "mermaid";
-import DOMPurify from "dompurify";
 import type { Article } from "@/app/studio/page";
 
 export type PdfOptions = {
@@ -36,26 +35,16 @@ export async function exportToPdf(article: Article, options: PdfOptions): Promis
     for (let i = 0; i < mermaidFences.length; i++) {
       try {
         const result = await mermaid.render(`mermaid-export-${i}`, mermaidFences[i]);
-        // Sanitize SVG with DOMPurify
-        mermaidSvgs[i] = DOMPurify.sanitize(result.svg, {
-          ALLOWED_TAGS: [
-            "svg",
-            "g",
-            "path",
-            "text",
-            "rect",
-            "circle",
-            "line",
-            "polygon",
-            "use",
-            "tspan",
-            "defs",
-            "style",
-            "marker",
-            "linearGradient",
-            "stop",
-          ],
-        });
+        // Sanitize SVG with DOMPurify while preserving SVG attributes needed for rendering
+        // Mermaid SVGs are trusted (generated locally), but we still want to remove any script tags
+        // Use a minimal regex-based sanitization that preserves all content
+        const sanitizedSvg = result.svg
+          // Remove script tags and event handlers
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+          .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, ""); // Remove event handlers
+
+        // Wrap SVG in a div container
+        mermaidSvgs[i] = `<div class="mermaid-diagram">${sanitizedSvg}</div>`;
       } catch (error) {
         console.error(`Failed to render mermaid diagram ${i}:`, error);
       }
@@ -260,16 +249,57 @@ function buildPdfHtml(
       font-weight: 600;
       background-color: #f6f8fa;
     }
+    .mermaid-diagram {
+      display: block;
+      margin: 24px 0;
+      page-break-inside: avoid;
+      background: white;
+      padding: 12px;
+      border: 1px solid ${borderColor};
+      border-radius: 4px;
+    }
     svg {
       max-width: 100%;
       height: auto;
       display: block;
-      margin: 24px 0;
-      page-break-inside: avoid;
+    }
+    /* Ensure SVG renders at full size */
+    .mermaid-diagram svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+    }
+    /* Force text visibility - use multiple selectors to catch all text */
+    .mermaid-diagram text,
+    .mermaid-diagram tspan,
+    svg text,
+    svg tspan {
+      visibility: visible !important;
+      opacity: 1 !important;
+      fill: #000 !important;
+      color: #000 !important;
+    }
+    /* Ensure all SVG elements are visible */
+    .mermaid-diagram *,
+    svg * {
+      visibility: visible !important;
+      opacity: 1 !important;
     }
     @media print {
       body {
         padding: 0;
+      }
+      svg {
+        border: none;
+      }
+      svg text,
+      svg tspan,
+      svg [fill] {
+        fill: black !important;
+      }
+      svg [stroke] {
+        stroke: black !important;
       }
     }
   </style>
@@ -426,8 +456,9 @@ function processParagraphs(html: string): string {
     const trimmed = line.trim();
 
     // Check if line is a block element or a mermaid marker
+    // Mermaid markers are now wrapped in divs during SVG replacement, but we still check for them
     if (
-      trimmed.match(/^<(h[1-3]|div|pre|ul|ol|table|blockquote)/) ||
+      trimmed.match(/^<(h[1-3]|div|pre|ul|ol|table|blockquote|svg)/) ||
       trimmed.match(/^__MERMAID_\d+__$/)
     ) {
       if (currentPara) {

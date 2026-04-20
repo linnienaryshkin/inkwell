@@ -13,24 +13,24 @@ class Message(BaseModel):
 
 
 class Thread(BaseModel):
-    """A chat thread scoped to a user and article."""
+    """A chat thread scoped to a user."""
 
     thread_id: str = Field(..., description="UUID of the thread")
-    article_slug: str
     title: str = Field(..., description="First user message, truncated to 60 chars")
     created_at: str = Field(..., description="ISO 8601 timestamp")
 
 
 class ThreadCreate(BaseModel):
-    """Request to create a new thread."""
+    """Request to create a new thread with initial message."""
 
-    article_slug: str
+    content: str = Field(..., description="Initial message content")
+    article_content: str = Field(..., description="Article content for system prompt")
 
 
 class MessageCreate(BaseModel):
-    """Request to send a message to a thread."""
+    """Request to send a message to an existing thread."""
 
-    content: str
+    content: str = Field(..., description="Message content")
     article_content: str = Field(..., description="Current article content for system prompt")
 
 
@@ -39,4 +39,13 @@ class ChatResponse(BaseModel):
 
     thread_id: str
     reply: str = Field(..., description="The AI's response")
+    history: list[Message] = Field(..., description="Full message history for the thread")
+
+
+class ThreadDetail(BaseModel):
+    """Full thread details including all messages."""
+
+    thread_id: str = Field(..., description="UUID of the thread")
+    title: str = Field(..., description="First user message, truncated to 60 chars")
+    created_at: str = Field(..., description="ISO 8601 timestamp")
     history: list[Message] = Field(..., description="Full message history for the thread")

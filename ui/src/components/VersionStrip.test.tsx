@@ -144,4 +144,33 @@ describe("VersionStrip", () => {
       expect(screen.queryByTestId("save-error")).not.toBeInTheDocument();
     });
   });
+
+  describe("Menu click-outside behavior", () => {
+    it("closes menu when clicking outside", () => {
+      render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
+      const btn = screen.getByRole("button", { name: /Versions/i });
+
+      fireEvent.click(btn);
+      expect(screen.getByText("Initial commit")).toBeInTheDocument();
+
+      // Simulate click outside
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByText("Initial commit")).not.toBeInTheDocument();
+    });
+
+    it("keeps menu open when clicking inside", () => {
+      render(<VersionStrip slug="test-article" versions={MOCK_VERSIONS} />);
+      const btn = screen.getByRole("button", { name: /Versions/i });
+
+      fireEvent.click(btn);
+      expect(screen.getByText("Initial commit")).toBeInTheDocument();
+
+      // Click on a menu item
+      const link = screen.getByRole("link", { name: /Initial commit/i });
+      fireEvent.mouseDown(link);
+
+      // Menu should still be there since we clicked inside
+      expect(screen.getByText("Initial commit")).toBeInTheDocument();
+    });
+  });
 });

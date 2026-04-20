@@ -123,7 +123,6 @@ export type ChatMessage = { role: "human" | "ai"; content: string };
 
 export type ChatThread = {
   thread_id: string;
-  article_slug: string;
   title: string;
   created_at: string;
 };
@@ -134,24 +133,39 @@ export type ChatResponse = {
   history: ChatMessage[];
 };
 
-export async function fetchChatThreads(articleSlug: string): Promise<ChatThread[]> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/chat/threads?article_slug=${encodeURIComponent(articleSlug)}`,
-    { credentials: "include" }
-  );
+export async function fetchChatThreads(): Promise<ChatThread[]> {
+  const response = await fetchWithTimeout(`${API_BASE}/chat/threads`, {
+    credentials: "include",
+  });
   if (!response.ok) throw new Error(`Failed to fetch threads: ${response.status}`);
   return response.json() as Promise<ChatThread[]>;
 }
 
-export async function createChatThread(articleSlug: string): Promise<ChatThread> {
+export async function createChatThread(
+  content: string,
+  articleContent: string
+): Promise<ChatThread> {
   const response = await fetchWithTimeout(`${API_BASE}/chat/threads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ article_slug: articleSlug }),
+    body: JSON.stringify({ content, article_content: articleContent }),
     credentials: "include",
   });
   if (!response.ok) throw new Error(`Failed to create thread: ${response.status}`);
   return response.json() as Promise<ChatThread>;
+}
+
+export async function getThreadDetail(
+  threadId: string
+): Promise<ChatThread & { history: ChatMessage[] }> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/chat/threads/${encodeURIComponent(threadId)}`,
+    {
+      credentials: "include",
+    }
+  );
+  if (!response.ok) throw new Error(`Failed to fetch thread: ${response.status}`);
+  return response.json() as Promise<ChatThread & { history: ChatMessage[] }>;
 }
 
 export async function sendChatMessage(

@@ -1,7 +1,7 @@
 import re
 
 import httpx
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.github_articles import (
     create_article as gh_create_article,
@@ -19,25 +19,9 @@ from app.github_articles import (
     save_article as gh_save_article,
 )
 from app.models.article import Article, ArticleCreate, ArticleMeta, ArticleSave
+from app.routers.deps import require_auth
 
 router = APIRouter()
-
-
-def require_auth(gh_access_token: str | None = Cookie(default=None)) -> str:
-    """Dependency that enforces authentication via the gh_access_token cookie.
-
-    Args:
-        gh_access_token: GitHub access token from httponly cookie.
-
-    Returns:
-        str: The validated access token.
-
-    Raises:
-        HTTPException: 401 if no valid access token is found.
-    """
-    if not gh_access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return gh_access_token
 
 
 @router.get("", response_model=list[ArticleMeta])

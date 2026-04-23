@@ -3,6 +3,22 @@ import { SidePanel } from "./SidePanel";
 import * as exportUtils from "@/utils/exportUtils";
 import type { Article } from "@/app/studio/page";
 
+jest.mock("react-markdown", () => {
+  return function DummyMarkdown({ children }: { children: string }) {
+    return <div>{children}</div>;
+  };
+});
+
+jest.mock("@/components/ChatTab", () => ({
+  ChatTab: () => <div>Chat Tab</div>,
+}));
+
+jest.mock("@/services/api", () => ({
+  fetchThreads: jest.fn(),
+  createThread: jest.fn(),
+  postMessage: jest.fn(),
+}));
+
 jest.mock("@/utils/exportUtils", () => ({
   exportToPdf: jest.fn(),
   exportToMarkdown: jest.fn(),
@@ -28,7 +44,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(3);
+      expect(buttons).toHaveLength(4);
     });
 
     it("should highlight the active lint tab", () => {
@@ -59,6 +75,17 @@ describe("SidePanel", () => {
       const buttons = container.querySelectorAll("div:first-child > button");
       const tocButton = buttons[2] as HTMLElement;
       expect(tocButton.style.color).toContain("var(--accent)");
+    });
+
+    it("should highlight the active chat tab", () => {
+      const { container } = render(
+        <SidePanel article={mockArticle} activeTab="chat" onTabChange={() => {}} />
+      );
+
+      const buttons = container.querySelectorAll("div:first-child > button");
+      const chatButton = buttons[3] as HTMLElement;
+      expect(chatButton.style.color).toContain("var(--accent)");
+      expect(screen.getByText("Chat Tab")).toBeInTheDocument();
     });
 
     it("should call onTabChange when switching to publish", () => {
@@ -352,7 +379,7 @@ describe("SidePanel", () => {
       );
 
       const buttons = container.querySelectorAll("div:first-child > button");
-      expect(buttons).toHaveLength(3);
+      expect(buttons).toHaveLength(4);
     });
   });
 
@@ -365,9 +392,11 @@ describe("SidePanel", () => {
       const buttons = container.querySelectorAll("div:first-child > button");
       const lintTab = buttons[0];
       const publishTab = buttons[1];
+      const chatTab = buttons[3];
 
       expect(lintTab).toHaveTextContent("lint");
       expect(publishTab).toHaveTextContent("publish");
+      expect(chatTab).toHaveTextContent("chat");
     });
 
     it("should allow keyboard navigation of tabs", () => {

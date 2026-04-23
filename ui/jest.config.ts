@@ -27,6 +27,7 @@ const config: Config = {
     "!src/**/index.tsx", // exclude barrel files
     "!src/main.tsx", // exclude Vite entry point
     "!src/app/studio/page.tsx", // exclude top-level page (covered via integration)
+    "!src/components/MarkdownComponents.tsx", // exclude config exports (covered via integration)
   ],
   coverageReporters: ["text", "lcov", "html"],
   coverageThreshold: {

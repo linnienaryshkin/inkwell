@@ -3,6 +3,19 @@ import type { Article, ArticleMeta } from "@/app/studio/page";
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const TIMEOUT_MS = 3000;
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+};
+
+export type ThreadMeta = {
+  id: string;
+  slug: string;
+  title: string;
+  created_at: string;
+};
+
 async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -112,4 +125,53 @@ export async function saveArticle(
     throw new Error((body as { detail?: string }).detail ?? "Failed to save article");
   }
   return response.json() as Promise<Article>;
+}
+
+export async function fetchThreads(slug: string): Promise<ThreadMeta[]> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/ai/threads?slug=${encodeURIComponent(slug)}`,
+    {
+      credentials: "include",
+    }
+  );
+  if (!response.ok) throw new Error(`Failed to fetch threads: ${response.status}`);
+  return response.json() as Promise<ThreadMeta[]>;
+}
+
+export async function createThread(body: {
+  slug: string;
+  message: string;
+  article_content: string;
+}): Promise<{ thread_id: string; reply: string }> {
+  const response = await fetchWithTimeout(`${API_BASE}/ai/threads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? "Failed to create thread");
+  }
+  return response.json() as Promise<{ thread_id: string; reply: string }>;
+}
+
+export async function postMessage(
+  threadId: string,
+  body: { message: string; article_content: string }
+): Promise<{ reply: string }> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/ai/threads/${encodeURIComponent(threadId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      credentials: "include",
+    }
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? "Failed to post message");
+  }
+  return response.json() as Promise<{ reply: string }>;
 }

@@ -124,9 +124,12 @@ export default function ChatTab() {
                   onClick={() => handleSelectThread(thread)}
                   className={`w-full text-left px-2 py-1.5 rounded text-xs transition-all duration-200 cursor-pointer ${
                     activeThreadId === thread.thread_id
-                      ? "bg-accent text-white"
+                      ? "bg-accent"
                       : "text-text-primary hover:bg-bg-tertiary hover:text-accent active:scale-95"
                   }`}
+                  style={
+                    activeThreadId === thread.thread_id ? { color: "var(--bg-primary)" } : undefined
+                  }
                 >
                   <p className="truncate">{thread.preview}</p>
                 </button>
@@ -149,6 +152,7 @@ export default function ChatTab() {
                 onClick={handleBack}
                 className="text-accent hover:text-accent-hover hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer text-sm"
                 title="Back to all threads"
+                aria-label="Back to all threads"
               >
                 ←
               </button>
@@ -172,9 +176,10 @@ export default function ChatTab() {
                   <div
                     className={`max-w-xs px-3 py-2 rounded text-sm ${
                       msg.role === "user"
-                        ? "bg-accent text-white"
+                        ? "bg-accent"
                         : "border border-border bg-bg-primary text-text-primary"
                     }`}
+                    style={msg.role === "user" ? { color: "var(--bg-primary)" } : undefined}
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -224,7 +229,11 @@ export default function ChatTab() {
 
       {/* Bottom: Always visible chat form */}
       <div className="flex-shrink-0 flex flex-col gap-2">
-        {error && <div className="px-3 py-2 bg-red rounded text-white text-sm">{error}</div>}
+        {error && (
+          <div className="px-3 py-2 bg-red rounded text-sm" style={{ color: "var(--bg-primary)" }}>
+            {error}
+          </div>
+        )}
         <div className="flex gap-2">
           <textarea
             value={inputValue}
@@ -238,8 +247,10 @@ export default function ChatTab() {
           <button
             onClick={handleSend}
             disabled={loading || !inputValue.trim()}
-            className="px-3 py-2 rounded bg-accent text-white hover:bg-accent-hover hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer flex items-center justify-center"
+            className="px-3 py-2 rounded bg-accent hover:bg-accent-hover hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer flex items-center justify-center"
+            style={{ color: "var(--bg-primary)" }}
             title="Send message (Enter)"
+            aria-label="Send message (Enter)"
           >
             {loading ? "..." : "↑"}
           </button>

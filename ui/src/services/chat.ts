@@ -19,7 +19,9 @@ export type ChatResponse = {
   reply: string;
 };
 
-const API_URL = "http://localhost:8000/ai";
+import { API_BASE } from "@/services/api";
+
+const API_URL = `${API_BASE}/ai`;
 const TIMEOUT_MS = 30000;
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {

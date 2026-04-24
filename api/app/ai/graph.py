@@ -14,7 +14,7 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-_checkpointer = MemorySaver()
+checkpointer = MemorySaver()
 _model: ChatAnthropic | None = None
 
 SYSTEM_PROMPT = "You are a co-author helping developer-writers craft clear, well-structured technical articles. Help with structure, clarity, tone, and technical accuracy."
@@ -41,7 +41,7 @@ def _build_graph() -> object:
     graph_builder.add_node("llm", _call_model)
     graph_builder.add_edge(START, "llm")
     graph_builder.add_edge("llm", END)
-    return graph_builder.compile(checkpointer=_checkpointer)
+    return graph_builder.compile(checkpointer=checkpointer)
 
 
 graph = _build_graph()

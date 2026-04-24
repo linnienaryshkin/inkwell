@@ -100,7 +100,7 @@ describe("ChatTab", () => {
 
       await waitFor(() => {
         // Back button should appear
-        expect(screen.getByTitle("Back to all threads")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Back to all threads/i })).toBeInTheDocument();
         // Thread title should appear in header
         const threadTexts = screen.getAllByText("Test question");
         expect(threadTexts.length).toBeGreaterThan(0);
@@ -171,7 +171,7 @@ describe("ChatTab", () => {
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Test message" } });
 
-      const sendButton = screen.getByTitle("Send message (Enter)");
+      const sendButton = screen.getByRole("button", { name: /Send message/i });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -200,7 +200,7 @@ describe("ChatTab", () => {
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Follow-up" } });
 
-      const sendButton = screen.getByTitle("Send message (Enter)");
+      const sendButton = screen.getByRole("button", { name: /Send message/i });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -214,7 +214,7 @@ describe("ChatTab", () => {
 
       render(<ChatTab />);
 
-      const sendButton = screen.getByTitle("Send message (Enter)");
+      const sendButton = screen.getByRole("button", { name: /Send message/i });
       expect(sendButton).toBeDisabled();
     });
 
@@ -227,7 +227,7 @@ describe("ChatTab", () => {
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Test message" } });
 
-      const sendButton = screen.getByTitle("Send message (Enter)");
+      const sendButton = screen.getByRole("button", { name: /Send message/i });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -244,7 +244,7 @@ describe("ChatTab", () => {
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/Ask for writing feedback/)).toBeInTheDocument();
-        expect(screen.getByTitle("Send message (Enter)")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Send message/i })).toBeInTheDocument();
       });
     });
 
@@ -305,7 +305,7 @@ describe("ChatTab", () => {
 
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "How do I use state?" } });
-      fireEvent.click(screen.getByTitle("Send message (Enter)"));
+      fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
 
       await waitFor(() => {
         expect(screen.getByText("useState")).toBeInTheDocument();
@@ -323,7 +323,7 @@ describe("ChatTab", () => {
 
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Show me code" } });
-      fireEvent.click(screen.getByTitle("Send message (Enter)"));
+      fireEvent.click(screen.getByRole("button", { name: /Send message/i }));
 
       await waitFor(() => {
         expect(screen.getByText("const x = 1")).toBeInTheDocument();

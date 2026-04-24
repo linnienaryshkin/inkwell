@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -12,6 +14,21 @@ class ThreadPreview(BaseModel):
 
     thread_id: str
     preview: str
+
+
+class ChatMessage(BaseModel):
+    """A single message in a chat thread."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ThreadDetail(BaseModel):
+    """Full detail of a chat thread including message history."""
+
+    thread_id: str
+    preview: str
+    messages: list[ChatMessage]
 
 
 class ChatResponse(BaseModel):

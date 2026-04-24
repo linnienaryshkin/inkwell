@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
+  ChatMessage,
   ChatResponse,
   ThreadPreview,
   createThread,
+  fetchThread,
   fetchThreads,
   sendMessage,
 } from "@/services/chat";
 
-type View = "list" | "thread";
-type Message = { role: "user" | "assistant"; content: string };
+type Message = ChatMessage;
 
 export default function ChatTab() {
-  const [view, setView] = useState<View>("list");
   const [threads, setThreads] = useState<ThreadPreview[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,24 +42,26 @@ export default function ChatTab() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleNewChat = () => {
-    setView("thread");
-    setActiveThreadId(null);
-    setMessages([]);
-    setError(null);
-  };
-
-  const handleSelectThread = (thread: ThreadPreview) => {
-    setView("thread");
+  const handleSelectThread = async (thread: ThreadPreview) => {
     setActiveThreadId(thread.thread_id);
     setMessages([]);
     setError(null);
+    setLoading(true);
+
+    try {
+      const detail = await fetchThread(thread.thread_id);
+      setMessages(detail.messages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load thread history");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
-    setView("list");
     setActiveThreadId(null);
     setMessages([]);
+    setError(null);
   };
 
   const handleSend = async () => {
@@ -105,97 +109,141 @@ export default function ChatTab() {
     }
   };
 
-  if (view === "list") {
-    return (
-      <div className="flex flex-col gap-4 h-full">
-        <button
-          onClick={handleNewChat}
-          className="px-4 py-2 rounded border border-accent text-accent hover:bg-accent hover:text-white transition-colors"
-        >
-          + New Chat
-        </button>
-
-        <div className="flex-1 overflow-y-auto">
-          {threads.length === 0 ? (
-            <p className="text-text-secondary text-sm">No chats yet. Start a new one!</p>
-          ) : (
-            <div className="space-y-2">
-              {threads.map((thread) => (
+  return (
+    <div className="flex flex-col h-full gap-4">
+      {/* Top: Thread List (hidden when a thread is selected) */}
+      {!activeThreadId && (
+        <div className="flex-shrink-0">
+          <div className="max-h-32 overflow-y-auto space-y-1 pr-2">
+            {threads.length === 0 ? (
+              <p className="text-text-secondary text-xs px-2">No threads yet</p>
+            ) : (
+              threads.map((thread) => (
                 <button
                   key={thread.thread_id}
                   onClick={() => handleSelectThread(thread)}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-bg-tertiary transition-colors"
+                  className={`w-full text-left px-2 py-1.5 rounded text-xs transition-all duration-200 cursor-pointer ${
+                    activeThreadId === thread.thread_id
+                      ? "bg-accent text-white"
+                      : "text-text-primary hover:bg-bg-tertiary hover:text-accent active:scale-95"
+                  }`}
                 >
-                  <p className="text-sm text-text-primary truncate">{thread.preview}</p>
+                  <p className="truncate">{thread.preview}</p>
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Thread view
-  return (
-    <div className="flex flex-col h-full gap-4">
-      {/* Header */}
-      <button
-        onClick={handleBack}
-        className="text-accent hover:text-accent-hover transition-colors text-sm"
-      >
-        ← Back
-      </button>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-xs px-3 py-2 rounded text-sm ${
-                msg.role === "user"
-                  ? "bg-bg-tertiary text-text-primary"
-                  : "border border-border bg-bg-primary text-text-primary"
-              }`}
-            >
-              {msg.content}
-            </div>
+              ))
+            )}
           </div>
-        ))}
+        </div>
+      )}
 
-        {loading && (
-          <div className="flex justify-start">
-            <div className="text-sm text-text-secondary italic">Thinking...</div>
+      {/* Middle: Message Thread */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {activeThreadId ? (
+          <>
+            {/* Thread header with back button */}
+            <div
+              className="flex-shrink-0 pb-2 border-b flex items-center gap-2"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <button
+                onClick={handleBack}
+                className="text-accent hover:text-accent-hover hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer text-sm"
+                title="Back to all threads"
+              >
+                ←
+              </button>
+              <p className="text-xs font-semibold text-text-secondary truncate">
+                {threads.find((t) => t.thread_id === activeThreadId)?.preview || "Thread"}
+              </p>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 py-2">
+              {messages.length === 0 && !loading && (
+                <p className="text-text-secondary text-xs text-center py-4">
+                  Start the conversation
+                </p>
+              )}
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-xs px-3 py-2 rounded text-sm ${
+                      msg.role === "user"
+                        ? "bg-accent text-white"
+                        : "border border-border bg-bg-primary text-text-primary"
+                    }`}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                        code: ({ children }) => (
+                          <code
+                            className="px-1 rounded text-xs font-mono"
+                            style={{ background: "var(--bg-tertiary)" }}
+                          >
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children }) => (
+                          <pre
+                            className="p-2 rounded text-xs font-mono overflow-x-auto mt-1 mb-1"
+                            style={{ background: "var(--bg-tertiary)" }}
+                          >
+                            {children}
+                          </pre>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="text-sm text-text-secondary italic">Thinking...</div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-text-secondary text-sm">
+              {threads.length === 0 ? "Start typing to create your first chat" : ""}
+            </p>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Error */}
-      {error && <div className="px-3 py-2 bg-red rounded text-white text-sm">{error}</div>}
-
-      {/* Input */}
-      <div className="flex gap-2">
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading}
-          placeholder="Ask for writing feedback..."
-          className="flex-1 px-3 py-2 rounded border border-border bg-bg-primary text-text-primary placeholder-text-secondary resize-none"
-          rows={2}
-        />
-        <button
-          onClick={handleSend}
-          disabled={loading || !inputValue.trim()}
-          className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors"
-        >
-          {loading ? "Sending..." : "Send"}
-        </button>
+      {/* Bottom: Always visible chat form */}
+      <div className="flex-shrink-0 flex flex-col gap-2">
+        {error && <div className="px-3 py-2 bg-red rounded text-white text-sm">{error}</div>}
+        <div className="flex gap-2">
+          <textarea
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            placeholder="Ask for writing feedback..."
+            className="flex-1 px-3 py-2 rounded border border-border bg-bg-primary text-text-primary placeholder-text-secondary resize-none"
+            rows={2}
+          />
+          <button
+            onClick={handleSend}
+            disabled={loading || !inputValue.trim()}
+            className="px-3 py-2 rounded bg-accent text-white hover:bg-accent-hover hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer flex items-center justify-center"
+            title="Send message (Enter)"
+          >
+            {loading ? "..." : "↑"}
+          </button>
+        </div>
       </div>
     </div>
   );

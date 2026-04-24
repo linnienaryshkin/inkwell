@@ -3,6 +3,17 @@ export type ThreadPreview = {
   preview: string;
 };
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ThreadDetail = {
+  thread_id: string;
+  preview: string;
+  messages: ChatMessage[];
+};
+
 export type ChatResponse = {
   thread_id: string;
   reply: string;
@@ -32,6 +43,17 @@ export async function fetchThreads(): Promise<ThreadPreview[]> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Failed to fetch threads (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export async function fetchThread(threadId: string): Promise<ThreadDetail> {
+  const response = await fetchWithTimeout(`${API_URL}/threads/${threadId}`);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch thread (${response.status})`);
   }
 
   return response.json();

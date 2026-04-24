@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.ai.service import add_message, create_thread, list_threads
-from app.models.ai import ChatRequest, ChatResponse, ThreadPreview
+from app.ai.service import add_message, create_thread, get_thread, list_threads
+from app.models.ai import ChatRequest, ChatResponse, ThreadDetail, ThreadPreview
 from app.routers.articles import require_auth
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -11,6 +15,32 @@ router = APIRouter()
 async def get_threads(current_user: str = Depends(require_auth)) -> list[ThreadPreview]:
     """List all chat threads."""
     return list_threads()
+
+
+@router.get("/threads/{thread_id}", response_model=ThreadDetail)
+async def get_thread_detail(
+    thread_id: str,
+    current_user: str = Depends(require_auth),
+) -> ThreadDetail:
+    """Return full message history for a thread.
+
+    Args:
+        thread_id: The UUID of the thread to retrieve.
+        current_user: Authenticated GitHub username from session cookie.
+
+    Returns:
+        ThreadDetail: Thread metadata and ordered message history.
+
+    Raises:
+        HTTPException: 404 if thread_id is not found.
+    """
+    try:
+        return get_thread(thread_id)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Thread {thread_id} not found",
+        )
 
 
 @router.post("/threads", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
@@ -26,8 +56,9 @@ async def create_new_thread(
         )
 
     try:
-        return create_thread(request.message)
-    except Exception:
+        return await create_thread(request.message)
+    except Exception as e:
+        logger.error(f"Failed to create thread: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get AI response",
@@ -48,13 +79,14 @@ async def send_message_to_thread(
         )
 
     try:
-        return add_message(thread_id, request.message)
+        return await add_message(thread_id, request.message)
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Thread {thread_id} not found",
         )
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to send message to thread {thread_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get AI response",

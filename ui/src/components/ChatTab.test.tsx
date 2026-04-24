@@ -2,6 +2,41 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ChatTab from "./ChatTab";
 import * as chatService from "@/services/chat";
 
+// Mock ESM-only packages that Jest cannot transform
+jest.mock("react-markdown", () => {
+  return function DummyMarkdown({
+    children,
+    components,
+  }: {
+    children: string;
+    components?: {
+      p?: (props: { children: string }) => React.ReactNode;
+      code?: (props: { children: string }) => React.ReactNode;
+      pre?: (props: { children: React.ReactNode }) => React.ReactNode;
+    };
+  }) {
+    if (typeof children === "string" && children.includes("`")) {
+      // Inline code: `foo`
+      const inlineMatch = children.match(/`([^`]+)`/);
+      if (inlineMatch && components?.code) {
+        const codeEl = components.code({ children: inlineMatch[1] });
+        return <span>{codeEl}</span>;
+      }
+    }
+    if (typeof children === "string" && children.includes("```")) {
+      // Code block
+      const blockMatch = children.match(/```\w*\n([\s\S]*?)\n```/);
+      if (blockMatch && components?.pre && components?.code) {
+        const codeEl = components.code({ children: blockMatch[1] });
+        const preEl = components.pre({ children: codeEl });
+        return <span>{preEl}</span>;
+      }
+    }
+    return <span>{children}</span>;
+  };
+});
+jest.mock("remark-gfm", () => ({}));
+
 // Mock the chat service
 jest.mock("@/services/chat");
 
@@ -16,8 +51,8 @@ describe("ChatTab", () => {
     (Element.prototype.scrollIntoView as jest.Mock).mockClear();
   });
 
-  describe("List View", () => {
-    it("should render thread list view on mount", async () => {
+  describe("Thread List Display", () => {
+    it("should render thread list on mount", async () => {
       mockChatService.fetchThreads.mockResolvedValue([
         { thread_id: "1", preview: "What is TypeScript?" },
         { thread_id: "2", preview: "How to use React?" },
@@ -37,17 +72,7 @@ describe("ChatTab", () => {
       render(<ChatTab />);
 
       await waitFor(() => {
-        expect(screen.getByText("No chats yet. Start a new one!")).toBeInTheDocument();
-      });
-    });
-
-    it("should render 'New Chat +' button", async () => {
-      mockChatService.fetchThreads.mockResolvedValue([]);
-
-      render(<ChatTab />);
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /New Chat/ })).toBeInTheDocument();
+        expect(screen.getByText("No threads yet")).toBeInTheDocument();
       });
     });
 
@@ -57,26 +82,13 @@ describe("ChatTab", () => {
       render(<ChatTab />);
 
       await waitFor(() => {
-        expect(screen.getByText("No chats yet. Start a new one!")).toBeInTheDocument();
+        expect(screen.getByText("No threads yet")).toBeInTheDocument();
       });
     });
   });
 
-  describe("Thread Creation", () => {
-    it("should switch to thread view when clicking New Chat", async () => {
-      mockChatService.fetchThreads.mockResolvedValue([]);
-
-      render(<ChatTab />);
-
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Ask for writing feedback/)).toBeInTheDocument();
-      });
-    });
-
-    it("should switch to thread view when selecting a thread", async () => {
+  describe("Thread Selection", () => {
+    it("should select thread and show its title with back button", async () => {
       mockChatService.fetchThreads.mockResolvedValue([
         { thread_id: "1", preview: "Test question" },
       ]);
@@ -87,7 +99,61 @@ describe("ChatTab", () => {
       fireEvent.click(threadButton);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Ask for writing feedback/)).toBeInTheDocument();
+        // Back button should appear
+        expect(screen.getByTitle("Back to all threads")).toBeInTheDocument();
+        // Thread title should appear in header
+        const threadTexts = screen.getAllByText("Test question");
+        expect(threadTexts.length).toBeGreaterThan(0);
+      });
+    });
+
+    it("should show 'Start the conversation' when thread selected but no messages", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([{ thread_id: "1", preview: "Test thread" }]);
+
+      render(<ChatTab />);
+
+      const threadButton = await screen.findByRole("button", { name: /Test thread/ });
+      fireEvent.click(threadButton);
+
+      await waitFor(() => {
+        expect(screen.getByText("Start the conversation")).toBeInTheDocument();
+      });
+    });
+
+    it("should hide thread list when thread is selected", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([
+        { thread_id: "1", preview: "Thread 1" },
+        { thread_id: "2", preview: "Thread 2" },
+      ]);
+
+      render(<ChatTab />);
+
+      // Initially, thread list is visible
+      const thread1Button = await screen.findByRole("button", { name: /Thread 1/ });
+      expect(thread1Button).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Thread 2/ })).toBeInTheDocument();
+
+      fireEvent.click(thread1Button);
+
+      // After selecting a thread, thread list should be hidden
+      await waitFor(() => {
+        expect(screen.queryByRole("button", { name: /Thread 2/ })).not.toBeInTheDocument();
+      });
+    });
+
+    it("should go back to thread list", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([{ thread_id: "1", preview: "Thread 1" }]);
+
+      render(<ChatTab />);
+
+      const threadButton = await screen.findByRole("button", { name: /Thread 1/ });
+      fireEvent.click(threadButton);
+
+      const backButton = await screen.findByTitle("Back to all threads");
+      fireEvent.click(backButton);
+
+      await waitFor(() => {
+        expect(screen.queryByTitle("Back to all threads")).not.toBeInTheDocument();
       });
     });
   });
@@ -102,18 +168,17 @@ describe("ChatTab", () => {
 
       render(<ChatTab />);
 
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Test message" } });
 
-      const sendButton = screen.getByRole("button", { name: /Send/ });
+      const sendButton = screen.getByTitle("Send message (Enter)");
       fireEvent.click(sendButton);
 
       await waitFor(() => {
         expect(mockChatService.createThread).toHaveBeenCalledWith("Test message");
-        expect(screen.getByText("Test message")).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
         expect(screen.getByText("AI response")).toBeInTheDocument();
       });
     });
@@ -135,12 +200,11 @@ describe("ChatTab", () => {
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Follow-up" } });
 
-      const sendButton = screen.getByRole("button", { name: /Send/ });
+      const sendButton = screen.getByTitle("Send message (Enter)");
       fireEvent.click(sendButton);
 
       await waitFor(() => {
         expect(mockChatService.sendMessage).toHaveBeenCalledWith("1", "Follow-up");
-        expect(screen.getByText("Follow-up")).toBeInTheDocument();
         expect(screen.getByText("Follow-up response")).toBeInTheDocument();
       });
     });
@@ -150,10 +214,7 @@ describe("ChatTab", () => {
 
       render(<ChatTab />);
 
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
-      const sendButton = await screen.findByRole("button", { name: /Send/ });
+      const sendButton = screen.getByTitle("Send message (Enter)");
       expect(sendButton).toBeDisabled();
     });
 
@@ -163,13 +224,10 @@ describe("ChatTab", () => {
 
       render(<ChatTab />);
 
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Test message" } });
 
-      const sendButton = screen.getByRole("button", { name: /Send/ });
+      const sendButton = screen.getByTitle("Send message (Enter)");
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -178,21 +236,27 @@ describe("ChatTab", () => {
     });
   });
 
-  describe("Navigation", () => {
-    it("should go back to list view", async () => {
+  describe("Chat Form Always Visible", () => {
+    it("should always show chat input and send button", async () => {
       mockChatService.fetchThreads.mockResolvedValue([]);
 
       render(<ChatTab />);
 
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
-      const backButton = await screen.findByRole("button", { name: /Back/ });
-      fireEvent.click(backButton);
-
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /New Chat/ })).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Ask for writing feedback/)).toBeInTheDocument();
+        expect(screen.getByTitle("Send message (Enter)")).toBeInTheDocument();
       });
+    });
+
+    it("should allow typing in chat form without selecting a thread", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([{ thread_id: "1", preview: "Thread 1" }]);
+
+      render(<ChatTab />);
+
+      const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
+      fireEvent.change(textarea, { target: { value: "New message" } });
+
+      expect(textarea).toHaveValue("New message");
     });
   });
 
@@ -205,9 +269,6 @@ describe("ChatTab", () => {
       });
 
       render(<ChatTab />);
-
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
 
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.change(textarea, { target: { value: "Message" } });
@@ -223,14 +284,49 @@ describe("ChatTab", () => {
 
       render(<ChatTab />);
 
-      const newChatButton = await screen.findByRole("button", { name: /New Chat/ });
-      fireEvent.click(newChatButton);
-
       const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
 
       await waitFor(() => {
         expect(mockChatService.createThread).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("Markdown Rendering", () => {
+    it("should render inline code in assistant messages", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([]);
+      mockChatService.createThread.mockResolvedValue({
+        thread_id: "1",
+        reply: "Use `useState` hook",
+      });
+
+      render(<ChatTab />);
+
+      const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
+      fireEvent.change(textarea, { target: { value: "How do I use state?" } });
+      fireEvent.click(screen.getByTitle("Send message (Enter)"));
+
+      await waitFor(() => {
+        expect(screen.getByText("useState")).toBeInTheDocument();
+      });
+    });
+
+    it("should render code blocks in assistant messages", async () => {
+      mockChatService.fetchThreads.mockResolvedValue([]);
+      mockChatService.createThread.mockResolvedValue({
+        thread_id: "1",
+        reply: "```\nconst x = 1\n```",
+      });
+
+      render(<ChatTab />);
+
+      const textarea = await screen.findByPlaceholderText(/Ask for writing feedback/);
+      fireEvent.change(textarea, { target: { value: "Show me code" } });
+      fireEvent.click(screen.getByTitle("Send message (Enter)"));
+
+      await waitFor(() => {
+        expect(screen.getByText("const x = 1")).toBeInTheDocument();
       });
     });
   });

@@ -3,6 +3,14 @@ import { SidePanel } from "./SidePanel";
 import * as exportUtils from "@/utils/exportUtils";
 import type { Article } from "@/app/studio/page";
 
+// Mock ESM-only packages that Jest cannot transform
+jest.mock("react-markdown", () => {
+  return function DummyMarkdown({ children }: { children: string }) {
+    return <span>{children}</span>;
+  };
+});
+jest.mock("remark-gfm", () => ({}));
+
 jest.mock("@/utils/exportUtils", () => ({
   exportToPdf: jest.fn(),
   exportToMarkdown: jest.fn(),

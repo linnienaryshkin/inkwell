@@ -61,7 +61,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
 
   return (
     <aside
-      className="w-72 flex-shrink-0 border-l flex flex-col overflow-y-auto"
+      className="w-72 border-l flex flex-col overflow-hidden flex-1"
       style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
     >
       {/* Tabs */}
@@ -82,7 +82,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       </div>
 
       {activeTab === "lint" && (
-        <div className="p-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           <button
             onClick={runLint}
             className="w-full py-2 text-sm rounded font-medium transition-colors"
@@ -159,7 +159,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       )}
 
       {activeTab === "publish" && (
-        <div className="p-4 flex flex-col gap-3">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
           <h3
             className="text-xs font-semibold uppercase tracking-wider mb-1"
             style={{ color: "var(--text-secondary)" }}
@@ -231,7 +231,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       {activeTab === "toc" && article && <TocTab content={article.content} />}
 
       {activeTab === "chat" && (
-        <div className="p-4 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 p-4 flex flex-col overflow-hidden">
           <ChatTab />
         </div>
       )}

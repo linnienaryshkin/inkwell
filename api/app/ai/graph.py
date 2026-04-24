@@ -1,8 +1,8 @@
 from typing import Annotated
 
 from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.func import task
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
@@ -15,16 +15,23 @@ class State(TypedDict):
 
 
 _checkpointer = MemorySaver()
-_model = ChatAnthropic(model="claude-haiku-4-5-20251001")
+_model: ChatAnthropic | None = None
 
 SYSTEM_PROMPT = "You are a co-author helping developer-writers craft clear, well-structured technical articles. Help with structure, clarity, tone, and technical accuracy."
 
 
-@task
+def _get_model() -> ChatAnthropic:
+    """Lazily initialize the model on first use."""
+    global _model
+    if _model is None:
+        _model = ChatAnthropic(model="claude-haiku-4-5-20251001")
+    return _model
+
+
 def _call_model(state: State) -> dict:
     """Call Claude with the system prompt prepended (not stored in checkpoint)."""
-    messages = [{"role": "user", "content": SYSTEM_PROMPT}] + state["messages"]
-    response = _model.invoke(messages)
+    messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+    response = _get_model().invoke(messages)
     return {"messages": [response]}
 
 

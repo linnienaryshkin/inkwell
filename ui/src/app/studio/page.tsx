@@ -591,6 +591,8 @@ export default function StudioPage() {
             opacity: zenMode ? 0 : 1,
             overflow: "hidden",
             flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <SidePanel

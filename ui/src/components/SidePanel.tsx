@@ -3,12 +3,13 @@
 import { useState } from "react";
 import type { Article } from "@/app/studio/page";
 import { TocTab } from "./TocTab";
+import ChatTab from "./ChatTab";
 import { exportToPdf, exportToMarkdown } from "@/utils/exportUtils";
 
 type Props = {
   article: Article | null;
-  activeTab: "lint" | "publish" | "toc";
-  onTabChange: (tab: "lint" | "publish" | "toc") => void;
+  activeTab: "lint" | "publish" | "toc" | "chat";
+  onTabChange: (tab: "lint" | "publish" | "toc" | "chat") => void;
 };
 
 const PLATFORMS = [
@@ -65,7 +66,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
     >
       {/* Tabs */}
       <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
-        {(["lint", "publish", "toc"] as const).map((tab) => (
+        {(["lint", "publish", "toc", "chat"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
@@ -228,6 +229,12 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       )}
 
       {activeTab === "toc" && article && <TocTab content={article.content} />}
+
+      {activeTab === "chat" && (
+        <div className="p-4 flex flex-col h-full overflow-hidden">
+          <ChatTab />
+        </div>
+      )}
     </aside>
   );
 }

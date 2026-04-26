@@ -132,7 +132,7 @@ export default function StudioPage() {
   const [selectedSlug, setSelectedSlug] = useState(() => slugFromUrl() ?? "");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [articleLoading, setArticleLoading] = useState(false);
-  const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc">("publish");
+  const [sidePanelTab, setSidePanelTab] = useState<"lint" | "publish" | "toc" | "chat">("publish");
   const [zenMode, setZenMode] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [appLoading, setAppLoading] = useState(true);
@@ -591,6 +591,8 @@ export default function StudioPage() {
             opacity: zenMode ? 0 : 1,
             overflow: "hidden",
             flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <SidePanel

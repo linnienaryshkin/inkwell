@@ -3,12 +3,13 @@
 import { useState } from "react";
 import type { Article } from "@/app/studio/page";
 import { TocTab } from "./TocTab";
+import ChatTab from "./ChatTab";
 import { exportToPdf, exportToMarkdown } from "@/utils/exportUtils";
 
 type Props = {
   article: Article | null;
-  activeTab: "lint" | "publish" | "toc";
-  onTabChange: (tab: "lint" | "publish" | "toc") => void;
+  activeTab: "lint" | "publish" | "toc" | "chat";
+  onTabChange: (tab: "lint" | "publish" | "toc" | "chat") => void;
 };
 
 const PLATFORMS = [
@@ -60,12 +61,12 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
 
   return (
     <aside
-      className="w-72 flex-shrink-0 border-l flex flex-col overflow-y-auto"
+      className="w-72 border-l flex flex-col overflow-hidden flex-1"
       style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
     >
       {/* Tabs */}
       <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
-        {(["lint", "publish", "toc"] as const).map((tab) => (
+        {(["lint", "publish", "toc", "chat"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
@@ -81,7 +82,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       </div>
 
       {activeTab === "lint" && (
-        <div className="p-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           <button
             onClick={runLint}
             className="w-full py-2 text-sm rounded font-medium transition-colors"
@@ -158,7 +159,7 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       )}
 
       {activeTab === "publish" && (
-        <div className="p-4 flex flex-col gap-3">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
           <h3
             className="text-xs font-semibold uppercase tracking-wider mb-1"
             style={{ color: "var(--text-secondary)" }}
@@ -228,6 +229,12 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       )}
 
       {activeTab === "toc" && article && <TocTab content={article.content} />}
+
+      {activeTab === "chat" && (
+        <div className="flex-1 p-4 flex flex-col overflow-hidden">
+          <ChatTab />
+        </div>
+      )}
     </aside>
   );
 }

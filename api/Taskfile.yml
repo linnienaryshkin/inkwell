@@ -55,7 +55,9 @@ tasks:
   security:
     desc: Audit Python dependencies for known vulnerabilities
     cmds:
-      - uv run --with pip-audit pip-audit
+      # CVE-2026-3219 affects pip itself. pip 26.0.1 is already the latest release and no
+      # patched version exists yet, so the vulnerability cannot be remediated by upgrading.
+      - uv run --with pip-audit pip-audit --ignore-vuln CVE-2026-3219
 
   quality-gate:
     desc: Run all API quality checks in sequence

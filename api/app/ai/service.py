@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 
 from langchain_core.messages import HumanMessage
@@ -17,6 +16,8 @@ def _preview_from_state(thread_id: str) -> str:
         str: Content of the first HumanMessage, or empty string if none found.
     """
     config = {"configurable": {"thread_id": thread_id}}
+    # graph.get_state reads the latest checkpoint for the given thread from the checkpointer
+    # and reconstructs the full state (including the messages list) from stored snapshots.
     state = graph.get_state(config)
     if state and state.values:
         for msg in state.values.get("messages", []):
@@ -34,6 +35,9 @@ def list_threads() -> list[ThreadPreview]:
     seen: set[str] = set()
     result: list[ThreadPreview] = []
 
+    # graph.list_states() requires a config with a thread_id and only returns states for
+    # that specific thread, so it can't enumerate all threads. We access the checkpointer
+    # directly here because it exposes list() without a thread filter.
     for checkpoint_tuple in checkpointer.list(config=None):
         thread_id = checkpoint_tuple.config["configurable"]["thread_id"]
         if thread_id in seen:
@@ -66,7 +70,11 @@ def get_thread(thread_id: str) -> ThreadDetail:
 
     messages: list[ChatMessage] = []
     for msg in state.values.get("messages", []):
+        # Use type(msg).__name__ instead of isinstance() to avoid importing LangChain message
+        # classes here and to handle AIMessageChunk alongside AIMessage with a single check.
         msg_type = type(msg).__name__
+        # LangGraph can store raw string messages (e.g. tool output or legacy nodes) that lack
+        # a .content attribute, so we fall back to str(msg) to keep content extraction safe.
         raw = msg.content if hasattr(msg, "content") else str(msg)
         if isinstance(raw, list):
             content = "".join(b.get("text", "") for b in raw if isinstance(b, dict))
@@ -126,21 +134,9 @@ async def add_message(thread_id: str, message: str) -> ChatResponse:
 
 
 async def _invoke_graph(thread_id: str, message: str) -> str:
-    """Invoke the graph in a thread pool to avoid blocking the event loop."""
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        None,
-        _sync_invoke_graph,
-        thread_id,
-        message,
-    )
-    return result
-
-
-def _sync_invoke_graph(thread_id: str, message: str) -> str:
-    """Synchronous graph invocation."""
+    """Invoke the graph asynchronously."""
     config = {"configurable": {"thread_id": thread_id}}
-    result = graph.invoke(
+    result = await graph.ainvoke(
         {"messages": [HumanMessage(content=message)]},
         config=config,
     )

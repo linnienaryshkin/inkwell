@@ -16,6 +16,7 @@ class ThreadPreview(BaseModel):
     preview: str
 
 
+# TODO: Instead of this custom class of message, I would like to reuse message type from langgraph... And let FE deal with how to display it...
 class ChatMessage(BaseModel):
     """A single message in a chat thread."""
 

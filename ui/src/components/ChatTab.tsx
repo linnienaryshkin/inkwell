@@ -114,7 +114,7 @@ export default function ChatTab() {
       {/* Top: Thread List (hidden when a thread is selected) */}
       {!activeThreadId && (
         <div className="flex-shrink-0">
-          <div className="max-h-32 overflow-y-auto space-y-1 pr-2">
+          <div style={{ maxHeight: 96, overflow: "hidden" }} className="space-y-1">
             {threads.length === 0 ? (
               <p className="text-text-secondary text-xs px-2">No threads yet</p>
             ) : (
@@ -174,12 +174,15 @@ export default function ChatTab() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-xs px-3 py-2 rounded text-sm ${
+                    className={`px-3 py-2 rounded text-sm ${
                       msg.role === "user"
                         ? "bg-accent"
                         : "border border-border bg-bg-primary text-text-primary"
                     }`}
-                    style={msg.role === "user" ? { color: "var(--bg-primary)" } : undefined}
+                    style={{
+                      maxWidth: "85%",
+                      ...(msg.role === "user" ? { color: "var(--bg-primary)" } : {}),
+                    }}
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -247,8 +250,13 @@ export default function ChatTab() {
           <button
             onClick={handleSend}
             disabled={loading || !inputValue.trim()}
-            className="px-3 py-2 rounded bg-accent hover:bg-accent-hover hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer flex items-center justify-center"
-            style={{ color: "var(--bg-primary)" }}
+            className="rounded bg-accent hover:bg-accent-hover hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer flex items-center justify-center"
+            style={{
+              color: "var(--bg-primary)",
+              padding: "8px 14px",
+              fontSize: 16,
+              fontWeight: 600,
+            }}
             title="Send message (Enter)"
             aria-label="Send message (Enter)"
           >

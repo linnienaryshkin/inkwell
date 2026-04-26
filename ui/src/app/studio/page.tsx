@@ -71,6 +71,173 @@ function titleToSlug(title: string): string {
     .slice(0, 100);
 }
 
+function SignedOutLanding({
+  theme,
+  onToggleTheme,
+}: {
+  theme: "dark" | "light";
+  onToggleTheme: () => void;
+}) {
+  return (
+    <div className="flex flex-col h-screen">
+      {/* Header */}
+      <header
+        className="flex items-center justify-between px-5 py-3 border-b"
+        style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+      >
+        <div className="flex items-center gap-3">
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 17,
+              fontWeight: 500,
+              fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+              color: "var(--text-primary)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>$</span>
+            <span>inkwell</span>
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 14,
+                marginLeft: 2,
+                background: "var(--text-primary)",
+                animation: "inkwell-blink 1.06s steps(1, end) infinite",
+              }}
+            />
+          </h1>
+          <span
+            style={{
+              fontSize: 9,
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.18em",
+            }}
+          >
+            write · commit · publish
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://github.com/linnienaryshkin/inkwell"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit Inkwell GitHub repository"
+            aria-label="Visit Inkwell GitHub repository"
+            className="inline-flex items-center justify-center p-1 transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
+          >
+            <FaGithub size={20} />
+          </a>
+          <button
+            onClick={onToggleTheme}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="text-xs px-2 py-1 rounded border"
+            style={{
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+            }}
+          >
+            {theme === "dark" ? "☀ Light" : "☾ Dark"}
+          </button>
+          <a
+            href={getLoginUrl()}
+            aria-label="Sign in with GitHub"
+            className="inline-flex items-center gap-1 px-2 rounded text-sm"
+            style={{
+              background: "var(--accent)",
+              color: "var(--bg-primary)",
+              height: "40px",
+              width: "180px",
+              justifyContent: "center",
+            }}
+          >
+            <FaGithub size={16} />
+            Sign in with GitHub
+          </a>
+        </div>
+      </header>
+
+      {/* Landing body */}
+      <div
+        className="flex-1 flex items-center justify-center"
+        style={{ background: "var(--bg-primary)", padding: 48 }}
+      >
+        <div className="flex flex-col items-center gap-5 text-center" style={{ maxWidth: 520 }}>
+          <div
+            style={{
+              fontSize: 48,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              color: "var(--accent)",
+              lineHeight: 1,
+            }}
+          >
+            Inkwell
+          </div>
+          <p style={{ fontSize: 18, color: "var(--text-primary)", margin: 0, lineHeight: 1.5 }}>
+            A personal writing studio backed by your GitHub repo.
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-secondary)",
+              margin: 0,
+              lineHeight: 1.6,
+              maxWidth: 440,
+            }}
+          >
+            Articles are stored as files. Versions are commits. Lint, publish to dev.to, and export
+            anywhere — all without leaving the editor.
+          </p>
+          <a
+            href={getLoginUrl()}
+            aria-label="Sign in with GitHub"
+            className="inline-flex items-center gap-2 rounded font-medium"
+            style={{
+              padding: "12px 20px",
+              fontSize: 15,
+              background: "var(--accent)",
+              color: "var(--bg-primary)",
+              textDecoration: "none",
+              marginTop: 8,
+            }}
+          >
+            <FaGithub size={18} />
+            Sign in with GitHub
+          </a>
+          <div
+            className="flex gap-8 pt-6 border-t w-full justify-center"
+            style={{ marginTop: 28, borderColor: "var(--border)" }}
+          >
+            {[
+              { label: "Markdown editor", sub: "Monaco, with preview" },
+              { label: "Git versions", sub: "Every save is a commit" },
+              { label: "Multi-publish", sub: "dev.to, Hashnode, Medium…" },
+            ].map((f) => (
+              <div key={f.label} className="flex flex-col gap-1">
+                <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
+                  {f.label}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{f.sub}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileMenu({
   anchorRef,
   onLogout,
@@ -394,6 +561,16 @@ export default function StudioPage() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  // Show landing page when signed out (and not in the initial loading phase)
+  if (!appLoading && currentUser === null) {
+    return (
+      <SignedOutLanding
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -411,11 +588,40 @@ export default function StudioPage() {
         }}
       >
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold tracking-tight" style={{ color: "var(--accent)" }}>
-            Inkwell
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 17,
+              fontWeight: 500,
+              fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+              color: "var(--text-primary)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>$</span>
+            <span>inkwell</span>
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 14,
+                marginLeft: 2,
+                background: "var(--text-primary)",
+                animation: "inkwell-blink 1.06s steps(1, end) infinite",
+              }}
+            />
           </h1>
-          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-            Personal Writing Studio
+          <span
+            style={{
+              fontSize: 9,
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.18em",
+            }}
+          >
+            write · commit · publish
           </span>
         </div>
         <div className="flex items-center gap-3">

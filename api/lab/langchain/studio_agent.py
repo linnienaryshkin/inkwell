@@ -183,7 +183,7 @@ def should_continue(state: State) -> Literal["tools", "__end__"]:
 def call_model(state: State) -> dict[str, Any]:
     """Call the Anthropic model to generate a response or tool calls."""
     messages = state["messages"]
-    model = ChatAnthropic(model="claude-haiku-4-5", temperature=0.7)
+    model = ChatAnthropic(model="claude-haiku-4-5", temperature=0.7)  # type: ignore[call-arg]
 
     tools = [
         list_articles,

@@ -695,7 +695,7 @@ class TestCreateArticle:
         """
         slug = "content-check"
         title = "Content Check"
-        tags = []
+        tags: list[str] = []
         content = "# Content Check\n\nBody text here."
 
         get_map, post_responses, patch_map = _default_write_maps()
@@ -718,7 +718,7 @@ class TestCreateArticle:
         """
         slug = "conflict-slug"
         title = "Conflict"
-        tags = []
+        tags: list[str] = []
         content = "content"
 
         error = _error_response(422, "POST", f"{GITHUB_API_BASE}/repos/{REPO}/git/blobs")
@@ -739,7 +739,7 @@ class TestCreateArticle:
         """
         slug = "ref-error"
         title = "Ref Error"
-        tags = []
+        tags: list[str] = []
         content = "content"
 
         ref_url = f"{GITHUB_API_BASE}/repos/{REPO}/git/ref/heads/main"
@@ -808,7 +808,7 @@ class TestSaveArticle:
         """
         slug = "msg-check"
         title = "Msg Check"
-        tags = []
+        tags: list[str] = []
         content = "content"
         custom_message = "fix: correct heading typo"
 
@@ -832,7 +832,7 @@ class TestSaveArticle:
         """
         slug = "default-msg"
         title = "Default Msg"
-        tags = []
+        tags: list[str] = []
         content = "content"
         default_message = f"update {slug}"
 
@@ -855,7 +855,7 @@ class TestSaveArticle:
         """
         slug = "not-found"
         title = "T"
-        tags = []
+        tags: list[str] = []
         content = "c"
         message = "update not-found"
 
@@ -934,9 +934,8 @@ class TestDeleteArticle:
         mock_client.request = AsyncMock(side_effect=request_side_effect)
 
         with patch("app.github_articles.httpx.AsyncClient", return_value=mock_client):
-            result = await delete_article(TOKEN, slug)
+            await delete_article(TOKEN, slug)
 
-        assert result is None
         # Verify get was called twice (for both SHAs)
         assert mock_client.get.call_count == 2
         # Verify request was called twice (for both deletes)

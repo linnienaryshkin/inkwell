@@ -5,6 +5,7 @@ from langchain_core.messages import SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.graph.state import CompiledStateGraph
 from typing_extensions import TypedDict
 
 
@@ -24,7 +25,7 @@ def _get_model() -> ChatAnthropic:
     """Lazily initialize the model on first use."""
     global _model
     if _model is None:
-        _model = ChatAnthropic(model="claude-haiku-4-5-20251001")
+        _model = ChatAnthropic(model_name="claude-haiku-4-5-20251001")  # type: ignore[call-arg]
     return _model
 
 
@@ -35,7 +36,7 @@ def _call_model(state: State) -> dict:
     return {"messages": [response]}
 
 
-def _build_graph() -> object:
+def _build_graph() -> CompiledStateGraph:
     """Build and compile the chat graph."""
     graph_builder = StateGraph(State)
     graph_builder.add_node("llm", _call_model)

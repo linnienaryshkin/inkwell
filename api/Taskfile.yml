@@ -47,6 +47,11 @@ tasks:
     cmds:
       - sh ../scripts/file-lint.sh api
 
+  types-check:
+    desc: Type-check API code with mypy (no output files)
+    cmds:
+      - uv run mypy app/ tests/ lab/
+
   security:
     desc: Audit Python dependencies for known vulnerabilities
     cmds:
@@ -63,6 +68,7 @@ tasks:
       - task: format-check
       - task: file-naming-check
       - task: test-coverage
+      - task: types-check
       - task: security
 
   lab:

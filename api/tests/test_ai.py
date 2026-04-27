@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.ai import service as ai_service
 from app.main_rest import app
-from app.models.ai import ChatResponse, ThreadDetail
+from app.models.ai import ChatMessage, ChatResponse, ThreadDetail
 
 TOKEN = "test-token"
 COOKIE_HEADER = {"Cookie": f"gh_access_token={TOKEN}"}
@@ -279,8 +279,8 @@ class TestGetThreadDetailEndpoint:
             thread_id=THREAD_UUID,
             preview="Hello",
             messages=[
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there"},
+                ChatMessage(role="user", content="Hello"),
+                ChatMessage(role="assistant", content="Hi there"),
             ],
         )
         with patch("app.routers.ai.get_thread", return_value=detail):

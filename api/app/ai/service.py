@@ -1,6 +1,7 @@
 import uuid
 
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from app.ai.graph import checkpointer, graph
 from app.models.ai import ChatMessage, ChatResponse, ThreadDetail, ThreadPreview
@@ -15,7 +16,7 @@ def _preview_from_state(thread_id: str) -> str:
     Returns:
         str: Content of the first HumanMessage, or empty string if none found.
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     # graph.get_state reads the latest checkpoint for the given thread from the checkpointer
     # and reconstructs the full state (including the messages list) from stored snapshots.
     state = graph.get_state(config)
@@ -62,7 +63,7 @@ def get_thread(thread_id: str) -> ThreadDetail:
     Raises:
         KeyError: When thread_id is not found in the checkpointer.
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     state = graph.get_state(config)
 
     if not state or not state.values:
@@ -117,7 +118,7 @@ async def add_message(thread_id: str, message: str) -> ChatResponse:
     Raises:
         KeyError: When thread_id is not found in the checkpointer.
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     state = graph.get_state(config)
     if not state or not state.values:
         raise KeyError(f"Thread {thread_id} not found")
@@ -135,7 +136,7 @@ async def add_message(thread_id: str, message: str) -> ChatResponse:
 
 async def _invoke_graph(thread_id: str, message: str) -> str:
     """Invoke the graph asynchronously."""
-    config = {"configurable": {"thread_id": thread_id}}
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     result = await graph.ainvoke(
         {"messages": [HumanMessage(content=message)]},
         config=config,

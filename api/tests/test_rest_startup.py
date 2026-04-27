@@ -5,6 +5,8 @@ configuration, routers, middleware, and error handlers.
 """
 
 import httpx
+from fastapi.routing import APIRoute
+from starlette.middleware import Middleware
 
 
 def test_rest_app_imports_successfully() -> None:
@@ -17,7 +19,7 @@ def test_rest_app_has_routers() -> None:
     from app.main_rest import app
 
     # Check that routers are registered by checking routes
-    routes = {route.path for route in app.routes}
+    routes = {route.path for route in app.routes if isinstance(route, APIRoute)}
 
     # Health router should have root path
     assert "/" in routes
@@ -32,7 +34,9 @@ def test_rest_app_has_cors_middleware() -> None:
     from app.main_rest import app
 
     # Check that CORSMiddleware is in the middleware stack
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
+    middleware_names = [
+        getattr(m.cls, "__name__", "") for m in app.user_middleware if isinstance(m, Middleware)
+    ]
     assert "CORSMiddleware" in middleware_names
 
 

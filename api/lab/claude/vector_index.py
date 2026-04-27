@@ -1,6 +1,7 @@
 """Vector-based similarity search index implementation."""
 
 import math
+from collections.abc import Callable
 from typing import Any
 
 
@@ -14,7 +15,7 @@ class VectorIndex:
     def __init__(
         self,
         distance_metric: str = "cosine",
-        embedding_fn: None | object = None,
+        embedding_fn: Callable[[str], list[float]] | None = None,
     ) -> None:
         """Initialize vector index.
 

@@ -51,11 +51,3 @@ def test_config_missing_env_raises_runtime_error() -> None:
             reload(app.config)
 
         assert "Missing required environment variable" in str(exc_info.value)
-
-
-def test_setup_mcp_logging_does_not_error() -> None:
-    """setup_mcp_logging is callable and doesn't raise errors."""
-    from app.shared.config import setup_mcp_logging
-
-    # Should not raise any exception
-    setup_mcp_logging()

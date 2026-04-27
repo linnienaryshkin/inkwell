@@ -1,4 +1,4 @@
-"""Configuration and setup utilities shared between REST and MCP servers."""
+"""Configuration and setup utilities shared by the REST server."""
 
 import urllib.parse
 
@@ -21,12 +21,3 @@ def get_cors_origins() -> list[str]:
             for url in config.allowed_redirect_urls
         }
     )
-
-
-def setup_mcp_logging() -> None:
-    """Optional MCP logging setup (stub for now).
-
-    This function is reserved for future MCP-specific logging configuration
-    such as structured logging or MCP protocol tracing. Currently a no-op.
-    """
-    pass

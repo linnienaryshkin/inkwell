@@ -12,11 +12,6 @@ tasks:
     cmds:
       - uv run uvicorn app.main_rest:app --reload --env-file .env
 
-  mcp-dev:
-    desc: Start FastMCP MCP server with MCP Inspector
-    cmds:
-      - uv run mcp dev app/main_mcp.py:mcp
-
   test:
     desc: Run pytest tests
     cmds:

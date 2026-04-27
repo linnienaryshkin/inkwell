@@ -21,7 +21,7 @@ Monorepo with two packages:
 
 ```bash
 task install       # Install all deps (ui + api)
-task dev           # Start all dev servers: REST API, MCP server, UI (concurrently)
+task dev           # Start all dev servers: REST API, UI (concurrently)
 task test          # Run all tests (ui + api)
 task quality-gate  # Run all quality checks in sequence (ui then api)
 task git-lint      # Validate current branch name
@@ -31,7 +31,6 @@ Individual servers (if you only need one):
 
 ```bash
 task api:rest-dev  # FastAPI REST server only (localhost:8000)
-task api:mcp-dev   # FastMCP server only (stdio protocol)
 task ui:dev        # Vite frontend only (localhost:5173)
 ```
 
@@ -69,12 +68,9 @@ Vite + React SPA. `src/main.tsx` is the entry point — it renders `StudioPage` 
 
 ### API (`api/`)
 
-Two entry points backed by the same GitHub layer (`app/github_articles.py`):
+Entry point: **REST API** (`app/main_rest.py`) — HTTP server for the web UI (localhost:8000).
 
-1. **REST API** (`app/main_rest.py`) — HTTP server for the web UI (localhost:8000)
-2. **MCP Server** (`app/main_mcp.py`) — stdio protocol server for Claude Code integration
-
-Both reuse: `app/github_articles.py` (GitHub API layer), `app/models/` (Pydantic schemas), `app/config.py` (OAuth secrets), `app/shared/` (middleware, config utilities).
+Reuses: `app/github_articles.py` (GitHub API layer), `app/models/` (Pydantic schemas), `app/config.py` (OAuth secrets), `app/shared/` (middleware, config utilities).
 
 **REST API Endpoints:**
 
@@ -100,39 +96,10 @@ Both reuse: `app/github_articles.py` (GitHub API layer), `app/models/` (Pydantic
 - `app/models/article.py` — Pydantic schemas (Article, ArticleMeta, ArticleVersion)
 - `app/github_articles.py` — GitHub API layer (reads via Contents API, writes via Git Data API)
 - `app/config.py` — OAuth configuration from environment
-- `app/shared/config.py`, `app/shared/middleware.py` — Shared utilities for both REST and MCP
+- `app/shared/config.py`, `app/shared/middleware.py` — Shared utilities
 - `app/ai/` — Reserved for LangChain integration
 
 **CORS:** Allows `http://localhost:5173` and `https://linnienaryshkin.github.io` with `allow_credentials=True`.
-
-### MCP Server (`api/app/mcp/`)
-
-FastMCP server enabling Claude Code and other MCP clients to access article management via the Model Context Protocol. Transport is stdio (message-based, no HTTP ports). Tools are called with per-call authentication (GitHub access token passed on each call).
-
-**Tools (6 total):**
-
-| Tool | Parameters | Returns | Description |
-|------|-----------|---------|-------------|
-| `health_check` | (none) | `{"status": "ok"}` | Verify server is running |
-| `list_articles` | `access_token: str` | `ArticleMeta[]` | List all articles (401, 502) |
-| `get_article` | `access_token: str`, `slug: str` | `Article` | Fetch article by slug (401, 404, 502) |
-| `create_article` | `access_token: str`, `title`, `slug`, `tags`, `content` | `Article` | Create new article (401, 409, 502) |
-| `save_article` | `access_token: str`, `slug`, `title`, `tags`, `content`, `message?` | `Article` | Update article (401, 404, 502) |
-| `delete_article` | `access_token: str`, `slug` | `null` | Delete article (401, 404, 502) |
-
-**Resources:** Documentation and schema definitions (browsable via MCP Inspector or Claude Code):
-
-- `inkwell://article-schemas` — Available article field types
-- `inkwell://article-constants` — Predefined values (categories, status codes)
-
-**Module structure:**
-
-- `app/main_mcp.py` — FastMCP entrypoint; registers all tools and resources
-- `app/mcp/tools.py` — Tool definitions with input schemas and handlers
-- `app/mcp/resources.py` — Resource definitions (schemas, constants)
-- Reuses: `github_articles.py` (GitHub API), `app/models/` (Pydantic schemas), `app/shared/` (error handling)
-
-**Development:** Start with `task api:mcp-dev` or `task dev` (starts REST API + MCP + UI concurrently).
 
 ## Testing
 

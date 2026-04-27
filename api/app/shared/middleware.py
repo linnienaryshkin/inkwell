@@ -1,4 +1,4 @@
-"""Shared middleware and error handlers for REST and MCP servers."""
+"""Shared middleware and error handlers for the REST server."""
 
 import httpx
 from fastapi import FastAPI, Request
@@ -6,13 +6,13 @@ from fastapi.responses import JSONResponse
 
 
 def setup_error_handlers(app: FastAPI) -> None:
-    """Register shared error handlers on FastAPI/FastMCP app.
+    """Register shared error handlers on the FastAPI app.
 
     Sets up exception handlers for common error cases to ensure consistent
-    error responses across REST and MCP servers.
+    error responses.
 
     Args:
-        app: FastAPI or FastMCP application instance.
+        app: FastAPI application instance.
     """
 
     @app.exception_handler(httpx.HTTPStatusError)

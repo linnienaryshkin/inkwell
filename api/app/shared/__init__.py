@@ -1,1 +1,1 @@
-"""Shared infrastructure for REST and MCP servers."""
+"""Shared infrastructure for the REST server."""

@@ -21,12 +21,25 @@ const PLATFORMS = [
 ];
 
 export function SidePanel({ article, activeTab, onTabChange }: Props) {
-  const [lintResults, setLintResults] = useState<null | {
+  const DEFAULT_LINT = {
+    readability: "B+",
+    style: 2,
+    grammar: 0,
+    avgSentenceLength: 17,
+    issues: [
+      { line: 5, message: 'Avoid "very" — it weakens your point' },
+      { line: 12, message: "Consider active voice here" },
+      { line: 23, message: "Long sentence (38 words) — consider splitting" },
+    ],
+  };
+
+  const [lintResults, setLintResults] = useState<{
     readability: string;
     style: number;
     grammar: number;
+    avgSentenceLength: number;
     issues: { line: number; message: string }[];
-  }>(null);
+  }>(DEFAULT_LINT);
 
   const [exporting, setExporting] = useState(false);
 
@@ -35,9 +48,11 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
       readability: "B+",
       style: 2,
       grammar: 0,
+      avgSentenceLength: 17,
       issues: [
         { line: 5, message: 'Avoid "very" — it weakens your point' },
         { line: 12, message: "Consider active voice here" },
+        { line: 23, message: "Long sentence (38 words) — consider splitting" },
       ],
     });
   };
@@ -91,70 +106,64 @@ export function SidePanel({ article, activeTab, onTabChange }: Props) {
             Run Lint ↺
           </button>
 
-          {lintResults && (
-            <>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Readability
-                  </span>
-                  <span
-                    className="text-sm font-mono font-semibold"
-                    style={{ color: "var(--green)" }}
-                  >
-                    {lintResults.readability}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Style issues
-                  </span>
-                  <span
-                    className="text-sm font-mono"
-                    style={{ color: lintResults.style > 0 ? "var(--yellow)" : "var(--green)" }}
-                  >
-                    {lintResults.style}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Grammar errors
-                  </span>
-                  <span className="text-sm font-mono" style={{ color: "var(--green)" }}>
-                    {lintResults.grammar}
-                  </span>
-                </div>
-              </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Readability
+              </span>
+              <span className="text-sm font-mono font-semibold" style={{ color: "var(--green)" }}>
+                {lintResults.readability}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Style issues
+              </span>
+              <span
+                className="text-sm font-mono"
+                style={{ color: lintResults.style > 0 ? "var(--yellow)" : "var(--green)" }}
+              >
+                {lintResults.style}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Grammar errors
+              </span>
+              <span className="text-sm font-mono" style={{ color: "var(--green)" }}>
+                {lintResults.grammar}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Avg sentence length
+              </span>
+              <span className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>
+                {lintResults.avgSentenceLength} w
+              </span>
+            </div>
+          </div>
 
-              <div className="flex flex-col gap-2">
-                <h3
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Issues
-                </h3>
-                {lintResults.issues.map((issue, i) => (
-                  <div
-                    key={i}
-                    className="p-2 rounded text-xs"
-                    style={{ background: "var(--bg-tertiary)" }}
-                  >
-                    <span className="font-mono" style={{ color: "var(--yellow)" }}>
-                      Line {issue.line}:
-                    </span>{" "}
-                    <span style={{ color: "var(--text-primary)" }}>{issue.message}</span>
-                  </div>
-                ))}
+          <div className="flex flex-col gap-2">
+            <h3
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Issues
+            </h3>
+            {lintResults.issues.map((issue, i) => (
+              <div
+                key={i}
+                className="p-2 rounded text-xs"
+                style={{ background: "var(--bg-tertiary)" }}
+              >
+                <span className="font-mono" style={{ color: "var(--yellow)" }}>
+                  Line {issue.line}:
+                </span>{" "}
+                <span style={{ color: "var(--text-primary)" }}>{issue.message}</span>
               </div>
-            </>
-          )}
-
-          {!lintResults && (
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Click &quot;Run Lint&quot; to analyze your article for readability, style, and
-              grammar.
-            </p>
-          )}
+            ))}
+          </div>
         </div>
       )}
 

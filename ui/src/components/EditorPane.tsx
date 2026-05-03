@@ -222,8 +222,48 @@ export function EditorPane({
         </div>
       </div>
 
+      {/* Empty state for new unsaved articles */}
+      {article.slug === "__new__" && article.content === "" && !previewMode && (
+        <div
+          className="flex-1 flex flex-col items-center justify-center gap-3 text-center"
+          style={{ background: "var(--bg-primary)", padding: 32 }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 12,
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 24,
+              color: "var(--text-secondary)",
+            }}
+          >
+            ✎
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 500, color: "var(--text-primary)", margin: 0 }}>
+            Start a new article
+          </h3>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, maxWidth: 320 }}>
+            Give it a title above and start writing. Your article will be committed to GitHub when
+            you save.
+          </p>
+        </div>
+      )}
+
       {/* Monaco Editor */}
-      <div className="flex-1 overflow-hidden" style={{ display: previewMode ? "none" : "block" }}>
+      <div
+        className="flex-1 overflow-hidden"
+        style={{
+          display:
+            previewMode || (article.slug === "__new__" && article.content === "")
+              ? "none"
+              : "block",
+        }}
+      >
         <Suspense fallback={<EditorFallback />}>
           <Editor
             height="100%"

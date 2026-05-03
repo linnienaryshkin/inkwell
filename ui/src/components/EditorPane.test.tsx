@@ -582,4 +582,118 @@ describe("EditorPane", () => {
       expect(addBtn.style.color).toBe("var(--text-secondary)");
     });
   });
+
+  describe("Tag input keyboard shortcuts", () => {
+    it("dismisses tag input on Escape without adding a tag", () => {
+      const handleTagsChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTagsChange={handleTagsChange} />
+      );
+
+      const addBtn = screen.getByRole("button", { name: "Add tag" });
+      fireEvent.click(addBtn);
+
+      const tagInput = screen.getByRole("textbox", { name: "New tag" });
+      fireEvent.change(tagInput, { target: { value: "draft" } });
+      fireEvent.keyDown(tagInput, { key: "Escape" });
+
+      // Input should be dismissed; no tag added
+      expect(screen.queryByRole("textbox", { name: "New tag" })).not.toBeInTheDocument();
+      expect(handleTagsChange).not.toHaveBeenCalled();
+    });
+
+    it("adds a tag when comma key is pressed", () => {
+      const handleTagsChange = jest.fn();
+      render(
+        <EditorPane article={mockArticle} onChange={() => {}} onTagsChange={handleTagsChange} />
+      );
+
+      const addBtn = screen.getByRole("button", { name: "Add tag" });
+      fireEvent.click(addBtn);
+
+      const tagInput = screen.getByRole("textbox", { name: "New tag" });
+      fireEvent.change(tagInput, { target: { value: "newtag" } });
+      fireEvent.keyDown(tagInput, { key: "," });
+
+      expect(handleTagsChange).toHaveBeenCalledWith(["markdown", "documentation", "newtag"]);
+    });
+  });
+
+  describe("Zen mode button", () => {
+    it("renders the expand button when onToggleZen is provided", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} onToggleZen={() => {}} />);
+
+      expect(screen.getByTitle("Enter expand mode")).toBeInTheDocument();
+    });
+
+    it("shows exit title when zenMode is true", () => {
+      render(
+        <EditorPane
+          article={mockArticle}
+          onChange={() => {}}
+          onToggleZen={() => {}}
+          zenMode={true}
+        />
+      );
+
+      expect(screen.getByTitle("Exit expand mode")).toBeInTheDocument();
+    });
+
+    it("calls onToggleZen when the expand button is clicked", () => {
+      const handleZen = jest.fn();
+      render(<EditorPane article={mockArticle} onChange={() => {}} onToggleZen={handleZen} />);
+
+      fireEvent.click(screen.getByTitle("Enter expand mode"));
+      expect(handleZen).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not render expand button when onToggleZen is not provided", () => {
+      render(<EditorPane article={mockArticle} onChange={() => {}} />);
+
+      expect(screen.queryByTitle("Enter expand mode")).not.toBeInTheDocument();
+      expect(screen.queryByTitle("Exit expand mode")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("New article empty state", () => {
+    const newArticle: Article = {
+      slug: "__new__",
+      content: "",
+      meta: {
+        slug: "__new__",
+        title: "",
+        status: "draft",
+        tags: [],
+      },
+      versions: [],
+    };
+
+    it("shows empty-state prompt for __new__ article with no content", () => {
+      render(<EditorPane article={newArticle} onChange={() => {}} />);
+
+      expect(screen.getByText("Start a new article")).toBeInTheDocument();
+    });
+
+    it("does not show empty state for __new__ article that already has content", () => {
+      render(<EditorPane article={{ ...newArticle, content: "# Hello" }} onChange={() => {}} />);
+
+      expect(screen.queryByText("Start a new article")).not.toBeInTheDocument();
+    });
+
+    it("does not show empty state for a saved article with no content", () => {
+      render(<EditorPane article={{ ...mockArticle, content: "" }} onChange={() => {}} />);
+
+      expect(screen.queryByText("Start a new article")).not.toBeInTheDocument();
+    });
+
+    it("hides empty state when preview mode is toggled on for __new__", () => {
+      render(<EditorPane article={newArticle} onChange={() => {}} />);
+
+      const toggleButton = screen.getByTitle("Switch to preview");
+      fireEvent.click(toggleButton);
+
+      // Empty state relies on !previewMode — after toggling it should disappear
+      expect(screen.queryByText("Start a new article")).not.toBeInTheDocument();
+    });
+  });
 });

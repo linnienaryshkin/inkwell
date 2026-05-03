@@ -42,7 +42,7 @@ function HeadingsList({ headings, onHeadingClick, depth = 0 }: HeadingsListProps
             style={{
               paddingLeft: `${depth * 16}px`,
               color: "var(--text-primary)",
-              fontWeight: "400",
+              fontWeight: depth === 0 ? "600" : "400",
               backgroundColor: "transparent",
             }}
           >

@@ -116,10 +116,12 @@ describe("SidePanel", () => {
       expect(screen.queryByRole("button", { name: "Run Lint ↺" })).not.toBeInTheDocument();
     });
 
-    it("should show placeholder text before running lint", () => {
+    it("should show default lint metrics before running lint", () => {
       render(<SidePanel article={mockArticle} activeTab="lint" onTabChange={() => {}} />);
 
-      expect(screen.getByText(/Click "Run Lint" to analyze/i)).toBeInTheDocument();
+      expect(screen.getByText("Readability")).toBeInTheDocument();
+      expect(screen.getByText("B+")).toBeInTheDocument();
+      expect(screen.getByText("Avg sentence length")).toBeInTheDocument();
     });
 
     it("should have Run Lint button visible", () => {
@@ -307,31 +309,29 @@ describe("SidePanel", () => {
       expect(screen.getByText("B+")).toBeInTheDocument();
     });
 
-    it("should render empty state placeholder when lint tab loads without results", () => {
+    it("should render default lint metrics when lint tab loads", () => {
       render(<SidePanel article={mockArticle} activeTab="lint" onTabChange={() => {}} />);
 
-      expect(screen.getByText(/Click "Run Lint" to analyze/i)).toBeInTheDocument();
+      expect(screen.getByText("Readability")).toBeInTheDocument();
+      expect(screen.getByText("B+")).toBeInTheDocument();
     });
   });
 
   describe("Integration", () => {
-    it("should handle full user workflow: run lint and view results", () => {
+    it("should handle full user workflow: default metrics shown, run lint refreshes results", () => {
       render(<SidePanel article={mockArticle} activeTab="lint" onTabChange={() => {}} />);
 
-      // Start with placeholder
-      expect(screen.getByText(/Click "Run Lint" to analyze/i)).toBeInTheDocument();
+      // Default metrics visible immediately
+      expect(screen.getByText("Readability")).toBeInTheDocument();
+      expect(screen.getByText("B+")).toBeInTheDocument();
+      expect(screen.getByText("Avg sentence length")).toBeInTheDocument();
+      expect(screen.getByText(/Avoid "very"/i)).toBeInTheDocument();
 
-      // Run lint
+      // Run lint refreshes (same values in mock)
       const runLintButton = screen.getByRole("button", { name: "Run Lint ↺" });
       fireEvent.click(runLintButton);
 
-      // See results
-      expect(screen.getByText("Readability")).toBeInTheDocument();
       expect(screen.getByText("B+")).toBeInTheDocument();
-      expect(screen.getByText(/Avoid "very"/i)).toBeInTheDocument();
-
-      // Placeholder should be gone
-      expect(screen.queryByText(/Click "Run Lint" to analyze/i)).not.toBeInTheDocument();
     });
 
     it("should handle switching between tabs", () => {
@@ -524,6 +524,25 @@ describe("SidePanel", () => {
 
       expect(exportUtils.exportToPdf).not.toHaveBeenCalled();
       expect(exportUtils.exportToMarkdown).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Publish Tab - Export error handling", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should reset exporting state after PDF export error", async () => {
+      (exportUtils.exportToPdf as jest.Mock).mockRejectedValueOnce(new Error("PDF failed"));
+
+      render(<SidePanel article={mockArticle} activeTab="publish" onTabChange={() => {}} />);
+
+      const printButton = screen.getByRole("button", { name: /Print/ });
+      fireEvent.click(printButton);
+
+      // After the rejected promise settles, the button reverts to its normal label
+      await screen.findByRole("button", { name: /Print/ });
+      expect(screen.queryByRole("button", { name: /Printing.../ })).not.toBeInTheDocument();
     });
   });
 });

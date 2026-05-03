@@ -82,11 +82,18 @@ const mockLogout = logout as jest.MockedFunction<typeof logout>;
 const mockCreateArticle = createArticle as jest.MockedFunction<typeof createArticle>;
 const mockSaveArticle = saveArticle as jest.MockedFunction<typeof saveArticle>;
 
+const defaultUser = {
+  login: "testuser",
+  name: "Test User",
+  avatar_url: "https://example.com/a.png",
+};
+
 describe("StudioPage", () => {
   beforeEach(() => {
     mockFetchArticles.mockRejectedValue(new Error("API unavailable"));
     mockFetchArticle.mockRejectedValue(new Error("API unavailable"));
-    mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
+    // Default: authenticated so the studio renders; individual tests override as needed
+    mockFetchCurrentUser.mockResolvedValue(defaultUser);
     mockCreateArticle.mockReset();
     mockSaveArticle.mockReset();
     mockLogout.mockReset();
@@ -175,7 +182,8 @@ describe("StudioPage", () => {
   describe("Header Layout", () => {
     it("should render header with Inkwell title", () => {
       render(<StudioPage />);
-      expect(screen.getByText("Inkwell")).toBeInTheDocument();
+      expect(screen.getByText("inkwell")).toBeInTheDocument();
+      expect(screen.getByText("write · commit · publish")).toBeInTheDocument();
     });
 
     it("should render theme toggle button", () => {
@@ -189,13 +197,16 @@ describe("StudioPage", () => {
 
   describe("GitHub OAuth UI", () => {
     it("renders Sign in with GitHub link when unauthenticated", async () => {
+      mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
       render(<StudioPage />);
       await waitFor(() => {
-        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
+        const links = screen.getAllByRole("link", { name: /sign in with github/i });
+        expect(links.length).toBeGreaterThan(0);
       });
     });
 
     it("does not render avatar when unauthenticated", async () => {
+      mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
       render(<StudioPage />);
       await waitFor(() => {
         expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -246,6 +257,7 @@ describe("StudioPage", () => {
     });
 
     it("does not render profile menu trigger when unauthenticated", async () => {
+      mockFetchCurrentUser.mockRejectedValue(new Error("Not authenticated"));
       render(<StudioPage />);
       await waitFor(() => {
         expect(
@@ -285,7 +297,8 @@ describe("StudioPage", () => {
       expect(mockLogout).toHaveBeenCalledTimes(1);
       await waitFor(() => {
         expect(screen.queryByRole("img")).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
+        const links = screen.getAllByRole("link", { name: /sign in with github/i });
+        expect(links.length).toBeGreaterThan(0);
       });
     });
 
@@ -298,7 +311,8 @@ describe("StudioPage", () => {
       const signOutItem = screen.getByRole("menuitem", { name: /sign out/i });
       await userEvent.click(signOutItem);
       await waitFor(() => {
-        expect(screen.getByRole("link", { name: /sign in with github/i })).toBeInTheDocument();
+        const links = screen.getAllByRole("link", { name: /sign in with github/i });
+        expect(links.length).toBeGreaterThan(0);
       });
     });
   });
